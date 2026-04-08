@@ -1,0 +1,24 @@
+
+fn add(a: i32, b: i32) -&gt; i32:
+    return a + b
+
+fn main():
+    let x: i32 = 10
+    let y: i32 = 20
+    let result = add(x, y)
+    let message: String = "Hello, World!"
+
+class Calculator:
+    let value: i32
+    
+    fn new(initial: i32) -&gt; Calculator:
+        let calc = Calculator()
+        calc.value = initial
+        return calc
+    
+    fn add(self, n: i32):
+        self.value = self.value + n
+    
+    fn get_value(self) -&gt; i32:
+        return self.value
+

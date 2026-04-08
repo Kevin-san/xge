@@ -1,0 +1,81 @@
+
+use clap::Parser;
+use compiler::{Compiler, CompilerOptions, Target};
+use std::fs;
+use std::path::PathBuf;
+
+#[derive(Parser, Debug)]
+#[command(name = "mylang")]
+#[command(about = "My new programming language compiler")]
+struct Cli {
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Parser, Debug)]
+enum Commands {
+    #[command(about = "Compile a source file")]
+    Compile {
+        #[arg(value_name = "FILE")]
+        file: PathBuf,
+        
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+        
+        #[arg(short, long)]
+        wasm: bool,
+        
+        #[arg(short, long, default_value_t = true)]
+        optimize: bool,
+    },
+    
+    #[command(about = "Run a source file")]
+    Run {
+        #[arg(value_name = "FILE")]
+        file: PathBuf,
+    },
+    
+    #[command(about = "Print version information")]
+    Version,
+}
+
+fn main() -> anyhow::Result<()> {
+    let cli = Cli::parse();
+
+    match cli.command {
+        Commands::Compile { file, output, wasm, optimize } => {
+            let source = fs::read_to_string(&file)?;
+            
+            let options = CompilerOptions {
+                optimize,
+                target: if wasm { Target::Wasm32 } else { Target::Native },
+                output_file: output.map(|p| p.to_string_lossy().to_string()),
+            };
+            
+            let mut compiler = Compiler::new(options);
+            let result = compiler.compile(&source)?;
+            
+            println!("Compilation successful!");
+            if let Some(asm) = result.assembly {
+                println!("Assembly: {}", asm);
+            }
+        }
+        
+        Commands::Run { file } => {
+            let source = fs::read_to_string(&file)?;
+            
+            let options = CompilerOptions::default();
+            let mut compiler = Compiler::new(options);
+            let _result = compiler.compile(&source)?;
+            
+            println!("Execution would happen here");
+        }
+        
+        Commands::Version => {
+            println!("MyLang Compiler v0.1.0");
+        }
+    }
+
+    Ok(())
+}
+

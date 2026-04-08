@@ -1,0 +1,15 @@
+
+[package]
+name = "cli"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+compiler = { path = "../compiler" }
+clap = { workspace = true, features = ["derive"] }
+anyhow = { workspace = true }
+
+[[bin]]
+name = "mylang"
+path = "src/main.rs"
+

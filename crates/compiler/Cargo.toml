@@ -1,0 +1,15 @@
+
+[package]
+name = "compiler"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+lexer = { path = "../lexer" }
+parser = { path = "../parser" }
+hir = { path = "../hir" }
+mir = { path = "../mir" }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+clap = { workspace = true }
+
