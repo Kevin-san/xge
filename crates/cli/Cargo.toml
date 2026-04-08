@@ -8,6 +8,7 @@ edition = "2021"
 compiler = { path = "../compiler" }
 clap = { workspace = true, features = ["derive"] }
 anyhow = { workspace = true }
+rayon = "1.8.0"
 
 [[bin]]
 name = "mylang"

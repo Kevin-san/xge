@@ -13,8 +13,8 @@ pub enum CompileError {
     TypeError,
     #[error("Lowering error")]
     LowerError,
-    #[error("Code generation error")]
-    CodegenError,
+    #[error("Code generation error: {0}")]
+    CodegenError(#[from] codegen::CodegenError),
     #[error("IO error: {0}")]
     IoError(#[from] std::io::Error),
     #[error("Other error: {0}")]

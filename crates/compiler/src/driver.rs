@@ -2,6 +2,9 @@
 use crate::error::*;
 use lexer::Lexer;
 use parser::Parser;
+use hir::lower_module;
+use mir::lower_hir_to_mir;
+use codegen::CodeGenerator;
 use anyhow::Result;
 
 #[derive(Debug, Clone)]
@@ -29,24 +32,34 @@ impl Default for CompilerOptions {
 
 pub struct Compiler {
     options: CompilerOptions,
-    diagnostics: Diagnostics,
+    _diagnostics: Diagnostics,
 }
 
 impl Compiler {
     pub fn new(options: CompilerOptions) -> Self {
         Compiler {
             options,
-            diagnostics: Diagnostics::new(),
+            _diagnostics: Diagnostics::new(),
         }
     }
 
     pub fn compile(&mut self, source: &str) -> Result<CompileOutput, CompileError> {
         let _lexer = Lexer::new(source);
         let mut parser = Parser::new(source);
-        let _ast = parser.parse_module()?;
+        let ast = parser.parse_module()?;
+        
+        let hir = lower_module(ast);
+        let mir = lower_hir_to_mir(hir)?;
+        
+        let codegen = match self.options.target {
+            Target::Native => CodeGenerator::new_native(),
+            Target::Wasm32 => CodeGenerator::new_wasm(),
+        };
+        
+        let assembly = codegen.generate(&mir).map_err(CompileError::CodegenError)?;
         
         Ok(CompileOutput {
-            assembly: None,
+            assembly: Some(assembly),
         })
     }
 }

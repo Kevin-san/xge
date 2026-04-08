@@ -9,7 +9,9 @@ lexer = { path = "../lexer" }
 parser = { path = "../parser" }
 hir = { path = "../hir" }
 mir = { path = "../mir" }
+codegen = { path = "../codegen" }
 anyhow = { workspace = true }
 thiserror = { workspace = true }
 clap = { workspace = true }
+rayon = "1.8.0"
 

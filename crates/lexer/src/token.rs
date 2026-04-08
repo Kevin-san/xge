@@ -19,6 +19,7 @@ pub enum Token {
     And,
     Or,
     Not,
+    In,
 
     Ident(String),
     Integer(i64),

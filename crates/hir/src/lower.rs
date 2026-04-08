@@ -1,143 +1,214 @@
-
 use crate::hir::*;
-use parser::ast::{self, Module, Item};
-use anyhow::Result;
+use ::parser::*;
 
-pub struct LoweringContext {
-    symbol_table: SymbolTable,
-    next_symbol_id: usize,
-    next_block_id: usize,
+pub fn lower_module(module: Module) -> HirModule {
+    let items = module.items.into_iter().map(lower_item).collect();
+    HirModule { items }
 }
 
-impl LoweringContext {
-    pub fn new() -&gt; Self {
-        LoweringContext {
-            symbol_table: SymbolTable {
-                symbols: HashMap::new(),
-            },
-            next_symbol_id: 0,
-            next_block_id: 0,
-        }
-    }
-
-    pub fn fresh_symbol(&amp;mut self, name: &amp;str) -&gt; Symbol {
-        let id = self.next_symbol_id;
-        self.next_symbol_id += 1;
-        Symbol(format!("{}_{}", name, id))
-    }
-
-    pub fn fresh_block(&amp;mut self) -&gt; BasicBlockId {
-        let id = self.next_block_id;
-        self.next_block_id += 1;
-        BasicBlockId(id)
+fn lower_item(item: Item) -> HirItem {
+    match item {
+        Item::Function(func) => HirItem::Function(lower_function(func)),
+        Item::Class(class) => HirItem::Class(lower_class(class)),
+        Item::Expr(expr) => HirItem::Expr(lower_expr(expr)),
+        Item::Stmt(_) => todo!(),
     }
 }
 
-pub fn lower_ast_to_hir(ast: Module) -&gt; Result&lt;HirModule&gt; {
-    let mut ctx = LoweringContext::new();
-    let mut items = Vec::new();
-
-    for item in ast.items {
-        match item {
-            Item::FnDef(fn_def) =&gt; {
-                let hir_fn = lower_function(&amp;mut ctx, fn_def)?;
-                items.push(HirItem::Function(hir_fn));
-            }
-            Item::ClassDef(class_def) =&gt; {
-                let hir_struct = lower_class(&amp;mut ctx, class_def)?;
-                items.push(HirItem::Struct(hir_struct));
-            }
-            Item::LetDecl(let_decl) =&gt; {
-            }
-            Item::Expr(expr) =&gt; {
-            }
-        }
-    }
-
-    Ok(HirModule {
-        items,
-        symbols: ctx.symbol_table,
-    })
-}
-
-fn lower_function(ctx: &amp;mut LoweringContext, fn_def: ast::FnDef) -&gt; Result&lt;HirFunction&gt; {
-    let name = Symbol(fn_def.name.0);
-    let mut params = Vec::new();
-    
-    for param in fn_def.params {
-        let sym = Symbol(param.name.0);
-        let ty = lower_type(&amp;param.ty)?;
-        params.push(HirParam { name: sym, ty });
-    }
-
-    let return_type = if let Some(ty) = fn_def.return_type {
-        lower_type(&amp;ty)?
-    } else {
-        HirType::Primitive(ast::PrimitiveType::I32)
-    };
-
-    let sig = HirSignature { params, return_type };
-    
-    let entry_block = ctx.fresh_block();
-    let body = HirBody {
-        locals: Vec::new(),
-        blocks: vec![HirBasicBlock {
-            id: entry_block,
-            stmts: Vec::new(),
-            terminator: HirTerminator::Return(None),
-        }],
-    };
-
-    Ok(HirFunction {
+fn lower_function(func: Function) -> HirFunction {
+    let name = lower_ident(func.name);
+    let params = func.params.into_iter().map(lower_param).collect();
+    let return_type = func.return_type.map(lower_type);
+    let body = func.body.into_iter().map(lower_stmt).collect();
+    HirFunction {
         name,
-        sig,
+        params,
+        return_type,
         body,
-        is_async: fn_def.is_async,
-    })
-}
-
-fn lower_class(ctx: &amp;mut LoweringContext, class_def: ast::ClassDef) -&gt; Result&lt;HirStruct&gt; {
-    let name = Symbol(class_def.name.0);
-    let mut fields = Vec::new();
-
-    for field in class_def.fields {
-        let sym = Symbol(field.name.0);
-        let ty = lower_type(&amp;field.ty)?;
-        fields.push(HirField { name: sym, ty });
     }
-
-    Ok(HirStruct { name, fields })
 }
 
-fn lower_type(ty: &amp;ast::Type) -&gt; Result&lt;HirType&gt; {
+fn lower_class(class: Class) -> HirClass {
+    let name = lower_ident(class.name);
+    let body = class.body.into_iter().map(lower_item).collect();
+    HirClass {
+        name,
+        body,
+    }
+}
+
+fn lower_param(param: Param) -> HirParam {
+    let name = lower_ident(param.name);
+    let ty = lower_type(param.ty);
+    HirParam {
+        name,
+        ty,
+    }
+}
+
+fn lower_stmt(stmt: Stmt) -> HirStmt {
+    match stmt {
+        Stmt::Let(let_stmt) => HirStmt::Let(lower_let_stmt(let_stmt)),
+        Stmt::If(if_stmt) => HirStmt::If(lower_if_stmt(if_stmt)),
+        Stmt::For(for_stmt) => HirStmt::For(lower_for_stmt(for_stmt)),
+        Stmt::While(while_stmt) => HirStmt::While(lower_while_stmt(while_stmt)),
+        Stmt::Return(return_stmt) => HirStmt::Return(lower_return_stmt(return_stmt)),
+        Stmt::Expr(expr) => HirStmt::Expr(lower_expr(expr)),
+    }
+}
+
+fn lower_let_stmt(let_stmt: LetStmt) -> HirLetStmt {
+    let name = lower_ident(let_stmt.name);
+    let ty = lower_type(let_stmt.ty);
+    let value = lower_expr(let_stmt.value);
+    HirLetStmt {
+        name,
+        ty,
+        value,
+    }
+}
+
+fn lower_if_stmt(if_stmt: IfStmt) -> HirIfStmt {
+    let condition = lower_expr(if_stmt.condition);
+    let then_branch = if_stmt.then_branch.into_iter().map(lower_stmt).collect();
+    let else_branch = if_stmt.else_branch.map(|branch| branch.into_iter().map(lower_stmt).collect());
+    HirIfStmt {
+        condition,
+        then_branch,
+        else_branch,
+    }
+}
+
+fn lower_for_stmt(for_stmt: ForStmt) -> HirForStmt {
+    let name = lower_ident(for_stmt.name);
+    let iter = lower_expr(for_stmt.iter);
+    let body = for_stmt.body.into_iter().map(lower_stmt).collect();
+    HirForStmt {
+        name,
+        iter,
+        body,
+    }
+}
+
+fn lower_while_stmt(while_stmt: WhileStmt) -> HirWhileStmt {
+    let condition = lower_expr(while_stmt.condition);
+    let body = while_stmt.body.into_iter().map(lower_stmt).collect();
+    HirWhileStmt {
+        condition,
+        body,
+    }
+}
+
+fn lower_return_stmt(return_stmt: ReturnStmt) -> HirReturnStmt {
+    let value = return_stmt.value.map(lower_expr);
+    HirReturnStmt {
+        value,
+    }
+}
+
+fn lower_expr(expr: Expr) -> HirExpr {
+    match expr {
+        Expr::Literal(lit) => HirExpr::Literal(lower_literal(lit)),
+        Expr::Ident(ident) => HirExpr::Ident(lower_ident(ident)),
+        Expr::Binary(binary) => HirExpr::Binary(lower_binary_expr(binary)),
+        Expr::Unary(unary) => HirExpr::Unary(lower_unary_expr(unary)),
+        Expr::Call(call) => HirExpr::Call(lower_call_expr(call)),
+        Expr::Member(member) => HirExpr::Member(lower_member_expr(member)),
+        Expr::Assign(assign) => HirExpr::Assign(lower_assign_expr(assign)),
+    }
+}
+
+fn lower_literal(literal: Literal) -> HirLiteral {
+    match literal {
+        Literal::Integer(i) => HirLiteral::Integer(i),
+        Literal::Float(f) => HirLiteral::Float(f),
+        Literal::String(s) => HirLiteral::String(s),
+        Literal::Char(c) => HirLiteral::Char(c),
+        Literal::Bool(b) => HirLiteral::Bool(b),
+        Literal::None => HirLiteral::None,
+    }
+}
+
+fn lower_ident(ident: Ident) -> HirIdent {
+    HirIdent(ident.0)
+}
+
+fn lower_binary_expr(binary: BinaryExpr) -> HirBinaryExpr {
+    let left = Box::new(lower_expr(*binary.left));
+    let op = lower_binary_op(binary.op);
+    let right = Box::new(lower_expr(*binary.right));
+    HirBinaryExpr {
+        left,
+        op,
+        right,
+    }
+}
+
+fn lower_unary_expr(unary: UnaryExpr) -> HirUnaryExpr {
+    let op = lower_unary_op(unary.op);
+    let expr = Box::new(lower_expr(*unary.expr));
+    HirUnaryExpr {
+        op,
+        expr,
+    }
+}
+
+fn lower_call_expr(call: CallExpr) -> HirCallExpr {
+    let callee = Box::new(lower_expr(*call.callee));
+    let args = call.args.into_iter().map(lower_expr).collect();
+    HirCallExpr {
+        callee,
+        args,
+    }
+}
+
+fn lower_member_expr(member: MemberExpr) -> HirMemberExpr {
+    let object = Box::new(lower_expr(*member.object));
+    let member = lower_ident(member.member);
+    HirMemberExpr {
+        object,
+        member,
+    }
+}
+
+fn lower_assign_expr(assign: AssignExpr) -> HirAssignExpr {
+    let target = Box::new(lower_expr(*assign.target));
+    let value = Box::new(lower_expr(*assign.value));
+    HirAssignExpr {
+        target,
+        value,
+    }
+}
+
+fn lower_binary_op(op: BinaryOp) -> HirBinaryOp {
+    match op {
+        BinaryOp::Add => HirBinaryOp::Add,
+        BinaryOp::Sub => HirBinaryOp::Sub,
+        BinaryOp::Mul => HirBinaryOp::Mul,
+        BinaryOp::Div => HirBinaryOp::Div,
+        BinaryOp::Mod => HirBinaryOp::Mod,
+        BinaryOp::Eq => HirBinaryOp::Eq,
+        BinaryOp::Ne => HirBinaryOp::Ne,
+        BinaryOp::Lt => HirBinaryOp::Lt,
+        BinaryOp::Le => HirBinaryOp::Le,
+        BinaryOp::Gt => HirBinaryOp::Gt,
+        BinaryOp::Ge => HirBinaryOp::Ge,
+        BinaryOp::And => HirBinaryOp::And,
+        BinaryOp::Or => HirBinaryOp::Or,
+    }
+}
+
+fn lower_unary_op(op: UnaryOp) -> HirUnaryOp {
+    match op {
+        UnaryOp::Not => HirUnaryOp::Not,
+        UnaryOp::Neg => HirUnaryOp::Neg,
+    }
+}
+
+fn lower_type(ty: Type) -> HirType {
     match ty {
-        ast::Type::Primitive(p) =&gt; Ok(HirType::Primitive(p.clone())),
-        ast::Type::Named(ident) =&gt; Ok(HirType::Named(Symbol(ident.0.clone()))),
-        ast::Type::Generic(base, args) =&gt; {
-            let base = lower_type(base)?;
-            let mut hir_args = Vec::new();
-            for arg in args {
-                hir_args.push(lower_type(arg)?);
-            }
-            Ok(base)
-        }
-        ast::Type::Function(params, ret) =&gt; {
-            let mut hir_params = Vec::new();
-            for param in params {
-                hir_params.push(lower_type(param)?);
-            }
-            let hir_ret = lower_type(ret)?;
-            Ok(HirType::Function(hir_params, Box::new(hir_ret)))
-        }
-        ast::Type::Option(inner) =&gt; {
-            let inner = lower_type(inner)?;
-            Ok(HirType::Option(Box::new(inner)))
-        }
-        ast::Type::Result(ok, err) =&gt; {
-            let ok = lower_type(ok)?;
-            let err = lower_type(err)?;
-            Ok(HirType::Result(Box::new(ok), Box::new(err)))
-        }
+        Type::Ident(ident) => HirType::Ident(lower_ident(ident)),
+        Type::Array(inner) => HirType::Array(Box::new(lower_type(*inner))),
+        Type::Optional(inner) => HirType::Optional(Box::new(lower_type(*inner))),
     }
 }
-

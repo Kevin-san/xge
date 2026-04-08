@@ -3,6 +3,7 @@ use clap::Parser;
 use compiler::{Compiler, CompilerOptions, Target};
 use std::fs;
 use std::path::PathBuf;
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 #[derive(Parser, Debug)]
 #[command(name = "mylang")]
@@ -14,10 +15,10 @@ struct Cli {
 
 #[derive(Parser, Debug)]
 enum Commands {
-    #[command(about = "Compile a source file")]
+    #[command(about = "Compile source files")]
     Compile {
         #[arg(value_name = "FILE")]
-        file: PathBuf,
+        files: Vec<PathBuf>,
         
         #[arg(short, long)]
         output: Option<PathBuf>,
@@ -43,22 +44,34 @@ fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Compile { file, output, wasm, optimize } => {
-            let source = fs::read_to_string(&file)?;
-            
+        Commands::Compile { files, output, wasm, optimize } => {
             let options = CompilerOptions {
                 optimize,
                 target: if wasm { Target::Wasm32 } else { Target::Native },
                 output_file: output.map(|p| p.to_string_lossy().to_string()),
             };
             
-            let mut compiler = Compiler::new(options);
-            let result = compiler.compile(&source)?;
-            
-            println!("Compilation successful!");
-            if let Some(asm) = result.assembly {
-                println!("Assembly: {}", asm);
-            }
+            files.par_iter().for_each(|file| {
+                match fs::read_to_string(file) {
+                    Ok(source) => {
+                        let mut compiler = Compiler::new(options.clone());
+                        match compiler.compile(&source) {
+                            Ok(result) => {
+                                println!("Compilation successful for {}!", file.to_string_lossy());
+                                if let Some(asm) = result.assembly {
+                                    println!("Assembly for {}: {}", file.to_string_lossy(), asm);
+                                }
+                            },
+                            Err(e) => {
+                                println!("Compilation failed for {}: {}", file.to_string_lossy(), e);
+                            }
+                        }
+                    },
+                    Err(e) => {
+                        println!("Failed to read file {}: {}", file.to_string_lossy(), e);
+                    }
+                }
+            });
         }
         
         Commands::Run { file } => {
