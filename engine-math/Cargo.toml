@@ -11,6 +11,4 @@ description = "Game engine math library"
 default = ["std"]
 std = []
 
-[workspace]
-
 [dependencies]

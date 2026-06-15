@@ -1,13 +1,26 @@
 [workspace]
 resolver = "2"
-members = ["engine-core"]
+members = [
+    "engine-core",
+    "engine-math",
+    "engine-utils",
+    "engine-platform",
+]
 
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
 authors = ["Game Engine Team"]
 license = "MIT OR Apache-2.0"
+rust-version = "1.70"
 
 [workspace.dependencies]
 anyhow = "1.0"
+parking_lot = "0.12"
 chrono = "0.4"
+
+# 内部 crate 依赖
+engine-core = { path = "engine-core" }
+engine-math = { path = "engine-math" }
+engine-utils = { path = "engine-utils" }
+engine-platform = { path = "engine-platform" }
