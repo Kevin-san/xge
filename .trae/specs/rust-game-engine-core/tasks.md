@@ -1,108 +1,130 @@
-# Tasks - 游戏引擎核心架构开发
+# Tasks - 游戏引擎核心架构开发 (Sprint-01)
 
-## 阶段 1: 项目初始化
+## 阶段 1: 构建系统
 
-- [x] Task 1.1: 创建 Cargo workspace 结构
-  - [x] 创建 engine-core 核心库 crate
-  - [x] 配置 Cargo.toml 依赖和元数据
-  - [x] 设置构建信息（build.rs 生成 BUILD_COMMIT_HASH 和 BUILD_TIMESTAMP）
+- [ ] Task 1.1: 更新 Cargo workspace 配置
+  - [ ] 添加 engine-math, engine-platform, engine-utils 成员
+  - [ ] 配置统一 workspace.dependencies
 
-## 阶段 2: 引擎核心实现
+- [ ] Task 1.2: 创建 rust-toolchain.toml
+  - [ ] 固定 Rust 工具链版本
 
-- [x] Task 2.1: 实现 EngineConfig 配置结构
-  - [x] 窗口配置（标题、尺寸）
-  - [x] 日志等级配置
-  - [x] 目标帧率配置
+- [ ] Task 1.3: 配置格式化工具
+  - [ ] rustfmt.toml
+  - [ ] clippy.toml
 
-- [x] Task 2.2: 实现 Engine 主结构
-  - [x] 初始化逻辑
-  - [x] run() 主循环
-  - [x] request_quit() 退出请求
-  - [x] is_running() 状态检查
-  - [x] 模块获取方法
+- [ ] Task 1.4: 更新 build.rs 构建信息
+  - [ ] ENGINE_VERSION, BUILD_COMMIT_HASH, BUILD_TIMESTAMP
 
-- [x] Task 2.3: 实现 Time 时间管理
-  - [x] 帧时间计算
-  - [x] delta_time (dt) 提供
+## 阶段 2: engine-core 核心（已部分完成）
 
-## 阶段 3: 模块系统
+- [x] Task 2.1: Engine 主结构 ✓
+- [x] Task 2.2: Module trait 和 ModuleRegistry ✓
+- [x] Task 2.3: App trait 和 AppBuilder ✓
+- [ ] Task 2.4: 添加 world() / world_mut() 占位实现
+- [ ] Task 2.5: 添加 spawn_task() 异步任务支持
 
-- [x] Task 3.1: 定义 Module trait
-  - [x] name() 模块名称
-  - [x] dependencies() 依赖声明
-  - [x] on_init/on_update/on_render/on_shutdown 生命周期
-  - [x] enabled() 启用状态
+## 阶段 3: engine-math 数学库
 
-- [x] Task 3.2: 实现 ModuleRegistry
-  - [x] register() 模块注册
-  - [x] initialize_all() 拓扑排序初始化
-  - [x] update_all() 批量更新
-  - [x] shutdown_all() 逆序关闭
+- [ ] Task 3.1: 创建 engine-math crate
+  - [ ] 配置 no_std + alloc 支持
 
-## 阶段 4: 应用系统
+- [ ] Task 3.2: 实现 Vec2 类型
+  - [ ] 基本运算（加减乘除）
+  - [ ] dot, cross, length
+  - [ ] normalize, lerp
 
-- [x] Task 4.1: 定义 App trait
-  - [x] setup() 初始化
-  - [x] update() 每帧更新
-  - [x] render() 渲染
-  - [x] shutdown() 退出
+- [ ] Task 3.3: 实现 Vec3 类型
+  - [ ] 同 Vec2 完整功能
 
-- [x] Task 4.2: 实现 AppBuilder
-  - [x] with_config() 配置
-  - [x] add_module() 添加模块
-  - [x] run() 启动引擎
+- [ ] Task 3.4: 实现 Vec4 类型
+  - [ ] 同 Vec2 完整功能
 
-## 阶段 5: 事件总线
+- [ ] Task 3.5: 实现 Mat4 矩阵
+  - [ ] 乘法、求逆、转置
+  - [ ] from_translation/scale/rotation
+  - [ ] look_at, perspective, orthographic
 
-- [x] Task 5.1: 实现 EventBus<T>
-  - [x] subscribe() 订阅
-  - [x] unsubscribe() 取消订阅
-  - [x] send() 派发事件
-  - [x] drain() 批量消费
+- [ ] Task 3.6: 实现 Quat 四元数
+  - [ ] 与 Euler 角互转
+  - [ ] slerp, nlerp
 
-## 阶段 6: 调度器
+- [ ] Task 3.7: 实现 Transform 变换
+  - [ ] matrix() 输出 TRS 矩阵
 
-- [x] Task 6.1: 实现 Schedule
-  - [x] add_stage() 注册阶段
-  - [x] run() 执行调度
+- [ ] Task 3.8: 实现几何原语
+  - [ ] Rect 点包含和相交检测
+  - [ ] AABB 包围盒
 
-## 阶段 7: 日志系统
+## 阶段 4: engine-platform 平台抽象
 
-- [x] Task 7.1: 实现 log 模块
-  - [x] init() 初始化
-  - [x] set_level() 设置等级
-  - [x] 日志宏 (info!, warn!, error!)
+- [ ] Task 4.1: 创建 engine-platform crate
 
-## 阶段 8: 示例程序
+- [ ] Task 4.2: 实现 Time 时间管理
+  - [ ] tick(), delta_seconds(), fps()
+  - [ ] FixedTimestepSteps 固定时间步
+  - [ ] Stopwatch 计时器
 
-- [x] Task 8.1: 实现 hello_engine 示例
-  - [x] 打印版本信息
-  - [x] 最小引擎运行
+- [ ] Task 4.3: 实现 FileSystem trait
+  - [ ] read/write 文件操作
+  - [ ] 路径规范化
 
-- [x] Task 8.2: 实现 minimal_app 示例
-  - [x] 完整 App trait 实现
-  - [x] 默认运行模式
+- [ ] Task 4.4: 实现 ThreadPool 线程池
+  - [ ] spawn(), try_spawn()
+  - [ ] 线程数量计算
 
-- [x] Task 8.3: 实现 module_order 示例
-  - [x] 模块依赖演示
-  - [x] 初始化顺序验证
+- [ ] Task 4.5: 实现 Platform 平台检测
+  - [ ] current() 获取当前平台
 
-- [x] Task 8.4: 实现 event_bus_demo 示例
-  - [x] 订阅/派发/取消订阅演示
+- [ ] Task 4.6: 实现 Feature 特性开关
 
-## 阶段 9: 测试验证
+## 阶段 5: engine-utils 工具库
 
-- [x] Task 9.1: 添加单元测试
-  - [x] EventBus 功能测试
+- [ ] Task 5.1: 创建 engine-utils crate
 
-- [x] Task 9.2: 验证所有示例编译运行
+- [ ] Task 5.2: 实现 Handle<T> 句柄
+  - [ ] index + generation 机制
+  - [ ] Copy + Eq + Hash
 
-# Task Dependencies
-- Task 2.1, 2.2, 2.3 依赖 Task 1.1
-- Task 3.1, 3.2 依赖 Task 2.1
-- Task 4.1, 4.2 依赖 Task 3.1
-- Task 5.1 独立
-- Task 6.1 依赖 Task 3.2
-- Task 7.1 独立
-- Task 8.x 依赖 Task 2.x, 3.x, 4.x, 5.x, 6.x, 7.1
-- Task 9.x 依赖所有 Task 8.x
+- [ ] Task 5.3: 实现 Arena<T> 对象池
+  - [ ] insert/get/remove O(1)
+  - [ ] free list 复用
+  - [ ] iter() 遍历存活对象
+
+- [ ] Task 5.4: 实现 ResourceManager<T>
+  - [ ] load/get/unload 资源管理
+
+- [ ] Task 5.5: 实现 AssetId
+  - [ ] new(), from_path(), null()
+
+## 阶段 6: Schedule 调度器
+
+- [ ] Task 6.1: 更新 Schedule 实现
+  - [ ] Startup/Update/Render/Shutdown 四阶段
+  - [ ] add_system_to_stage()
+
+## 阶段 7: 示例程序
+
+- [x] Task 7.1: hello_engine 示例 ✓
+- [x] Task 7.2: minimal_app 示例 ✓
+- [x] Task 7.3: module_order 示例 ✓
+- [x] Task 7.4: event_bus_demo 示例 ✓
+- [ ] Task 7.5: arena_bench 示例（可选）
+
+## 阶段 8: 测试验证
+
+- [ ] Task 8.1: 数学库单元测试 >= 10 条
+- [ ] Task 8.2: 句柄/Arena 单元测试 >= 10 条
+- [ ] Task 8.3: EventBus 单元测试 >= 10 条
+- [ ] Task 8.4: Time 单元测试 >= 10 条
+- [ ] Task 8.5: 验证所有示例编译运行
+
+## Task Dependencies
+- Task 1.x 依赖无
+- Task 2.x 依赖 Task 1.1
+- Task 3.x 依赖 Task 1.1
+- Task 4.x 依赖 Task 1.1
+- Task 5.x 依赖 Task 1.1
+- Task 6.x 依赖 Task 2.1
+- Task 7.x 依赖 Task 2.x, 3.x, 4.x, 5.x
+- Task 8.x 依赖所有实现任务
