@@ -1,0 +1,13 @@
+[workspace]
+resolver = "2"
+members = ["engine-core"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Game Engine Team"]
+license = "MIT OR Apache-2.0"
+
+[workspace.dependencies]
+anyhow = "1.0"
+chrono = "0.4"
