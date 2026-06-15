@@ -1,11 +1,16 @@
-//! Game engine platform abstraction library
-//!
-//! Provides time management, file system abstraction, thread pool, and platform detection.
+#![cfg_attr(not(feature = "std"), no_std)]
 
-mod time;
-mod thread_pool;
-mod platform;
+#[cfg(feature = "std")]
+extern crate std;
+
+pub mod time;
+pub mod file_system;
+pub mod thread_pool;
+pub mod platform;
+pub mod feature;
 
 pub use time::{Time, FixedTimestepSteps, Stopwatch};
-pub use thread_pool::ThreadPool;
-pub use platform::{Platform, Feature};
+pub use file_system::{FileSystem, NativeFileSystem};
+pub use thread_pool::{ThreadPool, JoinHandle};
+pub use platform::Platform;
+pub use feature::Feature;

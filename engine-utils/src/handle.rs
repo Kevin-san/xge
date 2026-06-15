@@ -1,47 +1,39 @@
 use core::fmt;
-use core::marker::PhantomData;
 
-/// 类型安全句柄，使用索引 + 代际号机制避免悬挂引用
-#[derive(Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[repr(C)]
 pub struct Handle<T> {
     index: u32,
     generation: u32,
-    _phantom: PhantomData<T>,
-}
-
-impl<T> Clone for Handle<T> {
-    fn clone(&self) -> Self {
-        Handle { index: self.index, generation: self.generation, _phantom: PhantomData }
-    }
+    _marker: core::marker::PhantomData<T>,
 }
 
 impl<T> Handle<T> {
-    #[inline]
-    pub const fn new(index: u32, generation: u32) -> Self {
-        Self { index, generation, _phantom: PhantomData }
+    pub const fn null() -> Self {
+        Self {
+            index: u32::MAX,
+            generation: 0,
+            _marker: core::marker::PhantomData,
+        }
     }
 
-    #[inline]
     pub const fn is_null(&self) -> bool {
         self.index == u32::MAX
     }
 
-    #[inline]
     pub const fn index(&self) -> u32 {
         self.index
     }
 
-    #[inline]
     pub const fn generation(&self) -> u32 {
         self.generation
     }
 
-    /// 返回 null 句柄
-    pub fn null() -> Self {
+    pub(crate) const fn from_raw(index: u32, generation: u32) -> Self {
         Self {
-            index: u32::MAX,
-            generation: u32::MAX,
-            _phantom: PhantomData,
+            index,
+            generation,
+            _marker: core::marker::PhantomData,
         }
     }
 }
@@ -54,7 +46,7 @@ impl<T> Default for Handle<T> {
 
 impl<T> fmt::Debug for Handle<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Handle {{ index: {}, generation: {} }}", self.index, self.generation)
+        write!(f, "Handle(index={}, generation={})", self.index, self.generation)
     }
 }
 
@@ -63,40 +55,46 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_new() {
-        let h = Handle::<i32>::new(42, 1);
-        assert_eq!(h.index(), 42);
-        assert_eq!(h.generation(), 1);
-        assert!(!h.is_null());
-    }
-
-    #[test]
-    fn test_null() {
+    fn handle_is_null() {
         let h: Handle<i32> = Handle::null();
         assert!(h.is_null());
-        assert_eq!(h.index(), u32::MAX);
+        
+        let h2: Handle<i32> = Handle::from_raw(0, 0);
+        assert!(!h2.is_null());
     }
 
     #[test]
-    fn test_copy() {
-        let h = Handle::<i32>::new(1, 2);
-        let h2 = h;
-        assert_eq!(h, h2);
+    fn handle_copy() {
+        let h1: Handle<i32> = Handle::from_raw(42, 1);
+        let h2 = h1;
+        assert_eq!(h1, h2);
     }
 
     #[test]
-    fn test_hash() {
+    fn handle_eq() {
+        let h1: Handle<i32> = Handle::from_raw(10, 2);
+        let h2: Handle<i32> = Handle::from_raw(10, 2);
+        let h3: Handle<i32> = Handle::from_raw(11, 2);
+        let h4: Handle<i32> = Handle::from_raw(10, 3);
+        
+        assert_eq!(h1, h2);
+        assert_ne!(h1, h3);
+        assert_ne!(h1, h4);
+    }
+
+    #[test]
+    fn handle_hash() {
         use core::hash::{Hash, Hasher};
-        use std::collections::HashSet;
         
-        let h1 = Handle::<i32>::new(1, 1);
-        let h2 = Handle::<i32>::new(1, 1);
-        let h3 = Handle::<i32>::new(2, 1);
+        let h1: Handle<i32> = Handle::from_raw(5, 2);
+        let h2: Handle<i32> = Handle::from_raw(5, 2);
         
-        let mut set = HashSet::new();
-        set.insert(h1);
+        let mut hasher1 = std::collections::hash_map::DefaultHasher::new();
+        let mut hasher2 = std::collections::hash_map::DefaultHasher::new();
         
-        assert!(set.contains(&h2));
-        assert!(!set.contains(&h3));
+        h1.hash(&mut hasher1);
+        h2.hash(&mut hasher2);
+        
+        assert_eq!(hasher1.finish(), hasher2.finish());
     }
 }

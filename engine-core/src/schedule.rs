@@ -1,121 +1,73 @@
+use crate::Engine;
 use std::collections::HashMap;
 
-/// 执行阶段名称
-pub const STARTUP: &str = "Startup";
-pub const UPDATE: &str = "Update";
-pub const RENDER: &str = "Render";
-pub const SHUTDOWN: &str = "Shutdown";
-
-/// 执行阶段
-struct Stage {
-    name: String,
-    systems: Vec<Box<dyn FnMut() + Send + Sync + 'static>>,
-}
-
-/// 任务调度器
-/// 
-/// 允许注册多个执行阶段，按注册顺序执行
-/// 
-/// # Example
-/// ```ignore
-/// let mut schedule = Schedule::new();
-/// schedule.add_system_to_stage(UPDATE, |engine| {
-///     // 更新逻辑
-/// });
-/// schedule.add_system_to_stage(RENDER, |engine| {
-///     // 渲染逻辑
-/// });
-/// schedule.run_stage(UPDATE);
-/// ```
 pub struct Schedule {
-    stages: HashMap<String, Stage>,
-    stage_order: Vec<String>,
-}
-
-impl Default for Schedule {
-    fn default() -> Self {
-        Self::new()
-    }
+    stages: Vec<String>,
+    systems: HashMap<String, Vec<Box<dyn FnMut(&mut Engine) + Send + Sync + 'static>>>,
 }
 
 impl Schedule {
-    /// 创建新的调度器，包含默认四阶段
     pub fn new() -> Self {
-        let mut schedule = Self {
-            stages: HashMap::new(),
-            stage_order: Vec::new(),
-        };
-        
-        // 添加默认阶段
-        schedule.add_stage(STARTUP);
-        schedule.add_stage(UPDATE);
-        schedule.add_stage(RENDER);
-        schedule.add_stage(SHUTDOWN);
-        
-        schedule
+        Self {
+            stages: Vec::new(),
+            systems: HashMap::new(),
+        }
     }
 
-    /// 注册一个新的执行阶段
     pub fn add_stage(&mut self, name: impl Into<String>) -> &mut Self {
         let name = name.into();
-        if !self.stages.contains_key(&name) {
-            self.stages.insert(name.clone(), Stage {
-                name: name.clone(),
-                systems: Vec::new(),
-            });
-            self.stage_order.push(name);
+        if !self.stages.contains(&name) {
+            self.stages.push(name.clone());
+            self.systems.insert(name, Vec::new());
         }
         self
     }
 
-    /// 向指定阶段添加系统
-    pub fn add_system_to_stage<F>(&mut self, stage_name: &str, system: F) -> &mut Self
+    pub fn add_system_to_stage<F>(&mut self, stage_name: impl Into<String>, system: F) -> &mut Self
     where
-        F: FnMut() + Send + Sync + 'static,
+        F: FnMut(&mut Engine) + Send + Sync + 'static,
     {
-        if let Some(stage) = self.stages.get_mut(stage_name) {
-            stage.systems.push(Box::new(system));
+        let stage_name = stage_name.into();
+        if !self.stages.contains(&stage_name) {
+            self.add_stage(&stage_name);
+        }
+        if let Some(systems) = self.systems.get_mut(&stage_name) {
+            systems.push(Box::new(system));
         }
         self
     }
 
-    /// 执行指定阶段的所有系统
-    pub fn run_stage(&mut self, stage_name: &str) {
-        if let Some(stage) = self.stages.get_mut(stage_name) {
-            for system in &mut stage.systems {
-                system();
+    pub fn run(&mut self, engine: &mut Engine) {
+        for stage_name in &self.stages {
+            self.run_stage(stage_name, engine);
+        }
+    }
+
+    pub fn run_stage(&mut self, stage_name: &str, engine: &mut Engine) {
+        if let Some(systems) = self.systems.get_mut(stage_name) {
+            for system in systems.iter_mut() {
+                system(engine);
             }
         }
     }
 
-    /// 执行所有已注册的阶段
-    pub fn run(&mut self) {
-        let stage_order = self.stage_order.clone();
-        for stage_name in &stage_order {
-            self.run_stage(stage_name);
-        }
+    pub fn stage_order(&self) -> &[String] {
+        &self.stages
     }
 
-    /// 清空指定阶段的所有系统
-    pub fn clear_stage(&mut self, stage_name: &str) {
-        if let Some(stage) = self.stages.get_mut(stage_name) {
-            stage.systems.clear();
-        }
+    pub fn stage_names(&self) -> Vec<&str> {
+        self.stages.iter().map(|s| s.as_str()).collect()
     }
+}
 
-    /// 获取已注册阶段的数量
-    pub fn stage_count(&self) -> usize {
-        self.stages.len()
-    }
-
-    /// 获取指定阶段的系统数量
-    pub fn system_count(&self, stage_name: &str) -> usize {
-        self.stages.get(stage_name).map(|s| s.systems.len()).unwrap_or(0)
-    }
-
-    /// 获取所有阶段名称
-    pub fn stage_names(&self) -> &[String] {
-        &self.stage_order
+impl Default for Schedule {
+    fn default() -> Self {
+        let mut schedule = Self::new();
+        schedule.add_stage("STARTUP");
+        schedule.add_stage("UPDATE");
+        schedule.add_stage("RENDER");
+        schedule.add_stage("SHUTDOWN");
+        schedule
     }
 }
 
@@ -123,74 +75,66 @@ impl Schedule {
 mod tests {
     use super::*;
     use std::sync::atomic::{AtomicUsize, Ordering};
-    use std::sync::Arc;
 
     #[test]
-    fn test_default_stages() {
+    fn schedule_new() {
         let schedule = Schedule::new();
-        assert_eq!(schedule.stage_count(), 4);
-        assert!(schedule.stage_names().contains(&STARTUP.to_string()));
-        assert!(schedule.stage_names().contains(&UPDATE.to_string()));
+        assert!(schedule.stages.is_empty());
     }
 
     #[test]
-    fn test_add_system() {
+    fn schedule_add_stage() {
         let mut schedule = Schedule::new();
+        schedule.add_stage("UPDATE");
+        assert_eq!(schedule.stages, vec!["UPDATE"]);
+    }
+
+    #[test]
+    fn schedule_add_system_to_stage() {
+        let mut schedule = Schedule::new();
+        schedule.add_system_to_stage("UPDATE", |_engine| {});
+        assert!(schedule.systems.contains_key("UPDATE"));
+        assert_eq!(schedule.systems["UPDATE"].len(), 1);
+    }
+
+    #[test]
+    fn schedule_run_order() {
         let counter = Arc::new(AtomicUsize::new(0));
+        let counter_clone = counter.clone();
+
+        let mut schedule = Schedule::new();
+        schedule.add_stage("FIRST");
+        schedule.add_stage("SECOND");
         
-        let c = counter.clone();
-        schedule.add_system_to_stage(UPDATE, move || {
-            c.fetch_add(1, Ordering::SeqCst);
+        schedule.add_system_to_stage("FIRST", move |_engine| {
+            counter_clone.fetch_add(1, Ordering::SeqCst);
         });
-        
-        schedule.run_stage(UPDATE);
-        assert_eq!(counter.load(Ordering::SeqCst), 1);
-    }
 
-    #[test]
-    fn test_multiple_systems() {
-        let mut schedule = Schedule::new();
-        let counter = Arc::new(AtomicUsize::new(0));
-        
-        for _ in 0..3 {
-            let c = counter.clone();
-            schedule.add_system_to_stage(UPDATE, move || {
-                c.fetch_add(1, Ordering::SeqCst);
-            });
-        }
-        
-        schedule.run_stage(UPDATE);
-        assert_eq!(counter.load(Ordering::SeqCst), 3);
-    }
-
-    #[test]
-    fn test_run_all_stages() {
-        let mut schedule = Schedule::new();
-        let counter = Arc::new(AtomicUsize::new(0));
-        
-        for stage in [STARTUP, UPDATE, RENDER, SHUTDOWN] {
-            let c = counter.clone();
-            schedule.add_system_to_stage(stage, move || {
-                c.fetch_add(1, Ordering::SeqCst);
-            });
-        }
-        
-        schedule.run();
-        assert_eq!(counter.load(Ordering::SeqCst), 4);
-    }
-
-    #[test]
-    fn test_clear_stage() {
-        let mut schedule = Schedule::new();
-        let counter = Arc::new(AtomicUsize::new(0));
-        
-        let c = counter.clone();
-        schedule.add_system_to_stage(UPDATE, move || {
-            c.fetch_add(1, Ordering::SeqCst);
+        let counter_clone2 = counter.clone();
+        schedule.add_system_to_stage("SECOND", move |_engine| {
+            counter_clone2.fetch_add(10, Ordering::SeqCst);
         });
+
+        let mut engine = Engine::new(EngineConfig::default());
+        schedule.run(&mut engine);
+
+        assert_eq!(counter.load(Ordering::SeqCst), 11);
+    }
+
+    #[test]
+    fn schedule_stage_order() {
+        let mut schedule = Schedule::new();
+        schedule.add_stage("A");
+        schedule.add_stage("B");
+        schedule.add_stage("C");
         
-        schedule.clear_stage(UPDATE);
-        schedule.run_stage(UPDATE);
-        assert_eq!(counter.load(Ordering::SeqCst), 0);
+        let order = schedule.stage_order();
+        assert_eq!(order, &["A", "B", "C"]);
+    }
+
+    #[test]
+    fn schedule_default_stages() {
+        let schedule = Schedule::default();
+        assert_eq!(schedule.stages, vec!["STARTUP", "UPDATE", "RENDER", "SHUTDOWN"]);
     }
 }

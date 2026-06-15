@@ -1,15 +1,16 @@
-//! Game engine utility library
-//! 
-//! Provides handle, arena, and resource management types.
+#![cfg_attr(not(feature = "std"), no_std)]
 
-extern crate alloc;
+#[cfg(feature = "std")]
+extern crate std;
 
-mod handle;
-mod arena;
-mod resource_manager;
-mod asset_id;
+pub mod handle;
+pub mod arena;
+pub mod event_bus;
+pub mod resource_manager;
+pub mod asset_id;
 
 pub use handle::Handle;
-pub use arena::{Arena, ArenaIter};
+pub use arena::Arena;
+pub use event_bus::{EventBus, SubscriptionHandle};
 pub use resource_manager::ResourceManager;
 pub use asset_id::AssetId;

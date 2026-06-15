@@ -1,16 +1,18 @@
-pub mod build_info;
-pub mod log;
-pub mod event;
-pub mod schedule;
+#![cfg_attr(not(feature = "std"), no_std)]
+
+#[cfg(feature = "std")]
+extern crate std;
+
+pub mod engine;
 pub mod module;
 pub mod app;
-pub mod engine;
-pub mod time;
+pub mod schedule;
 
-pub use build_info::{BUILD_COMMIT_HASH, BUILD_TIMESTAMP, ENGINE_VERSION};
 pub use engine::{Engine, EngineConfig};
+pub use module::{Module, ModuleRegistry, CycleError};
 pub use app::{App, AppBuilder};
-pub use module::{Module, ModuleRegistry};
-pub use event::EventBus;
 pub use schedule::Schedule;
-pub use time::Time;
+
+pub const ENGINE_VERSION: &str = "0.1.0-dev";
+pub const BUILD_COMMIT_HASH: &str = env!("BUILD_COMMIT_HASH");
+pub const BUILD_TIMESTAMP: &str = env!("BUILD_TIMESTAMP");

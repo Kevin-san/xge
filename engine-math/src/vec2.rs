@@ -1,7 +1,4 @@
-use core::ops::{Add, Sub, Mul, Div, Neg};
-use core::fmt;
-
-#[derive(Clone, Copy, PartialEq, Debug, Default)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 #[repr(C)]
 pub struct Vec2 {
     pub x: f32,
@@ -14,139 +11,148 @@ impl Vec2 {
     pub const X: Self = Self { x: 1.0, y: 0.0 };
     pub const Y: Self = Self { x: 0.0, y: 1.0 };
 
-    #[inline]
     pub const fn new(x: f32, y: f32) -> Self {
         Self { x, y }
     }
 
-    #[inline]
-    pub fn splat(v: f32) -> Self {
-        Self { x: v, y: v }
-    }
-
-    #[inline]
     pub fn dot(self, other: Self) -> f32 {
         self.x * other.x + self.y * other.y
     }
 
-    #[inline]
     pub fn cross(self, other: Self) -> f32 {
         self.x * other.y - self.y * other.x
     }
 
-    #[inline]
     pub fn length(self) -> f32 {
-        self.dot(self).sqrt()
+        self.length_squared().sqrt()
     }
 
-    #[inline]
     pub fn length_squared(self) -> f32 {
-        self.dot(self)
+        self.x * self.x + self.y * self.y
     }
 
-    #[inline]
     pub fn normalize(self) -> Self {
         let len = self.length();
-        if len > 0.0 {
-            self / len
-        } else {
+        if len == 0.0 {
             Self::ZERO
+        } else {
+            self / len
         }
     }
 
-    #[inline]
     pub fn normalize_or_zero(self) -> Self {
-        let len = self.length();
-        if len > 0.0 {
-            self / len
-        } else {
-            Self::ZERO
-        }
+        self.normalize()
     }
 
-    #[inline]
     pub fn lerp(self, other: Self, t: f32) -> Self {
         self + (other - self) * t
     }
 
-    #[inline]
     pub fn distance(self, other: Self) -> f32 {
-        (self - other).length()
+        (other - self).length()
     }
 
-    #[inline]
     pub fn distance_squared(self, other: Self) -> f32 {
-        (self - other).length_squared()
+        (other - self).length_squared()
+    }
+
+    pub fn abs(self) -> Self {
+        Self {
+            x: self.x.abs(),
+            y: self.y.abs(),
+        }
+    }
+
+    pub fn min(self, other: Self) -> Self {
+        Self {
+            x: self.x.min(other.x),
+            y: self.y.min(other.y),
+        }
+    }
+
+    pub fn max(self, other: Self) -> Self {
+        Self {
+            x: self.x.max(other.x),
+            y: self.y.max(other.y),
+        }
+    }
+
+    pub fn clamp(self, min: Self, max: Self) -> Self {
+        self.max(min).min(max)
     }
 }
 
-impl Add for Vec2 {
+impl core::ops::Add for Vec2 {
     type Output = Self;
-    #[inline]
     fn add(self, other: Self) -> Self {
-        Self::new(self.x + other.x, self.y + other.y)
+        Self {
+            x: self.x + other.x,
+            y: self.y + other.y,
+        }
     }
 }
 
-impl Sub for Vec2 {
+impl core::ops::Sub for Vec2 {
     type Output = Self;
-    #[inline]
     fn sub(self, other: Self) -> Self {
-        Self::new(self.x - other.x, self.y - other.y)
+        Self {
+            x: self.x - other.x,
+            y: self.y - other.y,
+        }
     }
 }
 
-impl Mul<Vec2> for Vec2 {
+impl core::ops::Mul<f32> for Vec2 {
     type Output = Self;
-    #[inline]
-    fn mul(self, other: Vec2) -> Self {
-        Self::new(self.x * other.x, self.y * other.y)
-    }
-}
-
-impl Mul<f32> for Vec2 {
-    type Output = Self;
-    #[inline]
     fn mul(self, scalar: f32) -> Self {
-        Self::new(self.x * scalar, self.y * scalar)
+        Self {
+            x: self.x * scalar,
+            y: self.y * scalar,
+        }
     }
 }
 
-impl Mul<Vec2> for f32 {
-    type Output = Vec2;
-    #[inline]
-    fn mul(self, other: Vec2) -> Vec2 {
-        Vec2::new(self * other.x, self * other.y)
-    }
-}
-
-impl Div for Vec2 {
+impl core::ops::Div<f32> for Vec2 {
     type Output = Self;
-    #[inline]
-    fn div(self, other: Self) -> Self {
-        Self::new(self.x / other.x, self.y / other.y)
-    }
-}
-
-impl Div<f32> for Vec2 {
-    type Output = Self;
-    #[inline]
     fn div(self, scalar: f32) -> Self {
-        Self::new(self.x / scalar, self.y / scalar)
+        Self {
+            x: self.x / scalar,
+            y: self.y / scalar,
+        }
     }
 }
 
-impl Neg for Vec2 {
+impl core::ops::Neg for Vec2 {
     type Output = Self;
-    #[inline]
     fn neg(self) -> Self {
-        Self::new(-self.x, -self.y)
+        Self {
+            x: -self.x,
+            y: -self.y,
+        }
     }
 }
 
-impl fmt::Display for Vec2 {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Vec2({}, {})", self.x, self.y)
+impl core::ops::AddAssign for Vec2 {
+    fn add_assign(&mut self, other: Self) {
+        *self = *self + other;
+    }
+}
+
+impl core::ops::SubAssign for Vec2 {
+    fn sub_assign(&mut self, other: Self) {
+        *self = *self - other;
+    }
+}
+
+impl core::ops::MulAssign<f32> for Vec2 {
+    fn mul_assign(&mut self, scalar: f32) {
+        *self = *self * scalar;
+    }
+}
+
+impl core::ops::DivAssign<f32> for Vec2 {
+    fn div_assign(&mut self, scalar: f32) {
+        *self = *self / scalar;
     }
 }
 
@@ -155,43 +161,66 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_basic_operations() {
+    fn vec2_const() {
+        assert_eq!(Vec2::ZERO, Vec2::new(0.0, 0.0));
+        assert_eq!(Vec2::ONE, Vec2::new(1.0, 1.0));
+        assert_eq!(Vec2::X, Vec2::new(1.0, 0.0));
+        assert_eq!(Vec2::Y, Vec2::new(0.0, 1.0));
+    }
+
+    #[test]
+    fn vec2_new() {
+        let v = Vec2::new(3.0, 4.0);
+        assert_eq!(v.x, 3.0);
+        assert_eq!(v.y, 4.0);
+    }
+
+    #[test]
+    fn vec2_operators() {
         let a = Vec2::new(1.0, 2.0);
         let b = Vec2::new(3.0, 4.0);
         
         assert_eq!(a + b, Vec2::new(4.0, 6.0));
         assert_eq!(a - b, Vec2::new(-2.0, -2.0));
         assert_eq!(a * 2.0, Vec2::new(2.0, 4.0));
-        assert_eq!(a / 2.0, Vec2::new(0.5, 1.0));
+        assert_eq!(b / 2.0, Vec2::new(1.5, 2.0));
+        assert_eq!(-a, Vec2::new(-1.0, -2.0));
     }
 
     #[test]
-    fn test_dot_cross() {
+    fn vec2_dot() {
         let a = Vec2::new(1.0, 2.0);
         let b = Vec2::new(3.0, 4.0);
-        
-        assert_eq!(a.dot(b), 11.0);
-        assert_eq!(a.cross(b), -2.0);
+        assert_eq!(a.dot(b), 1.0 * 3.0 + 2.0 * 4.0);
     }
 
     #[test]
-    fn test_length() {
+    fn vec2_cross() {
+        let a = Vec2::new(1.0, 2.0);
+        let b = Vec2::new(3.0, 4.0);
+        assert_eq!(a.cross(b), 1.0 * 4.0 - 2.0 * 3.0);
+    }
+
+    #[test]
+    fn vec2_length() {
         let v = Vec2::new(3.0, 4.0);
         assert_eq!(v.length(), 5.0);
         assert_eq!(v.length_squared(), 25.0);
     }
 
     #[test]
-    fn test_normalize() {
+    fn vec2_normalize() {
         let v = Vec2::new(3.0, 4.0);
         let n = v.normalize();
         assert!((n.length() - 1.0).abs() < 1e-6);
     }
 
     #[test]
-    fn test_lerp() {
-        let a = Vec2::ZERO;
-        let b = Vec2::ONE;
-        assert_eq!(a.lerp(b, 0.5), Vec2::splat(0.5));
+    fn vec2_lerp() {
+        let a = Vec2::new(0.0, 0.0);
+        let b = Vec2::new(10.0, 10.0);
+        assert_eq!(a.lerp(b, 0.0), a);
+        assert_eq!(a.lerp(b, 1.0), b);
+        assert_eq!(a.lerp(b, 0.5), Vec2::new(5.0, 5.0));
     }
 }

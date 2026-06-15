@@ -1,145 +1,201 @@
-use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
-use std::collections::HashMap;
-use std::any::{TypeId, Any};
-use crate::module::ModuleRegistry;
+use crate::module::{Module, ModuleRegistry, CycleError};
 use crate::schedule::Schedule;
-use crate::time::Time;
-use crate::log::{self, Level};
+use engine_platform::{Time, FileSystem, NativeFileSystem, ThreadPool, JoinHandle};
+use parking_lot::RwLock;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
-#[derive(Debug, Clone)]
+#[derive(Default)]
 pub struct EngineConfig {
-    pub window_title: String,
-    pub window_width: u32,
-    pub window_height: u32,
-    pub target_fps: u32,
-    pub log_level: Level,
-}
-
-impl Default for EngineConfig {
-    fn default() -> Self {
-        Self {
-            window_title: "Game Engine".to_string(),
-            window_width: 1280,
-            window_height: 720,
-            target_fps: 60,
-            log_level: Level::Info,
-        }
-    }
+    pub frame_limit: Option<u64>,
+    pub tick_rate: f32,
 }
 
 pub struct Engine {
     config: EngineConfig,
-    modules: ModuleRegistry,
+    module_registry: ModuleRegistry,
     schedule: Schedule,
     time: Time,
-    resources: HashMap<TypeId, Box<dyn Any + Send + Sync>>,
+    filesystem: Box<dyn FileSystem>,
+    thread_pool: ThreadPool,
     running: Arc<AtomicBool>,
-    quit_requested: Arc<AtomicBool>,
-    external_quit: Option<Arc<AtomicBool>>,
+    world: RwLock<World>,
 }
 
-impl Default for Engine {
-    fn default() -> Self {
-        Self::new(EngineConfig::default())
-    }
-}
+pub struct World;
 
 impl Engine {
     pub fn new(config: EngineConfig) -> Self {
-        log::init(config.log_level);
-        log::info("engine", "Engine initialized");
-        
         Self {
             config,
-            modules: ModuleRegistry::new(),
+            module_registry: ModuleRegistry::new(),
             schedule: Schedule::new(),
             time: Time::new(),
-            resources: HashMap::new(),
+            filesystem: Box::new(NativeFileSystem),
+            thread_pool: ThreadPool::new(None).unwrap(),
             running: Arc::new(AtomicBool::new(false)),
-            quit_requested: Arc::new(AtomicBool::new(false)),
-            external_quit: None,
+            world: RwLock::new(World),
         }
     }
-    
-    pub fn config(&self) -> &EngineConfig {
-        &self.config
+
+    pub fn run(&mut self) {
+        self.running.store(true, Ordering::SeqCst);
+        
+        match self.module_registry.initialize_all(self) {
+            Ok(_) => {}
+            Err(e) => {
+                eprintln!("Failed to initialize modules: {}", e);
+                return;
+            }
+        }
+
+        while self.running.load(Ordering::SeqCst) {
+            self.time.tick();
+            
+            let dt = self.time.delta_seconds() as f64;
+            
+            self.schedule.run(self);
+            self.module_registry.update_all(self, dt);
+
+            if let Some(limit) = self.config.frame_limit {
+                if self.time.frame_count() >= limit {
+                    self.request_quit();
+                }
+            }
+        }
+
+        self.module_registry.shutdown_all(self);
     }
-    
-    pub fn time(&self) -> &Time {
-        &self.time
+
+    pub fn request_quit(&self) {
+        self.running.store(false, Ordering::SeqCst);
     }
-    
-    pub fn modules(&self) -> &ModuleRegistry {
-        &self.modules
-    }
-    
-    pub fn schedule(&self) -> &Schedule {
-        &self.schedule
-    }
-    
-    pub fn schedule_mut(&mut self) -> &mut Schedule {
-        &mut self.schedule
-    }
-    
+
     pub fn is_running(&self) -> bool {
         self.running.load(Ordering::SeqCst)
     }
-    
-    pub fn request_quit(&self) {
-        self.quit_requested.store(true, Ordering::SeqCst);
+
+    pub fn module<T: Module>(&self) -> Option<&T> {
+        self.module_registry.get::<T>()
     }
 
-    pub fn should_quit(&self) -> bool {
-        self.quit_requested.load(Ordering::SeqCst)
+    pub fn module_mut<T: Module>(&mut self) -> Option<&mut T> {
+        self.module_registry.get_mut::<T>()
     }
 
-    pub fn set_quit_flag(&mut self, flag: Arc<AtomicBool>) {
-        self.external_quit = Some(flag);
+    pub fn world(&self) -> &World {
+        &*self.world.read()
     }
 
-    fn external_quit_raised(&self) -> bool {
-        self.external_quit
-            .as_ref()
-            .map(|f| f.load(Ordering::SeqCst))
-            .unwrap_or(false)
+    pub fn world_mut(&mut self) -> &mut World {
+        &mut *self.world.write()
     }
-    
-    pub fn insert_resource<R: Send + Sync + 'static>(&mut self, resource: R) {
-        let tid = TypeId::of::<R>();
-        self.resources.insert(tid, Box::new(resource));
+
+    pub fn time(&self) -> &Time {
+        &self.time
     }
-    
-    pub fn get_resource<R: Send + Sync + 'static>(&self) -> Option<&R> {
-        let tid = TypeId::of::<R>();
-        self.resources.get(&tid).and_then(|b| b.downcast_ref::<R>())
+
+    pub fn time_mut(&mut self) -> &mut Time {
+        &mut self.time
     }
-    
-    pub fn run(&mut self) {
-        log::info("engine", "Starting main loop");
-        self.running.store(true, Ordering::SeqCst);
-        
-        if let Err(e) = self.modules.initialize_all() {
-            log::error("engine", &format!("Failed to initialize modules: {}", e));
-            return;
+
+    pub fn filesystem(&self) -> &dyn FileSystem {
+        self.filesystem.as_ref()
+    }
+
+    pub fn config(&self) -> &EngineConfig {
+        &self.config
+    }
+
+    pub fn spawn_task<F>(&self, f: F) -> JoinHandle<F::Output>
+    where
+        F: std::future::Future + Send + 'static,
+        F::Output: Send + 'static,
+    {
+        self.thread_pool.spawn(move || futures_lite::future::block_on(f))
+    }
+
+    pub fn schedule(&mut self) -> &mut Schedule {
+        &mut self.schedule
+    }
+
+    pub(crate) fn register_module<M: Module + 'static>(&mut self, module: M) {
+        self.module_registry.register(module);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct TestModule {
+        initialized: bool,
+        updated: bool,
+        shutdown: bool,
+    }
+
+    impl TestModule {
+        fn new() -> Self {
+            Self {
+                initialized: false,
+                updated: false,
+                shutdown: false,
+            }
         }
+    }
+
+    impl Module for TestModule {
+        fn name(&self) -> &str { "TestModule" }
+        fn dependencies(&self) -> Vec<&str> { Vec::new() }
+        fn on_init(&mut self, _engine: &Engine) { self.initialized = true; }
+        fn on_update(&mut self, _engine: &mut Engine, _dt: f64) { self.updated = true; }
+        fn on_render(&mut self, _engine: &mut Engine) {}
+        fn on_shutdown(&mut self, _engine: &Engine) { self.shutdown = true; }
+        fn enabled(&self) -> bool { true }
+    }
+
+    #[test]
+    fn engine_new() {
+        let config = EngineConfig::default();
+        let engine = Engine::new(config);
+        assert!(!engine.is_running());
+    }
+
+    #[test]
+    fn engine_is_running() {
+        let config = EngineConfig { frame_limit: Some(1), ..Default::default() };
+        let mut engine = Engine::new(config);
+        assert!(!engine.is_running());
+        engine.run();
+        assert!(!engine.is_running());
+    }
+
+    #[test]
+    fn engine_time_access() {
+        let engine = Engine::new(EngineConfig::default());
+        let _time = engine.time();
+    }
+
+    #[test]
+    fn engine_filesystem_access() {
+        let engine = Engine::new(EngineConfig::default());
+        let _fs = engine.filesystem();
+    }
+
+    #[test]
+    fn engine_config_access() {
+        let config = EngineConfig::default();
+        let engine = Engine::new(config);
+        assert_eq!(engine.config().frame_limit, None);
+    }
+
+    #[test]
+    fn engine_module_access() {
+        let config = EngineConfig { frame_limit: Some(1), ..Default::default() };
+        let mut engine = Engine::new(config);
+        engine.register_module(TestModule::new());
         
-        while self.is_running() && !self.should_quit() && !self.external_quit_raised() {
-            self.time.update();
-            
-            let dt = self.time.delta_time();
-            
-            self.modules.update_all(dt);
-            
-            self.schedule.run();
-            
-            self.modules.render_all();
-            
-            std::thread::sleep(std::time::Duration::from_millis(16));
-        }
-        
-        self.modules.shutdown_all();
-        
-        log::info("engine", "Engine shutdown complete");
-        self.running.store(false, Ordering::SeqCst);
+        let module = engine.module::<TestModule>();
+        assert!(module.is_some());
     }
 }

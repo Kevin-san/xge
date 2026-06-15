@@ -1,7 +1,5 @@
-use core::fmt;
-use core::ops::{Mul};
-
-#[derive(Clone, Copy, PartialEq, Debug, Default)]
+#[derive(Clone, Copy, PartialEq, Debug)]
+#[repr(C)]
 pub struct Quat {
     pub x: f32,
     pub y: f32,
@@ -12,107 +10,72 @@ pub struct Quat {
 impl Quat {
     pub const IDENTITY: Self = Self { x: 0.0, y: 0.0, z: 0.0, w: 1.0 };
 
-    #[inline]
-    pub fn from_rotation_x(angle: f32) -> Self {
-        let half = angle / 2.0;
-        Self { x: half.sin(), y: 0.0, z: 0.0, w: half.cos() }
+    pub const fn new(x: f32, y: f32, z: f32, w: f32) -> Self {
+        Self { x, y, z, w }
     }
 
-    #[inline]
-    pub fn from_rotation_y(angle: f32) -> Self {
-        let half = angle / 2.0;
-        Self { x: 0.0, y: half.sin(), z: 0.0, w: half.cos() }
+    pub const fn from_rotation_x(angle: f32) -> Self {
+        let half_angle = angle * 0.5;
+        let s = half_angle.sin();
+        let c = half_angle.cos();
+        Self { x: s, y: 0.0, z: 0.0, w: c }
     }
 
-    #[inline]
-    pub fn from_rotation_z(angle: f32) -> Self {
-        let half = angle / 2.0;
-        Self { x: 0.0, y: 0.0, z: half.sin(), w: half.cos() }
+    pub const fn from_rotation_y(angle: f32) -> Self {
+        let half_angle = angle * 0.5;
+        let s = half_angle.sin();
+        let c = half_angle.cos();
+        Self { x: 0.0, y: s, z: 0.0, w: c }
     }
 
-    #[inline]
-    pub fn inverse(self) -> Self {
-        let len_sq = self.x * self.x + self.y * self.y + self.z * self.z + self.w * self.w;
-        if len_sq > 0.0 {
-            let inv = 1.0 / len_sq;
-            Self {
-                x: -self.x * inv,
-                y: -self.y * inv,
-                z: -self.z * inv,
-                w: self.w * inv,
-            }
-        } else {
-            Self::IDENTITY
+    pub const fn from_rotation_z(angle: f32) -> Self {
+        let half_angle = angle * 0.5;
+        let s = half_angle.sin();
+        let c = half_angle.cos();
+        Self { x: 0.0, y: 0.0, z: s, w: c }
+    }
+
+    pub const fn from_euler(euler: crate::Euler) -> Self {
+        let (pitch, yaw, roll) = euler.to_radians();
+        let half_pitch = pitch * 0.5;
+        let half_yaw = yaw * 0.5;
+        let half_roll = roll * 0.5;
+
+        let sin_p = half_pitch.sin();
+        let cos_p = half_pitch.cos();
+        let sin_y = half_yaw.sin();
+        let cos_y = half_yaw.cos();
+        let sin_r = half_roll.sin();
+        let cos_r = half_roll.cos();
+
+        Self {
+            x: sin_r * cos_p * cos_y - cos_r * sin_p * sin_y,
+            y: cos_r * sin_p * cos_y + sin_r * cos_p * sin_y,
+            z: cos_r * cos_p * sin_y - sin_r * sin_p * cos_y,
+            w: cos_r * cos_p * cos_y + sin_r * sin_p * sin_y,
         }
     }
 
-    #[inline]
-    pub fn normalize(self) -> Self {
-        let len = (self.x * self.x + self.y * self.y + self.z * self.z + self.w * self.w).sqrt();
-        if len > 0.0 {
-            Self {
-                x: self.x / len,
-                y: self.y / len,
-                z: self.z / len,
-                w: self.w / len,
-            }
-        } else {
-            Self::IDENTITY
-        }
-    }
+    pub fn to_euler(&self) -> crate::Euler {
+        let sinr_cosp = 2.0 * (self.w * self.x + self.y * self.z);
+        let cosr_cosp = 1.0 - 2.0 * (self.x * self.x + self.y * self.y);
+        let roll = sinr_cosp.atan2(cosr_cosp);
 
-    #[inline]
-    pub fn slerp(self, other: Self, t: f32) -> Self {
-        let mut cos_half = self.x * other.x + self.y * other.y + self.z * other.z + self.w * other.w;
-        
-        if cos_half < 0.0 {
-            cos_half = -cos_half;
-            let (ox, oy, oz, ow) = (-other.x, -other.y, -other.z, -other.w);
-            Self { x: ox, y: oy, z: oz, w: ow }.slerp_impl(self, t, cos_half)
+        let sinp = 2.0 * (self.w * self.y - self.z * self.x);
+        let pitch = if sinp.abs() >= 1.0 {
+            core::f32::consts::FRAC_PI_2 * sinp.signum()
         } else {
-            self.slerp_impl(other, t, cos_half)
-        }
-    }
-
-    fn slerp_impl(self, other: Self, t: f32, cos_half: f32) -> Self {
-        let half;
-        let mut sin_half = (1.0 - cos_half * cos_half).sqrt();
-        
-        if sin_half < 0.001 {
-            Self {
-                x: self.x * (1.0 - t) + other.x * t,
-                y: self.y * (1.0 - t) + other.y * t,
-                z: self.z * (1.0 - t) + other.z * t,
-                w: self.w * (1.0 - t) + other.w * t,
-            }
-        } else {
-            half = cos_half.acos();
-            let a = ((1.0 - t) * half).sin() / sin_half;
-            let b = (t * half).sin() / sin_half;
-            Self {
-                x: self.x * a + other.x * b,
-                y: self.y * a + other.y * b,
-                z: self.z * a + other.z * b,
-                w: self.w * a + other.w * b,
-            }
-        }
-    }
-
-    #[inline]
-    pub fn nlerp(self, other: Self, t: f32) -> Self {
-        let result = Self {
-            x: self.x * (1.0 - t) + other.x * t,
-            y: self.y * (1.0 - t) + other.y * t,
-            z: self.z * (1.0 - t) + other.z * t,
-            w: self.w * (1.0 - t) + other.w * t,
+            sinp.asin()
         };
-        result.normalize()
-    }
-}
 
-impl Mul for Quat {
-    type Output = Self;
-    fn mul(self, other: Self) -> Self {
+        let siny_cosp = 2.0 * (self.w * self.z + self.x * self.y);
+        let cosy_cosp = 1.0 - 2.0 * (self.y * self.y + self.z * self.z);
+        let yaw = siny_cosp.atan2(cosy_cosp);
+
+        crate::Euler::from_radians(pitch, yaw, roll)
+    }
+
+    pub fn mul(self, other: Self) -> Self {
         Self {
             x: self.w * other.x + self.x * other.w + self.y * other.z - self.z * other.y,
             y: self.w * other.y - self.x * other.z + self.y * other.w + self.z * other.x,
@@ -120,22 +83,113 @@ impl Mul for Quat {
             w: self.w * other.w - self.x * other.x - self.y * other.y - self.z * other.z,
         }
     }
-}
 
-impl Mul<Vec3> for Quat {
-    type Output = Vec3;
-    fn mul(self, v: Vec3) -> Vec3 {
-        let qv = Vec3::new(self.x, self.y, self.z);
-        let uv = qv.cross(v);
-        let uuv = qv.cross(uv);
-        uv * (2.0 * self.w) + uuv * 2.0 + v
+    pub fn inverse(&self) -> Self {
+        let len_sq = self.x * self.x + self.y * self.y + self.z * self.z + self.w * self.w;
+        if len_sq == 0.0 {
+            Self::IDENTITY
+        } else {
+            let inv_len = 1.0 / len_sq;
+            Self {
+                x: -self.x * inv_len,
+                y: -self.y * inv_len,
+                z: -self.z * inv_len,
+                w: self.w * inv_len,
+            }
+        }
+    }
+
+    pub fn normalize(&self) -> Self {
+        let len = (self.x * self.x + self.y * self.y + self.z * self.z + self.w * self.w).sqrt();
+        if len == 0.0 {
+            Self::IDENTITY
+        } else {
+            Self {
+                x: self.x / len,
+                y: self.y / len,
+                z: self.z / len,
+                w: self.w / len,
+            }
+        }
+    }
+
+    pub fn slerp(self, other: Self, t: f32) -> Self {
+        let mut dot = self.x * other.x + self.y * other.y + self.z * other.z + self.w * other.w;
+        
+        let (other, dot) = if dot < 0.0 {
+            (Self {
+                x: -other.x,
+                y: -other.y,
+                z: -other.z,
+                w: -other.w,
+            }, -dot)
+        } else {
+            (other, dot)
+        };
+
+        let (scale0, scale1) = if dot > 0.9995 {
+            (1.0 - t, t)
+        } else {
+            let theta = dot.acos();
+            let sin_theta = theta.sin();
+            let t_theta = t * theta;
+            (
+                ((1.0 - t) * theta).sin() / sin_theta,
+                t_theta.sin() / sin_theta,
+            )
+        };
+
+        Self {
+            x: scale0 * self.x + scale1 * other.x,
+            y: scale0 * self.y + scale1 * other.y,
+            z: scale0 * self.z + scale1 * other.z,
+            w: scale0 * self.w + scale1 * other.w,
+        }
+    }
+
+    pub fn nlerp(self, other: Self, t: f32) -> Self {
+        let result = Self {
+            x: self.x + (other.x - self.x) * t,
+            y: self.y + (other.y - self.y) * t,
+            z: self.z + (other.z - self.z) * t,
+            w: self.w + (other.w - self.w) * t,
+        };
+        result.normalize()
     }
 }
 
-impl fmt::Display for Quat {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Quat({:.2}, {:.2}, {:.2}, {:.2})", self.x, self.y, self.z, self.w)
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn quat_identity() {
+        assert_eq!(Quat::IDENTITY, Quat::new(0.0, 0.0, 0.0, 1.0));
+    }
+
+    #[test]
+    fn quat_mul_identity() {
+        let q = Quat::from_rotation_x(core::f32::consts::FRAC_PI_2);
+        assert_eq!(q.mul(Quat::IDENTITY), q);
+    }
+
+    #[test]
+    fn quat_inverse() {
+        let q = Quat::from_rotation_x(core::f32::consts::FRAC_PI_2);
+        let inv = q.inverse();
+        let result = q.mul(inv);
+        assert!((result.w - 1.0).abs() < 1e-5);
+        assert!(result.x.abs() < 1e-5);
+        assert!(result.y.abs() < 1e-5);
+        assert!(result.z.abs() < 1e-5);
+    }
+
+    #[test]
+    fn quat_slerp() {
+        let a = Quat::IDENTITY;
+        let b = Quat::from_rotation_x(core::f32::consts::PI);
+        let q = a.slerp(b, 0.5);
+        assert!((q.w - 0.0).abs() < 1e-5);
+        assert!((q.x - 1.0).abs() < 1e-5);
     }
 }
-
-use super::Vec3;

@@ -1,13 +1,33 @@
 [package]
 name = "engine-core"
-version.workspace = true
-edition.workspace = true
-authors.workspace = true
-license.workspace = true
-rust-version = "1.70"
+version = "0.1.0"
+edition = "2021"
+description = "Game engine core"
 
 [dependencies]
-anyhow.workspace = true
+anyhow = { workspace = true }
+parking_lot = { workspace = true }
+futures-lite = { workspace = true }
+engine-math = { path = "../engine-math" }
+engine-platform = { path = "../engine-platform" }
+engine-utils = { path = "../engine-utils" }
 
-[build-dependencies]
-chrono.workspace = true
+[features]
+default = ["std"]
+std = []
+
+[[example]]
+name = "hello_engine"
+path = "examples/hello_engine.rs"
+
+[[example]]
+name = "minimal_app"
+path = "examples/minimal_app.rs"
+
+[[example]]
+name = "module_order"
+path = "examples/module_order.rs"
+
+[[example]]
+name = "event_bus_demo"
+path = "examples/event_bus_demo.rs"

@@ -1,165 +1,290 @@
-use std::collections::HashMap;
-use std::cell::RefCell;
+use crate::Engine;
+use std::any::Any;
+use std::collections::{HashMap, HashSet};
 
-/// 模块 trait
-/// 
-/// 所有引擎模块必须实现此 trait
-pub trait Module: Send + Sync {
-    /// 获取模块唯一名称
+#[derive(Debug)]
+pub struct CycleError {
+    message: String,
+}
+
+impl CycleError {
+    fn new(message: String) -> Self {
+        Self { message }
+    }
+}
+
+impl std::fmt::Display for CycleError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "CycleError: {}", self.message)
+    }
+}
+
+impl std::error::Error for CycleError {}
+
+pub trait Module: Send + Sync + 'static {
     fn name(&self) -> &str;
-    
-    /// 获取依赖的模块名称列表
-    fn dependencies(&self) -> Vec<&str> {
-        vec![]
-    }
-    
-    /// 模块初始化回调
-    fn on_init(&mut self) {}
-    
-    /// 模块每帧更新回调
-    fn on_update(&mut self, _dt: f64) {}
-    
-    /// 模块渲染前回调
-    fn on_render(&mut self) {}
-    
-    /// 模块关闭回调
-    fn on_shutdown(&mut self) {}
-    
-    /// 检查模块是否启用
-    fn enabled(&self) -> bool {
-        true
-    }
+    fn dependencies(&self) -> Vec<&str>;
+    fn on_init(&mut self, engine: &Engine);
+    fn on_update(&mut self, engine: &mut Engine, dt: f64);
+    fn on_render(&mut self, engine: &mut Engine);
+    fn on_shutdown(&mut self, engine: &Engine);
+    fn enabled(&self) -> bool;
 }
 
-/// 模块注册表
 pub struct ModuleRegistry {
-    modules: RefCell<HashMap<String, Box<dyn Module>>>,
-}
-
-impl Default for ModuleRegistry {
-    fn default() -> Self {
-        Self::new()
-    }
+    modules: Vec<Box<dyn Module>>,
+    name_to_index: HashMap<String, usize>,
+    type_names: HashMap<String, String>,
 }
 
 impl ModuleRegistry {
     pub fn new() -> Self {
         Self {
-            modules: RefCell::new(HashMap::new()),
+            modules: Vec::new(),
+            name_to_index: HashMap::new(),
+            type_names: HashMap::new(),
         }
     }
-    
-    pub fn register(&self, module: Box<dyn Module>) {
+
+    pub fn register<M: Module + 'static>(&mut self, module: M) {
         let name = module.name().to_string();
-        self.modules.borrow_mut().insert(name, module);
-    }
-    
-    pub fn len(&self) -> usize {
-        self.modules.borrow().len()
-    }
-    
-    pub fn is_empty(&self) -> bool {
-        self.modules.borrow().is_empty()
-    }
-    
-    pub fn initialize_all(&self) -> Result<(), CycleError> {
-        let sorted = topological_sort(&mut self.modules.borrow_mut())?;
+        let type_name = std::any::type_name::<M>().to_string();
         
-        for name in sorted {
-            if let Some(module) = self.modules.borrow_mut().get_mut(&name) {
-                if module.enabled() {
-                    module.on_init();
-                }
+        if self.name_to_index.contains_key(&name) {
+            return;
+        }
+
+        let index = self.modules.len();
+        self.modules.push(Box::new(module));
+        self.name_to_index.insert(name.clone(), index);
+        self.type_names.insert(type_name, name);
+    }
+
+    pub fn get<M: Module + 'static>(&self) -> Option<&M> {
+        let type_name = std::any::type_name::<M>();
+        if let Some(name) = self.type_names.get(type_name) {
+            if let Some(&index) = self.name_to_index.get(name) {
+                self.modules[index].as_any().downcast_ref::<M>()
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
+    pub fn get_mut<M: Module + 'static>(&mut self) -> Option<&mut M> {
+        let type_name = std::any::type_name::<M>();
+        if let Some(name) = self.type_names.get(type_name) {
+            if let Some(&index) = self.name_to_index.get(name) {
+                self.modules[index].as_any_mut().downcast_mut::<M>()
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
+    pub fn get_by_name(&self, name: &str) -> Option<&dyn Module> {
+        if let Some(&index) = self.name_to_index.get(name) {
+            Some(&*self.modules[index])
+        } else {
+            None
+        }
+    }
+
+    pub fn initialize_all(&mut self, engine: &Engine) -> Result<(), CycleError> {
+        let order = self.topological_sort()?;
+        
+        for &index in &order {
+            if self.modules[index].enabled() {
+                self.modules[index].on_init(engine);
             }
         }
         
         Ok(())
     }
-    
-    pub fn update_all(&self, dt: f64) {
-        for module in self.modules.borrow_mut().values_mut() {
-            if module.enabled() {
-                module.on_update(dt);
-            }
-        }
-    }
-    
-    pub fn render_all(&self) {
-        for module in self.modules.borrow_mut().values_mut() {
-            if module.enabled() {
-                module.on_render();
-            }
-        }
-    }
-    
-    pub fn shutdown_all(&self) {
-        let names: Vec<String> = self.modules.borrow().keys().cloned().collect();
-        for name in names.into_iter().rev() {
-            if let Some(mut module) = self.modules.borrow_mut().remove(&name) {
-                if module.enabled() {
-                    module.on_shutdown();
-                }
-            }
-        }
-    }
-}
 
-fn topological_sort(modules: &mut HashMap<String, Box<dyn Module>>) -> Result<Vec<String>, CycleError> {
-    let mut result = Vec::new();
-    let mut visited: HashMap<String, bool> = HashMap::new();
-    let mut in_stack: HashMap<String, bool> = HashMap::new();
-    
-    for name in modules.keys() {
-        visited.insert(name.clone(), false);
-        in_stack.insert(name.clone(), false);
+    pub fn update_all(&mut self, engine: &mut Engine, dt: f64) {
+        for module in self.modules.iter_mut() {
+            if module.enabled() {
+                module.on_update(engine, dt);
+            }
+        }
     }
-    
-    fn visit(
+
+    pub fn shutdown_all(&mut self, engine: &Engine) {
+        for module in self.modules.iter_mut().rev() {
+            if module.enabled() {
+                module.on_shutdown(engine);
+            }
+        }
+    }
+
+    fn topological_sort(&self) -> Result<Vec<usize>, CycleError> {
+        let mut visited = HashSet::new();
+        let mut in_stack = HashSet::new();
+        let mut order = Vec::new();
+
+        for (name, &index) in &self.name_to_index {
+            if !visited.contains(name) {
+                self.dfs(name, index, &mut visited, &mut in_stack, &mut order)?;
+            }
+        }
+
+        order.reverse();
+        Ok(order)
+    }
+
+    fn dfs(
+        &self,
         name: &str,
-        modules: &HashMap<String, Box<dyn Module>>,
-        visited: &mut HashMap<String, bool>,
-        in_stack: &mut HashMap<String, bool>,
-        result: &mut Vec<String>,
+        index: usize,
+        visited: &mut HashSet<String>,
+        in_stack: &mut HashSet<String>,
+        order: &mut Vec<usize>,
     ) -> Result<(), CycleError> {
-        if *visited.get(name).unwrap_or(&false) {
+        if in_stack.contains(name) {
+            return Err(CycleError::new(format!("Dependency cycle detected involving {}", name)));
+        }
+
+        if visited.contains(name) {
             return Ok(());
         }
-        
-        if *in_stack.get(name).unwrap_or(&false) {
-            return Err(CycleError(name.to_string()));
-        }
-        
-        in_stack.insert(name.to_string(), true);
-        
-        if let Some(module) = modules.get(name) {
-            for dep in module.dependencies() {
-                visit(dep, modules, visited, in_stack, result)?;
+
+        visited.insert(name.to_string());
+        in_stack.insert(name.to_string());
+
+        let module = &self.modules[index];
+        for dep_name in module.dependencies() {
+            if let Some(&dep_index) = self.name_to_index.get(dep_name) {
+                self.dfs(dep_name, dep_index, visited, in_stack, order)?;
+            } else {
+                return Err(CycleError::new(format!("Missing dependency: {} for {}", dep_name, name)));
             }
         }
-        
-        in_stack.insert(name.to_string(), false);
-        visited.insert(name.to_string(), true);
-        result.push(name.to_string());
-        
+
+        in_stack.remove(name);
+        order.push(index);
+
         Ok(())
     }
-    
-    for name in modules.keys() {
-        if !*visited.get(name).unwrap_or(&false) {
-            visit(name, modules, &mut visited, &mut in_stack, &mut result)?;
+}
+
+trait ModuleExt: Module {
+    fn as_any(&self) -> &dyn Any;
+    fn as_any_mut(&mut self) -> &mut dyn Any;
+}
+
+impl<M: Module> ModuleExt for M {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct ModuleA {
+        name: String,
+    }
+
+    impl ModuleA {
+        fn new() -> Self {
+            Self { name: "ModuleA".to_string() }
         }
     }
-    
-    Ok(result)
-}
 
-#[derive(Debug)]
-pub struct CycleError(pub String);
+    impl Module for ModuleA {
+        fn name(&self) -> &str { &self.name }
+        fn dependencies(&self) -> Vec<&str> { Vec::new() }
+        fn on_init(&mut self, _engine: &Engine) {}
+        fn on_update(&mut self, _engine: &mut Engine, _dt: f64) {}
+        fn on_render(&mut self, _engine: &Engine) {}
+        fn on_shutdown(&mut self, _engine: &Engine) {}
+        fn enabled(&self) -> bool { true }
+    }
 
-impl std::fmt::Display for CycleError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Circular dependency detected involving module: {}", self.0)
+    struct ModuleB {
+        name: String,
+    }
+
+    impl ModuleB {
+        fn new() -> Self {
+            Self { name: "ModuleB".to_string() }
+        }
+    }
+
+    impl Module for ModuleB {
+        fn name(&self) -> &str { &self.name }
+        fn dependencies(&self) -> Vec<&str> { vec!["ModuleA"] }
+        fn on_init(&mut self, _engine: &Engine) {}
+        fn on_update(&mut self, _engine: &mut Engine, _dt: f64) {}
+        fn on_render(&mut self, _engine: &Engine) {}
+        fn on_shutdown(&mut self, _engine: &Engine) {}
+        fn enabled(&self) -> bool { true }
+    }
+
+    #[test]
+    fn module_name() {
+        let module = ModuleA::new();
+        assert_eq!(module.name(), "ModuleA");
+    }
+
+    #[test]
+    fn module_dependencies() {
+        let module = ModuleB::new();
+        assert_eq!(module.dependencies(), vec!["ModuleA"]);
+    }
+
+    #[test]
+    fn registry_register() {
+        let mut registry = ModuleRegistry::new();
+        registry.register(ModuleA::new());
+        assert!(registry.get_by_name("ModuleA").is_some());
+    }
+
+    #[test]
+    fn registry_get_by_type() {
+        let mut registry = ModuleRegistry::new();
+        registry.register(ModuleA::new());
+        let module = registry.get::<ModuleA>();
+        assert!(module.is_some());
+    }
+
+    #[test]
+    fn registry_get_by_name() {
+        let mut registry = ModuleRegistry::new();
+        registry.register(ModuleA::new());
+        let module = registry.get_by_name("ModuleA");
+        assert!(module.is_some());
+    }
+
+    #[test]
+    fn registry_init_order() {
+        let mut registry = ModuleRegistry::new();
+        registry.register(ModuleB::new());
+        registry.register(ModuleA::new());
+        
+        let order = registry.topological_sort().unwrap();
+        let a_index = registry.name_to_index["ModuleA"];
+        let b_index = registry.name_to_index["ModuleB"];
+        
+        assert!(order.iter().position(|&i| i == a_index) < order.iter().position(|&i| i == b_index));
+    }
+
+    #[test]
+    fn registry_missing_dep() {
+        let mut registry = ModuleRegistry::new();
+        registry.register(ModuleB::new());
+        
+        let result = registry.initialize_all(&Engine::new(EngineConfig::default()));
+        assert!(result.is_err());
     }
 }
-
-impl std::error::Error for CycleError {}

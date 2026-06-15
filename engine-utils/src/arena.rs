@@ -1,18 +1,11 @@
-use alloc::vec::Vec;
-use crate::Handle;
+use super::handle::Handle;
+use core::marker::PhantomData;
 
-/// 使用 free list 的对象池，提供 O(1) 平均复杂度的增删改查
 pub struct Arena<T> {
-    items: Vec<Option<T>>,
+    items: Vec<T>,
     generations: Vec<u32>,
     free_indices: Vec<u32>,
-    len: usize,
-}
-
-impl<T> Default for Arena<T> {
-    fn default() -> Self {
-        Self::new()
-    }
+    _marker: PhantomData<T>,
 }
 
 impl<T> Arena<T> {
@@ -21,7 +14,7 @@ impl<T> Arena<T> {
             items: Vec::new(),
             generations: Vec::new(),
             free_indices: Vec::new(),
-            len: 0,
+            _marker: PhantomData,
         }
     }
 
@@ -29,148 +22,123 @@ impl<T> Arena<T> {
         Self {
             items: Vec::with_capacity(capacity),
             generations: Vec::with_capacity(capacity),
-            free_indices: Vec::with_capacity(capacity),
-            len: 0,
+            free_indices: Vec::new(),
+            _marker: PhantomData,
         }
     }
 
-    /// 插入对象，返回句柄
     pub fn insert(&mut self, value: T) -> Handle<T> {
-        let (index, generation) = if let Some(free_index) = self.free_indices.pop() {
-            let generation = self.generations[free_index as usize];
-            self.items[free_index as usize] = Some(value);
-            (free_index, generation)
+        if let Some(index) = self.free_indices.pop() {
+            let generation = self.generations[index as usize];
+            self.items[index as usize] = value;
+            Handle::from_raw(index, generation)
         } else {
             let index = self.items.len() as u32;
-            self.items.push(Some(value));
-            self.generations.push(0);
-            (index, 0)
-        };
-        
-        self.len += 1;
-        Handle::<T>::new(index, generation)
+            self.items.push(value);
+            self.generations.push(1);
+            Handle::from_raw(index, 1)
+        }
     }
 
-    /// 移除对象
     pub fn remove(&mut self, handle: Handle<T>) -> Option<T> {
         if handle.is_null() {
             return None;
         }
-        
+
         let index = handle.index() as usize;
         if index >= self.items.len() {
             return None;
         }
-        
+
         if self.generations[index] != handle.generation() {
             return None;
         }
-        
-        let value = self.items[index].take();
-        if value.is_some() {
-            self.generations[index] += 1;
-            self.free_indices.push(handle.index());
-            self.len -= 1;
-        }
-        
-        value
+
+        self.generations[index] += 1;
+        self.free_indices.push(index as u32);
+        Some(core::mem::take(&mut self.items[index]))
     }
 
-    /// 获取不可变引用
     pub fn get(&self, handle: Handle<T>) -> Option<&T> {
         if handle.is_null() {
             return None;
         }
-        
+
         let index = handle.index() as usize;
         if index >= self.items.len() {
             return None;
         }
-        
+
         if self.generations[index] != handle.generation() {
             return None;
         }
-        
-        self.items[index].as_ref()
+
+        Some(&self.items[index])
     }
 
-    /// 获取可变引用
     pub fn get_mut(&mut self, handle: Handle<T>) -> Option<&mut T> {
         if handle.is_null() {
             return None;
         }
-        
+
         let index = handle.index() as usize;
         if index >= self.items.len() {
             return None;
         }
-        
+
         if self.generations[index] != handle.generation() {
             return None;
         }
-        
-        self.items[index].as_mut()
+
+        Some(&mut self.items[index])
     }
 
     pub fn len(&self) -> usize {
-        self.len
+        self.items.len() - self.free_indices.len()
     }
 
     pub fn is_empty(&self) -> bool {
-        self.len == 0
+        self.len() == 0
     }
 
     pub fn clear(&mut self) {
         self.items.clear();
         self.generations.clear();
         self.free_indices.clear();
-        self.len = 0;
-    }
-
-    pub fn iter(&self) -> ArenaIter<'_, T> {
-        ArenaIter::<T> {
-            arena: self,
-            index: 0,
-        }
     }
 
     pub fn retain<F>(&mut self, mut f: F)
     where
-        F: FnMut(Handle<T>, &mut T) -> bool,
+        F: FnMut(Handle<T>, &T) -> bool,
     {
         let mut i = 0;
         while i < self.items.len() {
-            if let Some(ref mut item) = self.items[i] {
-                let handle: Handle<T> = Handle::new(i as u32, self.generations[i]);
-                if !f(handle.clone(), item) {
-                    self.remove(handle);
-                    continue;
-                }
+            let handle = Handle::from_raw(i as u32, self.generations[i]);
+            if !f(handle, &self.items[i]) {
+                self.remove(handle);
+            } else {
+                i += 1;
             }
-            i += 1;
+        }
+    }
+
+    pub fn iter(&self) -> ArenaIter<'_, T> {
+        ArenaIter {
+            arena: self,
+            index: 0,
         }
     }
 }
 
-/// Arena 迭代器
+impl<T> Default for Arena<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 pub struct ArenaIter<'a, T> {
     arena: &'a Arena<T>,
     index: usize,
-}
-
-impl<'a, T> IntoIterator for &'a Arena<T> {
-    type Item = (Handle<T>, &'a T);
-    type IntoIter = ArenaIter<'a, T>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        ArenaIter::<T>::new(self)
-    }
-}
-
-impl<'a, T> ArenaIter<'a, T> {
-    fn new(arena: &'a Arena<T>) -> Self {
-        Self { arena, index: 0 }
-    }
 }
 
 impl<'a, T> Iterator for ArenaIter<'a, T> {
@@ -181,9 +149,9 @@ impl<'a, T> Iterator for ArenaIter<'a, T> {
             let idx = self.index;
             self.index += 1;
             
-            if let Some(ref item) = self.arena.items[idx] {
-                let handle: Handle<T> = Handle::new(idx as u32, self.arena.generations[idx]);
-                return Some((handle, item));
+            if !self.arena.free_indices.contains(&(idx as u32)) {
+                let handle = Handle::from_raw(idx as u32, self.arena.generations[idx]);
+                return Some((handle, &self.arena.items[idx]));
             }
         }
         None
@@ -195,80 +163,94 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_insert_get() {
+    fn arena_new() {
+        let arena: Arena<i32> = Arena::new();
+        assert!(arena.is_empty());
+        assert_eq!(arena.len(), 0);
+    }
+
+    #[test]
+    fn arena_insert() {
+        let mut arena = Arena::new();
+        let h = arena.insert(42);
+        assert!(!h.is_null());
+        assert_eq!(arena.len(), 1);
+    }
+
+    #[test]
+    fn arena_get() {
         let mut arena = Arena::new();
         let h = arena.insert(42);
         assert_eq!(arena.get(h), Some(&42));
     }
 
     #[test]
-    fn test_remove() {
+    fn arena_get_mut() {
         let mut arena = Arena::new();
         let h = arena.insert(42);
+        *arena.get_mut(h).unwrap() = 100;
+        assert_eq!(arena.get(h), Some(&100));
+    }
+
+    #[test]
+    fn arena_remove() {
+        let mut arena = Arena::new();
+        let h = arena.insert(42);
+        
         assert_eq!(arena.remove(h), Some(42));
         assert_eq!(arena.get(h), None);
+        assert_eq!(arena.len(), 0);
     }
 
     #[test]
-    fn test_generation() {
+    fn arena_remove_twice() {
         let mut arena = Arena::new();
-        let h = arena.insert(1);
+        let h = arena.insert(42);
+        
         arena.remove(h);
+        assert_eq!(arena.remove(h), None);
+    }
+
+    #[test]
+    fn arena_reuse_index() {
+        let mut arena = Arena::new();
+        let h1 = arena.insert(1);
+        arena.remove(h1);
         let h2 = arena.insert(2);
         
-        // 不同 generation，不是同一个对象
-        assert!(arena.get(h).is_none());
-        assert_eq!(arena.get(h2), Some(&2));
+        assert_eq!(h1.index(), h2.index());
+        assert_ne!(h1.generation(), h2.generation());
     }
 
     #[test]
-    fn test_free_list() {
+    fn arena_iter() {
         let mut arena = Arena::new();
         let h1 = arena.insert(1);
         let h2 = arena.insert(2);
         let h3 = arena.insert(3);
         
-        arena.remove(h2);
+        let mut items: Vec<(Handle<i32>, &i32)> = arena.iter().collect();
+        items.sort_by_key(|(h, _)| h.index());
         
-        let h4 = arena.insert(4);
-        // 应该复用 freed slot
-        assert_eq!(h4.index(), h2.index());
-        assert!(arena.get(h4).is_some());
+        assert_eq!(items.len(), 3);
+        assert_eq!(items[0].1, &1);
+        assert_eq!(items[1].1, &2);
+        assert_eq!(items[2].1, &3);
     }
 
     #[test]
-    fn test_iter() {
+    fn arena_retain() {
         let mut arena = Arena::new();
         arena.insert(1);
         arena.insert(2);
         arena.insert(3);
+        arena.insert(4);
         
-        let sum: i32 = arena.iter().map(|(_, v)| *v).sum();
-        assert_eq!(sum, 6);
-    }
-
-    #[test]
-    fn test_len() {
-        let mut arena = Arena::new();
-        assert!(arena.is_empty());
+        arena.retain(|_, &val| val % 2 == 0);
         
-        arena.insert(1);
-        assert_eq!(arena.len(), 1);
-        
-        let h = arena.insert(2);
-        arena.remove(h);
-        assert_eq!(arena.len(), 1);
-    }
-
-    #[test]
-    fn test_retain() {
-        let mut arena = Arena::new();
-        let h1 = arena.insert(1);
-        arena.insert(2);
-        arena.insert(3);
-        
-        arena.retain(|_, v| *v > 1);
-        assert!(arena.get(h1).is_none());
         assert_eq!(arena.len(), 2);
+        let values: Vec<i32> = arena.iter().map(|(_, v)| *v).collect();
+        assert!(values.contains(&2));
+        assert!(values.contains(&4));
     }
 }

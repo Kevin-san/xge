@@ -1,70 +1,33 @@
-use core::ops::{Add, Sub, Mul, Div};
-use core::fmt;
-
-#[derive(Clone, Copy, PartialEq, Debug, Default)]
-#[repr(C)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Euler {
-    pub x: f32,
-    pub y: f32,
-    pub z: f32,
+    pub pitch: f32,
+    pub yaw: f32,
+    pub roll: f32,
 }
 
 impl Euler {
-    #[inline]
-    pub const fn new(x: f32, y: f32, z: f32) -> Self {
-        Self { x, y, z }
+    pub fn new(pitch_deg: f32, yaw_deg: f32, roll_deg: f32) -> Self {
+        Self {
+            pitch: pitch_deg,
+            yaw: yaw_deg,
+            roll: roll_deg,
+        }
     }
 
-    #[inline]
-    pub fn to_radians(self) -> Self {
-        Self::new(
-            self.x * core::f32::consts::PI / 180.0,
-            self.y * core::f32::consts::PI / 180.0,
-            self.z * core::f32::consts::PI / 180.0,
+    pub fn from_radians(pitch_rad: f32, yaw_rad: f32, roll_rad: f32) -> Self {
+        Self {
+            pitch: pitch_rad.to_degrees(),
+            yaw: yaw_rad.to_degrees(),
+            roll: roll_rad.to_degrees(),
+        }
+    }
+
+    pub fn to_radians(&self) -> (f32, f32, f32) {
+        (
+            self.pitch.to_radians(),
+            self.yaw.to_radians(),
+            self.roll.to_radians(),
         )
-    }
-
-    #[inline]
-    pub fn to_degrees(self) -> Self {
-        Self::new(
-            self.x * 180.0 / core::f32::consts::PI,
-            self.y * 180.0 / core::f32::consts::PI,
-            self.z * 180.0 / core::f32::consts::PI,
-        )
-    }
-}
-
-impl Add for Euler {
-    type Output = Self;
-    fn add(self, other: Self) -> Self {
-        Self::new(self.x + other.x, self.y + other.y, self.z + other.z)
-    }
-}
-
-impl Sub for Euler {
-    type Output = Self;
-    fn sub(self, other: Self) -> Self {
-        Self::new(self.x - other.x, self.y - other.y, self.z - other.z)
-    }
-}
-
-impl Mul<f32> for Euler {
-    type Output = Self;
-    fn mul(self, scalar: f32) -> Self {
-        Self::new(self.x * scalar, self.y * scalar, self.z * scalar)
-    }
-}
-
-impl Div<f32> for Euler {
-    type Output = Self;
-    fn div(self, scalar: f32) -> Self {
-        Self::new(self.x / scalar, self.y / scalar, self.z / scalar)
-    }
-}
-
-impl fmt::Display for Euler {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Euler({:.4}, {:.4}, {:.4})", self.x, self.y, self.z)
     }
 }
 
@@ -73,10 +36,23 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_radians_conversion() {
-        let euler = Euler::new(180.0, 90.0, 45.0);
-        let rad = euler.to_radians();
-        assert!((rad.x - core::f32::consts::PI).abs() < 1e-5);
-        assert!((rad.y - core::f32::consts::PI / 2.0).abs() < 1e-5);
+    fn euler_from_radians() {
+        let euler = Euler::from_radians(
+            core::f32::consts::PI,
+            core::f32::consts::FRAC_PI_2,
+            0.0,
+        );
+        assert_eq!(euler.pitch, 180.0);
+        assert_eq!(euler.yaw, 90.0);
+        assert_eq!(euler.roll, 0.0);
+    }
+
+    #[test]
+    fn euler_to_radians() {
+        let euler = Euler::new(180.0, 90.0, 0.0);
+        let (p, y, r) = euler.to_radians();
+        assert_eq!(p, core::f32::consts::PI);
+        assert_eq!(y, core::f32::consts::FRAC_PI_2);
+        assert_eq!(r, 0.0);
     }
 }

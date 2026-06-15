@@ -2,12 +2,14 @@
 name = "engine-platform"
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.70"
-authors = ["Game Engine Team"]
-license = "MIT OR Apache-2.0"
-description = "Game engine platform abstraction library"
+description = "Game engine platform abstractions"
 
 [dependencies]
-# 无外部依赖，使用 std::sync 替代 parking_lot
+parking_lot = { workspace = true }
+futures-lite = { workspace = true }
+ahash = { workspace = true }
+engine-utils = { path = "../engine-utils" }
 
-[dev-dependencies]
+[features]
+default = ["std"]
+std = []

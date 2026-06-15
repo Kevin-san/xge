@@ -1,90 +1,125 @@
-use std::sync::{Arc, Mutex};
-use std::thread::{self, JoinHandle};
-use std::collections::VecDeque;
+use parking_lot::Mutex;
+use std::sync::Arc;
+use std::thread;
+use futures_lite::future::Boxed;
+use std::sync::mpsc::{channel, Sender, Receiver};
 
-/// 线程池
 pub struct ThreadPool {
-    workers: Vec<Worker>,
-    task_queue: Arc<Mutex<VecDeque<Box<dyn FnOnce() + Send>>>>,
+    sender: Sender<Boxed<'static, dyn FnOnce() -> () + Send>>,
+    workers: Vec<thread::JoinHandle<()>>,
+    shutdown_signal: Arc<std::sync::atomic::AtomicBool>,
 }
 
-struct Worker {
-    thread: Option<JoinHandle<()>>,
+pub struct JoinHandle<T> {
+    inner: Option<thread::JoinHandle<T>>,
+}
+
+impl<T> JoinHandle<T> {
+    pub fn join(self) -> thread::Result<T> {
+        self.inner.unwrap().join()
+    }
 }
 
 impl ThreadPool {
-    pub fn new() -> Self {
-        Self::new_with_threads(num_cpus())
-    }
+    pub fn new(num_threads: Option<usize>) -> Result<Self, anyhow::Error> {
+        let num_threads = num_threads.unwrap_or_else(|| {
+            std::cmp::max(1, num_cpus::get() - 1)
+        });
 
-    pub fn new_with_threads(num_threads: usize) -> Self {
-        let task_queue = Arc::new(Mutex::new(VecDeque::new()));
+        let (sender, receiver) = channel();
+        let receiver = Arc::new(Mutex::new(receiver));
+        let shutdown_signal = Arc::new(std::sync::atomic::AtomicBool::new(false));
 
         let mut workers = Vec::with_capacity(num_threads);
         for _ in 0..num_threads {
-            let queue = task_queue.clone();
-            let worker = Worker::new(queue);
+            let receiver = receiver.clone();
+            let shutdown_signal = shutdown_signal.clone();
+            
+            let worker = thread::spawn(move || {
+                while !shutdown_signal.load(std::sync::atomic::Ordering::SeqCst) {
+                    if let Ok(task) = receiver.lock().recv_timeout(std::time::Duration::from_millis(100)) {
+                        task();
+                    }
+                }
+            });
+            
             workers.push(worker);
         }
 
-        Self { workers, task_queue }
+        Ok(Self {
+            sender,
+            workers,
+            shutdown_signal,
+        })
     }
 
-    pub fn spawn<F: FnOnce() + Send + 'static>(&self, f: F) {
-        let mut queue = self.task_queue.lock().unwrap();
-        queue.push_back(Box::new(f));
+    pub fn spawn<F, R>(&self, f: F) -> JoinHandle<R>
+    where
+        F: FnOnce() -> R + Send + 'static,
+        R: Send + 'static,
+    {
+        let (result_sender, result_receiver) = channel();
+        
+        let task = Box::pin(move || {
+            let result = f();
+            let _ = result_sender.send(result);
+        });
+        
+        self.sender.send(task).unwrap();
+        
+        let handle = thread::spawn(move || {
+            result_receiver.recv().unwrap()
+        });
+        
+        JoinHandle { inner: Some(handle) }
     }
 
-    pub fn try_spawn<F: FnOnce() + Send + 'static>(&self, f: F) -> bool {
-        let mut queue = self.task_queue.lock().unwrap();
-        if queue.len() < self.workers.len() * 10 {
-            queue.push_back(Box::new(f));
-            true
-        } else {
-            false
+    pub fn try_spawn<F, R>(&self, f: F) -> Result<JoinHandle<R>, anyhow::Error>
+    where
+        F: FnOnce() -> R + Send + 'static,
+        R: Send + 'static,
+    {
+        let (result_sender, result_receiver) = channel();
+        
+        let task = Box::pin(move || {
+            let result = f();
+            let _ = result_sender.send(result);
+        });
+        
+        self.sender.try_send(task)?;
+        
+        let handle = thread::spawn(move || {
+            result_receiver.recv().unwrap()
+        });
+        
+        Ok(JoinHandle { inner: Some(handle) })
+    }
+
+    pub fn block_on<F, R>(&self, f: F) -> R
+    where
+        F: FnOnce() -> R + Send + 'static,
+        R: Send + 'static,
+    {
+        self.spawn(f).join().unwrap()
+    }
+
+    pub fn shutdown(&mut self) {
+        self.shutdown_signal.store(true, std::sync::atomic::Ordering::SeqCst);
+        
+        for worker in self.workers.drain(..) {
+            let _ = worker.join();
         }
     }
 
-    pub fn num_threads(&self) -> usize {
+    pub fn active_count(&self) -> usize {
         self.workers.len()
     }
-
-    pub fn pending_tasks(&self) -> usize {
-        self.task_queue.lock().unwrap().len()
-    }
 }
 
-impl Worker {
-    fn new(task_queue: Arc<Mutex<VecDeque<Box<dyn FnOnce() + Send>>>>) -> Self {
-        let thread = thread::spawn(move || {
-            loop {
-                let task = {
-                    let mut queue = task_queue.lock().unwrap();
-                    queue.pop_front()
-                };
-
-                if let Some(task) = task {
-                    task();
-                } else {
-                    thread::park_timeout(std::time::Duration::from_millis(1));
-                }
-            }
-        });
-
-        Self { thread: Some(thread) }
+impl Drop for ThreadPool {
+    fn drop(&mut self) {
+        self.shutdown();
     }
-}
-
-impl Default for ThreadPool {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-fn num_cpus() -> usize {
-    thread::available_parallelism()
-        .map(|p| p.get())
-        .unwrap_or(4)
 }
 
 #[cfg(test)]
@@ -93,25 +128,65 @@ mod tests {
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     #[test]
-    fn test_spawn() {
-        let pool = ThreadPool::new_with_threads(2);
-        let counter = Arc::new(AtomicUsize::new(0));
-
-        for i in 0..10 {
-            let c = counter.clone();
-            pool.spawn(move || {
-                c.fetch_add(1, Ordering::SeqCst);
-            });
-        }
-
-        // 等待任务完成
-        std::thread::sleep(std::time::Duration::from_millis(100));
-        assert_eq!(counter.load(Ordering::SeqCst), 10);
+    fn tp_new() {
+        let tp = ThreadPool::new(Some(2)).unwrap();
+        assert_eq!(tp.active_count(), 2);
     }
 
     #[test]
-    fn test_num_threads() {
-        let pool = ThreadPool::new_with_threads(4);
-        assert_eq!(pool.num_threads(), 4);
+    fn tp_spawn() {
+        let tp = ThreadPool::new(Some(2)).unwrap();
+        let counter = Arc::new(AtomicUsize::new(0));
+        let counter_clone = counter.clone();
+        
+        let handle = tp.spawn(move || {
+            counter_clone.fetch_add(1, Ordering::SeqCst);
+        });
+        
+        handle.join().unwrap();
+        assert_eq!(counter.load(Ordering::SeqCst), 1);
+    }
+
+    #[test]
+    fn tp_spawn_with_result() {
+        let tp = ThreadPool::new(Some(2)).unwrap();
+        let handle = tp.spawn(|| 42);
+        let result = handle.join().unwrap();
+        assert_eq!(result, 42);
+    }
+
+    #[test]
+    fn tp_block_on() {
+        let tp = ThreadPool::new(Some(2)).unwrap();
+        let result = tp.block_on(|| 100);
+        assert_eq!(result, 100);
+    }
+
+    #[test]
+    fn tp_shutdown() {
+        let mut tp = ThreadPool::new(Some(2)).unwrap();
+        assert_eq!(tp.active_count(), 2);
+        tp.shutdown();
+        assert_eq!(tp.active_count(), 0);
+    }
+
+    #[test]
+    fn tp_multiple_tasks() {
+        let tp = ThreadPool::new(Some(4)).unwrap();
+        let counter = Arc::new(AtomicUsize::new(0));
+        
+        let mut handles = Vec::new();
+        for _ in 0..10 {
+            let counter_clone = counter.clone();
+            handles.push(tp.spawn(move || {
+                counter_clone.fetch_add(1, Ordering::SeqCst);
+            }));
+        }
+        
+        for handle in handles {
+            handle.join().unwrap();
+        }
+        
+        assert_eq!(counter.load(Ordering::SeqCst), 10);
     }
 }
