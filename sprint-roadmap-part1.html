@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Rust 通用游戏引擎 — Sprint 路线图与需求拆分 V1.0 · 上卷</title>
+<style>
+  :root{
+    --bg:#0D1117;--bg2:#161B22;--bg3:#1C2333;--ink:#E6EDF3;--muted:#7D8590;
+    --rule:#30363D;--accent:#E8650A;--accent2:#3A7CA5;--accent-dim:rgba(232,101,10,.15);
+    --accent2-dim:rgba(58,124,165,.15);--good:#2EA043;--warn:#D29922;--bad:#F85149;
+    --font:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    --font-mono:"JetBrains Mono","Fira Code",monospace;
+  }
+  *{box-sizing:border-box}
+  body{font-family:var(--font);background:var(--bg);color:var(--ink);line-height:1.7;margin:0;padding:0}
+  article{max-width:1280px;margin:0 auto;padding:0 2rem}
+  .hero{background:linear-gradient(135deg,#1C2333 0%,#0D1117 100%);padding:3rem 2rem;border-bottom:3px solid var(--accent)}
+  .hero h1{font-size:2.2rem;margin:.5rem 0}
+  .hero .meta{color:var(--muted);font-size:.9rem}
+  .hero .badge{display:inline-block;background:var(--accent);color:#fff;padding:.25rem .75rem;border-radius:4px;font-size:.75rem;font-weight:700;letter-spacing:.08em;margin-bottom:1rem}
+  .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin:2rem 0}
+  .kpi{background:var(--bg2);border:1px solid var(--rule);border-radius:8px;padding:1.25rem;text-align:center}
+  .kpi .num{font-size:2rem;font-weight:700;color:var(--accent);font-family:var(--font-mono)}
+  .kpi .label{color:var(--muted);font-size:.85rem;margin-top:.25rem}
+  h2{font-size:1.8rem;border-bottom:2px solid var(--accent);padding-bottom:.5rem;margin-top:3.5rem}
+  h3{font-size:1.25rem;color:var(--accent2);margin-top:2rem}
+  h4{font-size:1.05rem;color:var(--ink);margin-top:1.5rem}
+  table{width:100%;border-collapse:collapse;font-size:.9rem;margin:1rem 0}
+  thead th{background:var(--bg3);color:var(--ink);font-weight:700;padding:.75rem;text-align:left;border-bottom:2px solid var(--accent);white-space:nowrap}
+  tbody td{padding:.65rem;border-bottom:1px solid var(--rule);vertical-align:top}
+  tbody tr:hover{background:var(--accent-dim)}
+  .tbl-wrap{overflow-x:auto;max-height:700px;border:1px solid var(--rule);border-radius:8px;margin-bottom:1.5rem}
+  .tag{display:inline-block;padding:.15rem .5rem;border-radius:4px;font-size:.75rem;font-weight:600;margin-right:.25rem}
+  .tag-p0{background:#7d2020;color:#fff}
+  .tag-p1{background:#7d5a20;color:#fff}
+  .tag-p2{background:#205a7d;color:#fff}
+  .tag-phase1{background:#205a7d;color:#fff}
+  .tag-phase2{background:#207d3a;color:#fff}
+  .tag-phase3{background:#7d3a20;color:#fff}
+  .tag-phase4{background:#5a207d;color:#fff}
+  .callout{padding:1rem 1.25rem;border-left:4px solid var(--accent);background:var(--accent-dim);border-radius:0 8px 8px 0;margin:1.5rem 0}
+  .callout-blue{border-left-color:var(--accent2);background:var(--accent2-dim)}
+  .phase-banner{background:var(--bg2);border:2px solid var(--accent2);border-radius:12px;padding:2rem;margin:2rem 0}
+  .phase-banner h2{margin-top:0;border:none}
+  .sprint-box{background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:1.5rem;margin:1.5rem 0}
+  .sprint-head{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1rem;margin-bottom:1rem}
+  .sprint-title{font-size:1.3rem;font-weight:700;color:var(--accent)}
+  .sprint-meta{color:var(--muted);font-size:.85rem}
+  ul.plain{padding-left:1.25rem}
+  ul.plain li{margin-bottom:.3rem}
+  .sub-req{background:var(--bg3);border-left:3px solid var(--accent2);padding:.75rem 1rem;margin:.5rem 0;border-radius:0 6px 6px 0;font-size:.9rem}
+  .sub-req .code{font-family:var(--font-mono);color:var(--accent);font-size:.8rem}
+  .id{color:var(--accent2);font-family:var(--font-mono);font-size:.85rem}
+  .small{font-size:.8rem;color:var(--muted)}
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:2rem}
+  @media(max-width:768px){.two-col{grid-template-columns:1fr}.kpi-grid{grid-template-columns:repeat(2,1fr)}}
+  footer{margin-top:4rem;padding:2rem 0;border-top:1px solid var(--rule);color:var(--muted);font-size:.85rem;text-align:center}
+  .nav-toc{background:var(--bg2);border:1px solid var(--rule);border-radius:8px;padding:1.5rem 2rem;margin:2rem 0}
+  .nav-toc ol{margin:0;padding-left:1.5rem}
+  .nav-toc a{color:var(--accent2);text-decoration:none;font-size:.9rem}
+  .nav-toc a:hover{color:var(--accent)}
+  code{font-family:var(--font-mono);background:var(--bg3);padding:.15rem .4rem;border-radius:4px;color:var(--accent);font-size:.85em}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div style="max-width:1280px;margin:0 auto">
+    <span class="badge">ROADMAP V1.0 · 上卷</span>
+    <h1>Rust 通用游戏引擎 — Sprint 路线图与需求拆分</h1>
+    <p class="meta">基于 PRD V1.0 · 四个阶段 · 16+ Sprint · 130+ 项目需求 · 1300+ 细分需求 · 敏捷迭代开发</p>
+    <div class="kpi-grid">
+      <div class="kpi"><div class="num">4</div><div class="label">开发阶段</div></div>
+      <div class="kpi"><div class="num">16</div><div class="label">核心 Sprint</div></div>
+      <div class="kpi"><div class="num">130+</div><div class="label">项目需求（PR）</div></div>
+      <div class="kpi"><div class="num">1300+</div><div class="label">细分需求（SR）</div></div>
+    </div>
+  </div>
+</header>
+
+<article>
+
+  <!---------------------------- 导航 ---------------------------->
+  <nav class="nav-toc">
+    <h3 style="margin-top:0;color:var(--ink);font-size:1rem">文档导航</h3>
+    <ol>
+      <li><a href="#overview">0. 整体规划总览 — 阶段划分与 Sprint 映射</a></li>
+      <li><a href="#phase1">阶段一 · 基础内核 MVP</a>（Sprint 1~4）</li>
+      <li><a href="#phase2">阶段二 · 编辑器与跨平台</a>（Sprint 5~8）</li>
+    </ol>
+    <p class="small" style="margin-top:1rem;margin-bottom:0">阶段三（3D 管线）与阶段四（高阶功能与生态）详见 <code>sprint-roadmap-part2.html</code></p>
+  </nav>
+
+  <!---------------------------- 0. 总览 ---------------------------->
+  <section id="overview">
+    <h2>0. 整体规划总览</h2>
+
+    <div class="callout">
+      <strong>需求拆分方法论</strong><br>
+      本路线图采用「三层金字塔式需求分解」：<br>
+      ① <strong>阶段（Phase）</strong>：4 个大阶段，每个阶段对应一个完整的里程碑交付<br>
+      ② <strong>Sprint（冲刺）</strong>：每个阶段拆分为 4 个 Sprint，两周一个 Sprint，总计 16 个核心 Sprint<br>
+      ③ <strong>项目需求（PR / Project Requirement）</strong>：每个 Sprint 约 8~10 个项目需求，总计 130+<br>
+      ④ <strong>细分需求（SR / Sub Requirement）</strong>：每个项目需求下再拆分为 10+ 个具体可验收的子任务，总计 1300+
+    </div>
+
+    <h3>0.1 阶段与 Sprint 映射表</h3>
+    <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr><th>阶段</th><th>主题</th><th>Sprint</th><th>周期</th><th>核心交付物</th><th>PR 数量</th><th>SR 数量</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><span class="tag tag-phase1">阶段一</span></td><td>基础内核 MVP</td><td>Sprint 1~4</td><td>8 周</td><td>可运行 2D 像素游戏 Demo（Windows）</td><td>36</td><td>360+</td></tr>
+        <tr><td><span class="tag tag-phase2">阶段二</span></td><td>编辑器与跨平台</td><td>Sprint 5~8</td><td>8 周</td><td>完整可视化编辑器 + 多端打包</td><td>36</td><td>360+</td></tr>
+        <tr><td><span class="tag tag-phase3">阶段三</span></td><td>3D 管线升级</td><td>Sprint 9~12</td><td>8 周</td><td>PBR 渲染 + 3D 物理 + 粒子系统 Demo</td><td>32</td><td>320+</td></tr>
+        <tr><td><span class="tag tag-phase4">阶段四</span></td><td>高阶功能与生态</td><td>Sprint 13~16</td><td>8 周</td><td>蓝图系统 + 热更新 + 插件商店 + 生态</td><td>30</td><td>300+</td></tr>
+        <tr style="font-weight:700;background:var(--accent-dim)"><td colspan="5">合计</td><td>134</td><td>1340+</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h3>0.2 优先级与验收标准说明</h3>
+    <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr><th>优先级</th><th>含义</th><th>适用场景</th><th>验收标准</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><span class="tag tag-p0">P0 · 阻塞级</span></td><td>必须在本 Sprint 内完成，否则下一阶段无法启动</td><td>核心引擎循环、基础渲染管线、关键数据结构</td><td>通过单元测试 + 集成测试 + Demo 验证</td></tr>
+        <tr><td><span class="tag tag-p1">P1 · 核心级</span></td><td>本阶段核心功能，影响主要场景使用</td><td>编辑器核心面板、物理引擎关键特性</td><td>通过功能测试 + 性能基准测试</td></tr>
+        <tr><td><span class="tag tag-p2">P2 · 增强级</span></td><td>锦上添花功能，可延后至下一阶段</td><td>高级特效、边缘平台适配、工具链增强</td><td>通过功能测试即可</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h3>0.3 命名规范</h3>
+    <div class="callout callout-blue">
+      <ul class="plain" style="margin:0">
+        <li><strong>阶段编号</strong>：P1 / P2 / P3 / P4（Phase 1~4）</li>
+        <li><strong>Sprint 编号</strong>：S1 / S2 / ... / S16</li>
+        <li><strong>项目需求 ID</strong>：<code>PR-{Sprint编号}-{两位序号}</code>，例如 <code>PR-01-03</code> 表示 Sprint 1 的第 3 个项目需求</li>
+        <li><strong>细分需求 ID</strong>：<code>SR-{Sprint编号}-{PR序号}-{两位序号}</code>，例如 <code>SR-01-03-07</code> 表示 Sprint 1 第 3 个 PR 的第 7 个子需求</li>
+      </ul>
+    </div>
+  </section>
+
+  <!---------------------------- 阶段一 ---------------------------->
+  <section id="phase1">
+    <div class="phase-banner">
+      <h2 style="margin-top:0">阶段一 · 基础内核 MVP</h2>
+      <p><strong>时间</strong>：8 周 / 4 个 Sprint · <strong>目标</strong>：可制作基础 2D 像素游戏，验证核心架构可行性</p>
+      <p><strong>阶段交付物</strong>：Rust 引擎内核 + 2D 渲染管线 + ECS/节点双架构 + Windows 运行 Demo + 命令行构建工具</p>
+      <p><strong>验收标准</strong>：能基于纯 Rust 代码制作一个可运行的横版像素闯关 Demo（含玩家移动、碰撞、瓦片地图、简单动画、FPS 稳定 60）</p>
+    </div>
+
+    <!-------- Sprint 1 -------->
+    <div class="sprint-box">
+      <div class="sprint-head">
+        <div>
+          <div class="sprint-title">Sprint 1 · 工程脚手架与引擎核心骨架</div>
+          <div class="sprint-meta">第 1~2 周 · 9 个 PR · 90+ SR · 核心目标：构建可编译运行的引擎骨架</div>
+        </div>
+        <div><span class="tag tag-phase1">阶段一</span></div>
+      </div>
+
+      <h4>目标描述</h4>
+      <p>搭建 Rust Cargo Workspace 多包工程结构，建立窗口、事件循环、日志、基础数学库等引擎最低层基础设施。本 Sprint 不涉及任何图形渲染，重点在于架构的正确性、可编译性与可扩展性。</p>
+
+      <h4>项目需求清单（9 PR）</h4>
+      <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th>PR-ID</th><th>项目需求名称</th><th>简述</th><th>优先级</th><th>SR 数量</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="id">PR-01-01</td><td>Cargo Workspace 多包工程结构搭建</td><td>定义引擎 crate 划分与依赖关系</td><td><span class="tag tag-p0">P0</span></td><td>12</td></tr>
+          <tr><td class="id">PR-01-02</td><td>跨平台窗口系统（winit 封装层）</td><td>Windows/macOS/Linux 三端窗口创建与事件</td><td><span class="tag tag-p0">P0</span></td><td>12</td></tr>
+          <tr><td class="id">PR-01-03</td><td>引擎主循环与事件分发系统</td><td>App trait、update/render 阶段划分、DeltaTime</td><td><span class="tag tag-p0">P0</span></td><td>10</td></tr>
+          <tr><td class="id">PR-01-04</td><td>统一日志与错误处理系统</td><td>tracing 集成、日志分级、错误码规范</td><td><span class="tag tag-p0">P0</span></td><td>8</td></tr>
+          <tr><td class="id">PR-01-05</td><td>基础数学库（Vec2/Vec3/Mat4/Quat）</td><td>自研或封装 glam，提供统一数学 API</td><td><span class="tag tag-p0">P0</span></td><td>12</td></tr>
+          <tr><td class="id">PR-01-06</td><td>内存分配器与对象池基础</td><td>Rust 内存模型基础封装、Arena/Bump 分配器</td><td><span class="tag tag-p1">P1</span></td><td>10</td></tr>
+          <tr><td class="id">PR-01-07</td><td>多线程并发调度器框架</td><td>Rayon/自研任务系统、Job Queue、并行阶段</td><td><span class="tag tag-p1">P1</span></td><td>10</td></tr>
+          <tr><td class="id">PR-01-08</td><td>配置文件与启动参数系统</td><td>TOML 配置解析、命令行参数解析、引擎设置</td><td><span class="tag tag-p1">P1</span></td><td>8</td></tr>
+          <tr><td class="id">PR-01-09</td><td>构建脚本与 CI/CD 流水线</td><td>cargo-make/just、GitHub Actions 自动化构建与测试</td><td><span class="tag tag-p1">P1</span></td><td>8</td></tr>
+        </tbody>
+      </table>
+      </div>
+
+      <h4>需求细分展开（摘录代表性 PR）</h4>
+
+      <p><strong class="id">PR-01-01 · Cargo Workspace 多包工程结构搭建</strong></p>
+      <div class="sub-req"><span class="code">SR-01-01-01</span> 定义引擎顶层 crate 划分：<code>engine-core</code> / <code>engine-render</code> / <code>engine-ecs</code> / <code>engine-scene</code> / <code>engine-ui</code> / <code>engine-audio</code> / <code>engine-input</code> / <code>engine-physics-2d</code> / <code>engine-physics-3d</code> / <code>engine-net</code> / <code>engine-script</code> / <code>engine-editor</code></div>
+      <div class="sub-req"><span class="code">SR-01-01-02</span> 创建 <code>Cargo.toml</code> Workspace 根配置，统一 <code>resolver = "2"</code>，统一 Rust edition = 2021</div>
+      <div class="sub-req"><span class="code">SR-01-01-03</span> 为每个 crate 创建独立 <code>src/lib.rs</code> 与基础模块骨架</div>
+      <div class="sub-req"><span class="code">SR-01-01-04</span> 定义 <code>engine-common</code> 共享 crate，存放跨模块通用类型（Error、Result、Time、Uuid 等）</div>
+      <div class="sub-req"><span class="code">SR-01-01-05</span> 设计 crate 之间的依赖方向图，禁止反向依赖（核心层不依赖应用层）</div>
+      <div class="sub-req"><span class="code">SR-01-01-06</span> 配置 Cargo feature flags：<code>["render-vulkan", "render-opengl", "script-js", "physics-3d"]</code> 等可选项</div>
+      <div class="sub-req"><span class="code">SR-01-01-07</span> 配置 <code>.gitignore</code>、<code>.rustfmt.toml</code>、<code>.clippy.toml</code> 统一代码风格</div>
+      <div class="sub-req"><span class="code">SR-01-01-08</span> 创建 <code>examples/</code> 目录与最小示例 <code>hello-engine.rs</code></div>
+      <div class="sub-req"><span class="code">SR-01-01-09</span> 设计统一命名规范：模块命名、结构体命名（PascalCase）、函数命名（snake_case）、常量命名（SCREAMING_SNAKE_CASE）</div>
+      <div class="sub-req"><span class="code">SR-01-01-10</span> 配置 <code>codegen-units</code>、<code>opt-level</code>、<code>lto</code> 等 Release 优化参数</div>
+      <div class="sub-req"><span class="code">SR-01-01-11</span> 编写 README 说明每个 crate 的职责和依赖关系</div>
+      <div class="sub-req"><span class="code">SR-01-01-12</span> 验证 Workspace 可通过 <code>cargo check --workspace</code> 与 <code>cargo build --workspace</code> 无警告编译</div>
+
+      <p><strong class="id">PR-01-02 · 跨平台窗口系统</strong></p>
+      <div class="sub-req"><span class="code">SR-01-02-01</span> 集成 winit crate 作为窗口抽象层</div>
+      <div class="sub-req"><span class="code">SR-01-02-02</span> Windows 平台窗口创建：标题、尺寸、可调整大小、居中显示</div>
+      <div class="sub-req"><span class="code">SR-01-02-03</span> macOS 平台窗口创建验证</div>
+      <div class="sub-req"><span class="code">SR-01-02-04</span> Linux X11/Wayland 窗口创建验证</div>
+      <div class="sub-req"><span class="code">SR-01-02-05</span> 窗口事件接收：CloseRequested、Resized、Focused、CursorMoved</div>
+      <div class="sub-req"><span class="code">SR-01-02-06</span> 窗口模式切换：全屏 / 窗口化 / 无边框</div>
+      <div class="sub-req"><span class="code">SR-01-02-07</span> 窗口图标设置与 DPI/HiDPI 缩放感知</div>
+      <div class="sub-req"><span class="code">SR-01-02-08</span> 垂直同步（VSync）开关与刷新率读取</div>
+      <div class="sub-req"><span class="code">SR-01-02-09</span> 多显示器枚举与显示器信息获取</div>
+      <div class="sub-req"><span class="code">SR-01-02-10</span> 窗口系统封装为 <code>Window</code> trait，预留移动端/Web 适配接口</div>
+      <div class="sub-req"><span class="code">SR-01-02-11</span> 键盘输入原始事件采集（不做业务处理，仅透传）</div>
+      <div class="sub-req"><span class="code">SR-01-02-12</span> 示例程序：打开一个 1280x720 窗口并响应关闭事件</div>
+
+      <p><strong class="id">PR-01-03 · 引擎主循环与事件分发系统</strong></p>
+      <div class="sub-req"><span class="code">SR-01-03-01</span> 定义 <code>App</code> trait：<code>start()</code> / <code>update(dt)</code> / <code>render()</code> / <code>shutdown()</code></div>
+      <div class="sub-req"><span class="code">SR-01-03-02</span> 实现主循环（Event Loop），使用 winit 的 ControlFlow 精确控制帧率</div>
+      <div class="sub-req"><span class="code">SR-01-03-03</span> 实现 DeltaTime 计算与帧率统计（FPS / 平均帧时 / 1% Low）</div>
+      <div class="sub-req"><span class="code">SR-01-03-04</span> 固定步长物理更新（Fixed Timestep）与可变步长渲染分离</div>
+      <div class="sub-req"><span class="code">SR-01-03-05</span> 事件队列（Event Queue）数据结构与 <code>send()/recv()</code> 接口</div>
+      <div class="sub-req"><span class="code">SR-01-03-06</span> 事件类型定义：WindowEvent / InputEvent / CustomEvent</div>
+      <div class="sub-req"><span class="code">SR-01-03-07</span> 事件订阅/广播机制，允许多系统注册事件监听</div>
+      <div class="sub-req"><span class="code">SR-01-03-08</span> 引擎暂停/继续/单步执行调试接口</div>
+      <div class="sub-req"><span class="code">SR-01-03-09</span> 优雅退出流程：资源释放、系统反注册、退出码返回</div>
+      <div class="sub-req"><span class="code">SR-01-03-10</span> 示例程序：在窗口中打印 FPS 并响应 ESC 键退出</div>
+
+      <p><strong class="id">PR-01-04 · 统一日志与错误处理系统</strong></p>
+      <div class="sub-req"><span class="code">SR-01-04-01</span> 集成 tracing/tracing-subscriber 作为日志框架</div>
+      <div class="sub-req"><span class="code">SR-01-04-02</span> 定义五级日志：TRACE / DEBUG / INFO / WARN / ERROR</div>
+      <div class="sub-req"><span class="code">SR-01-04-03</span> 支持日志按模块过滤，不同 crate 使用不同 trace target</div>
+      <div class="sub-req"><span class="code">SR-01-04-04</span> 支持控制台输出彩色日志（ANSI 颜色）</div>
+      <div class="sub-req"><span class="code">SR-01-04-05</span> 支持日志写入文件（滚动文件日志，按大小/日期切割）</div>
+      <div class="sub-req"><span class="code">SR-01-04-06</span> 统一错误类型 <code>EngineError</code>，使用 thiserror 定义各模块错误</div>
+      <div class="sub-req"><span class="code">SR-01-04-07</span> 统一 Result 别名 <code>EngineResult&lt;T&gt;</code> 减少重复代码</div>
+      <div class="sub-req"><span class="code">SR-01-04-08</span> Panic hook：捕获 panic 并写入崩溃日志（含 backtrace）</div>
+
+      <p><strong class="id">PR-01-05 · 基础数学库</strong></p>
+      <div class="sub-req"><span class="code">SR-01-05-01</span> Vec2：加法、减法、标量乘除、点积、叉积、长度、归一化、距离</div>
+      <div class="sub-req"><span class="code">SR-01-05-02</span> Vec3：同 Vec2 能力 + 叉积三维版本</div>
+      <div class="sub-req"><span class="code">SR-01-05-03</span> Vec4：齐次坐标支持</div>
+      <div class="sub-req"><span class="code">SR-01-05-04</span> Mat4：单位矩阵、平移、旋转（XYZ 欧拉角）、缩放矩阵构造</div>
+      <div class="sub-req"><span class="code">SR-01-05-05</span> 矩阵乘法、矩阵转置、矩阵求逆、行列式</div>
+      <div class="sub-req"><span class="code">SR-01-05-06</span> Quat 四元数：单位四元数、欧拉角互转、SLERP 插值</div>
+      <div class="sub-req"><span class="code">SR-01-05-07</span> 正交投影矩阵（2D）与透视投影矩阵（3D）构造</div>
+      <div class="sub-req"><span class="code">SR-01-05-08</span> LookAt 视图矩阵（相机朝向目标点）</div>
+      <div class="sub-req"><span class="code">SR-01-05-09</span> Transform 变换结构体（translation + rotation + scale）+ 矩阵合成</div>
+      <div class="sub-req"><span class="code">SR-01-05-10</span> AABB（轴对齐包围盒）2D/3D：相交检测、合并、扩展</div>
+      <div class="sub-req"><span class="code">SR-01-05-11</span> 颜色类型：RGBA(0-1 float)、RGBA8(0-255 u8)、HSL、HSV 互转</div>
+      <div class="sub-req"><span class="code">SR-01-05-12</span> 数学工具：lerp、clamp、smoothstep、deg/rad 互转</div>
+
+      <p><strong class="id">PR-01-06 · 内存分配器与对象池基础</strong></p>
+      <div class="sub-req"><span class="code">SR-01-06-01</span> Arena 分配器实现：同生命周期大量对象的线性分配</div>
+      <div class="sub-req"><span class="code">SR-01-06-02</span> Bump allocator：帧内临时数据快速分配与整帧释放</div>
+      <div class="sub-req"><span class="code">SR-01-06-03</span> 对象池（Object Pool）模板：可复用对象的 acquire/release 机制</div>
+      <div class="sub-req"><span class="code">SR-01-06-04</span> 内存使用统计：实时分配字节数、峰值、当前活跃对象数</div>
+      <div class="sub-req"><span class="code">SR-01-06-05</span> unsafe 代码封装与安全边界审计</div>
+      <div class="sub-req"><span class="code">SR-01-06-06</span> Drop trait 正确实现与资源释放验证</div>
+      <div class="sub-req"><span class="code">SR-01-06-07</span> 弱引用/强引用计数（Rc/RefCell/Arc）使用规范</div>
+      <div class="sub-req"><span class="code">SR-01-06-08</span> miri/valgrind 内存检测集成（可选工具链）</div>
+      <div class="sub-req"><span class="code">SR-01-06-09</span> 零大小类型（ZST）优化支持</div>
+      <div class="sub-req"><span class="code">SR-01-06-10</span> 单元测试：各分配器分配-释放循环无内存泄漏</div>
+
+      <p><strong class="id">PR-01-07 · 多线程并发调度器</strong></p>
+      <div class="sub-req"><span class="code">SR-01-07-01</span> 集成 rayon 作为基础并行迭代器</div>
+      <div class="sub-req"><span class="code">SR-01-07-02</span> 设计 Job/Task 抽象：可入队的任务对象 + 返回值</div>
+      <div class="sub-req"><span class="code">SR-01-07-03</span> 线程池（ThreadPool）：固定数量工作线程 + 任务队列 steal</div>
+      <div class="sub-req"><span class="code">SR-01-07-04</span> 任务依赖图（DAG）调度：前置任务完成后自动启动后续任务</div>
+      <div class="sub-req"><span class="code">SR-01-07-05</span> 并发 stage 划分：逻辑 stage 可并行，IO stage 独立线程</div>
+      <div class="sub-req"><span class="code">SR-01-07-06</span> Send/Sync trait 边界验证，所有权系统防止数据竞争</div>
+      <div class="sub-req"><span class="code">SR-01-07-07</span> 原子引用计数（Arc）使用规范与性能基准</div>
+      <div class="sub-req"><span class="code">SR-01-07-08</span> 异步 IO（Tokio）预留接口（用于网络模块）</div>
+      <div class="sub-req"><span class="code">SR-01-07-09</span> 调度器性能监控：CPU 使用率、任务等待时间</div>
+      <div class="sub-req"><span class="code">SR-01-07-10</span> 单元测试：并发任务无死锁、无竞态条件（loom 模拟）</div>
+
+      <p><strong class="id">PR-01-08 · 配置文件与启动参数</strong></p>
+      <div class="sub-req"><span class="code">SR-01-08-01</span> 定义 <code>EngineConfig</code> 结构体：窗口、渲染、音频、日志配置</div>
+      <div class="sub-req"><span class="code">SR-01-08-02</span> TOML 配置文件解析（serde + toml crate）</div>
+      <div class="sub-req"><span class="code">SR-01-08-03</span> 配置默认值：未指定字段使用合理默认值</div>
+      <div class="sub-req"><span class="code">SR-01-08-04</span> 命令行参数解析（clap crate）：--config、--window-size、--fullscreen 等</div>
+      <div class="sub-req"><span class="code">SR-01-08-05</span> 环境变量覆盖：<code>ENGINE_WINDOW_SIZE=1920x1080</code> 等</div>
+      <div class="sub-req"><span class="code">SR-01-08-06</span> 配置合并优先级：命令行 > 环境变量 > 配置文件 > 默认值</div>
+      <div class="sub-req"><span class="code">SR-01-08-07</span> 配置 schema 导出与自动补全脚本生成</div>
+      <div class="sub-req"><span class="code">SR-01-08-08</span> 示例配置文件 <code>engine.default.toml</code> 与文档注释</div>
+
+      <p><strong class="id">PR-01-09 · 构建脚本与 CI/CD 流水线</strong></p>
+      <div class="sub-req"><span class="code">SR-01-09-01</span> cargo-make 或 justfile 脚本：build / test / run / clippy / doc</div>
+      <div class="sub-req"><span class="code">SR-01-09-02</span> GitHub Actions 工作流：每次 PR 触发 check + test + clippy + fmt</div>
+      <div class="sub-req"><span class="code">SR-01-09-03</span> Release 构建流水线：静态链接、符号剥离、UPX 压缩（可选）</div>
+      <div class="sub-req"><span class="code">SR-01-09-04</span> 跨平台 CI：Windows (msvc) / macOS / Linux 三端矩阵构建</div>
+      <div class="sub-req"><span class="code">SR-01-09-05</span> doctest 与示例自动测试</div>
+      <div class="sub-req"><span class="code">SR-01-09-06</span> 代码覆盖率统计（tarpaulin / codecov 集成）</div>
+      <div class="sub-req"><span class="code">SR-01-09-07</span> 自动化基准测试（criterion）：每版本性能对比</div>
+      <div class="sub-req"><span class="code">SR-01-09-08</span> 构建产物版本号嵌入：编译时间、git commit hash</div>
+    </div>
+
+    <!-------- Sprint 2 -------->
+    <div class="sprint-box">
+      <div class="sprint-head">
+        <div>
+          <div class="sprint-title">Sprint 2 · 图形抽象层 (HAL) 与 2D 渲染管线基础</div>
+          <div class="sprint-meta">第 3~4 周 · 10 个 PR · 100+ SR · 核心目标：可在窗口中绘制彩色三角形与精灵</div>
+        </div>
+        <div><span class="tag tag-phase1">阶段一</span></div>
+      </div>
+
+      <h4>目标描述</h4>
+      <p>本 Sprint 聚焦 GPU 能力启用。建立硬件抽象层（HAL），封装 Vulkan/OpenGL 等后端差异，实现渲染上下文、Swapchain、着色器编译、顶点/索引缓冲区、纹理上传、Uniform Buffer 等核心图形基础能力，并基于此实现最简 2D 渲染管线（纯色三角形 → 纹理贴图精灵）。</p>
+
+      <h4>项目需求清单（10 PR）</h4>
+      <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th>PR-ID</th><th>项目需求名称</th><th>简述</th><th>优先级</th><th>SR 数量</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="id">PR-02-01</td><td>图形硬件抽象层（HAL）设计</td><td>Device/Queue/Swapchain/Shader 统一抽象</td><td><span class="tag tag-p0">P0</span></td><td>12</td></tr>
+          <tr><td class="id">PR-02-02</td><td>Vulkan 后端实现（优先）</td><td>ash/wgpu 集成 Vulkan 完整后端</td><td><span class="tag tag-p0">P0</span></td><td>12</td></tr>
+          <tr><td class="id">PR-02-03</td><td>OpenGL 后端实现（兼容）</td><td>GL 3.3 Core Profile 后端实现</td><td><span class="tag tag-p1">P1</span></td><td>12</td></tr>
+          <tr><td class="id">PR-02-04</td><td>着色器编译与 Pipeline 管理</td><td>SPIR-V、GLSL 编译、Pipeline State Object 缓存</td><td><span class="tag tag-p0">P0</span></td><td>10</td></tr>
+          <tr><td class="id">PR-02-05</td><td>顶点/索引缓冲区与内存上传</td><td>VBO/IBO、Vertex Input Layout、GPU 内存池</td><td><span class="tag tag-p0">P0</span></td><td>10</td></tr>
+          <tr><td class="id">PR-02-06</td><td>纹理资源系统</td><td>2D 纹理加载（PNG/JPG/BMP）、Mipmap、Sampler</td><td><span class="tag tag-p0">P0</span></td><td>12</td></tr>
+          <tr><td class="id">PR-02-07</td><td>Uniform/Descriptor Set 管理</td><td>UBO、Push Constant、Descriptor Set 分配与复用</td><td><span class="tag tag-p0">P0</span></td><td>10</td></tr>
+          <tr><td class="id">PR-02-08</td><td>命令缓冲与渲染通道</td><td>CommandBuffer、RenderPass、Framebuffer、提交与 Present</td><td><span class="tag tag-p0">P0</span></td><td>10</td></tr>
+          <tr><td class="id">PR-02-09</td><td>2D 正交相机与视图矩阵</td><td>像素坐标到 NDC 转换、相机平移/缩放</td><td><span class="tag tag-p0">P0</span></td><td>8</td></tr>
+          <tr><td class="id">PR-02-10</td><td>基础 2D 渲染器（精灵+纯色）</td><td>Sprite 绘制、批处理（Batching）雏形</td><td><span class="tag tag-p0">P0</span></td><td>10</td></tr>
+        </tbody>
+      </table>
+      </div>
+
+      <h4>需求细分展开（摘录代表性 PR）</h4>
+
+      <p><strong class="id">PR-02-01 · 图形硬件抽象层（HAL）设计</strong></p>
+      <div class="sub-req"><span class="code">SR-02-01-01</span> 定义 <code>GraphicsBackend</code> trait：包含所有后端统一接口</div>
+      <div class="sub-req"><span class="code">SR-02-01-02</span> 定义 <code>PhysicalDevice</code>：枚举 GPU、查询能力（队列族、显存类型）</div>
+      <div class="sub-req"><span class="code">SR-02-01-03</span> 定义 <code>Device</code>：逻辑设备创建、资源创建接口</div>
+      <div class="sub-req"><span class="code">SR-02-01-04</span> 定义 <code>Queue</code>：命令提交、Present、同步语义</div>
+      <div class="sub-req"><span class="code">SR-02-01-05</span> 定义 <code>Swapchain</code>：图像数量、格式、尺寸、获取 Backbuffer</div>
+      <div class="sub-req"><span class="code">SR-02-01-06</span> 定义 <code>ShaderModule</code>：从 SPIR-V/GLSL 源码创建</div>
+      <div class="sub-req"><span class="code">SR-02-01-07</span> 定义 <code>Buffer</code>：VBO/IBO/UBO/SSBO 统一抽象</div>
+      <div class="sub-req"><span class="code">SR-02-01-08</span> 定义 <code>Texture</code> / <code>Sampler</code>：维度、格式、Filter、Wrap</div>
+      <div class="sub-req"><span class="code">SR-02-01-09</span> 定义 <code>RenderPipeline</code> / <code>ComputePipeline</code>：完整 Pipeline State Object</div>
+      <div class="sub-req"><span class="code">SR-02-01-10</span> 定义 <code>CommandBuffer</code> / <code>CommandEncoder</code>：录制绘制与资源操作</div>
+      <div class="sub-req"><span class="code">SR-02-01-11</span> 同步原语：<code>Fence</code> / <code>Semaphore</code> / <code>Event</code> 统一抽象</div>
+      <div class="sub-req"><span class="code">SR-02-01-12</span> 后端选择策略：按平台自动选择 Vulkan/Metal/GL</div>
+
+      <p><strong class="id">PR-02-02 · Vulkan 后端实现</strong></p>
+      <div class="sub-req"><span class="code">SR-02-02-01</span> Vulkan Instance 创建：应用信息、启用 Validation Layer（Debug）</div>
+      <div class="sub-req"><span class="code">SR-02-02-02</span> Debug Messenger / Callback：Vulkan 错误与警告转发到引擎日志</div>
+      <div class="sub-req"><span class="code">SR-02-02-03</span> Surface 创建：与窗口系统对接（Win32 / X11 / Wayland / Cocoa）</div>
+      <div class="sub-req"><span class="code">SR-02-02-04</span> Physical Device 选择：按优先级选择独立显卡 / 核显</div>
+      <div class="sub-req"><span class="code">SR-02-02-05</span> Queue Family 查找：Graphics + Present 队列族定位与索引</div>
+      <div class="sub-req"><span class="code">SR-02-02-06</span> Logical Device 创建：队列请求、特性启用（samplerAnisotropy 等）</div>
+      <div class="sub-req"><span class="code">SR-02-02-07</span> Swapchain 创建：表面格式选择、Present Mode（FIFO/Mailbox/Immediate）</div>
+      <div class="sub-req"><span class="code">SR-02-02-08</span> Swapchain Resize：窗口大小变化时重建 Swapchain</div>
+      <div class="sub-req"><span class="code">SR-02-02-09</span> Command Pool / Command Buffer 分配与重置策略（Reset per Frame）</div>
+      <div class="sub-req"><span class="code">SR-02-02-10</span> Fence / Semaphore 同步：GPU 与 CPU、GPU 内部不同阶段同步</div>
+      <div class="sub-req"><span class="code">SR-02-02-11</span> Descriptor Pool / Descriptor Set Layout：UBO 与 Sampler 绑定</div>
+      <div class="sub-req"><span class="code">SR-02-02-12</span> Hello Triangle 示例：Vulkan 后端绘制第一个彩色三角形</div>
+
+      <p><strong class="id">PR-02-06 · 纹理资源系统</strong></p>
+      <div class="sub-req"><span class="code">SR-02-06-01</span> image crate 集成：解码 PNG、JPG、BMP、TGA、GIF</div>
+      <div class="sub-req"><span class="code">SR-02-06-02</span> 纹理数据格式：R8、RG8、RGB8、RGBA8、RGBA32F、BCn 压缩纹理</div>
+      <div class="sub-req"><span class="code">SR-02-06-03</span> GPU 纹理创建：Image、ImageView、DeviceMemory 分配与绑定</div>
+      <div class="sub-req"><span class="code">SR-02-06-04</span> Staging Buffer：CPU→GPU 纹理数据传输（暂存缓冲区→纹理 Image）</div>
+      <div class="sub-req"><span class="code">SR-02-06-05</span> Mipmap 自动生成：从 Base Level 向下逐级 Box Filter 降采样</div>
+      <div class="sub-req"><span class="code">SR-02-06-06</span> Sampler 对象：Nearest / Linear / Trilinear 过滤、Anisotropy、UV Wrap</div>
+      <div class="sub-req"><span class="code">SR-02-06-07</span> 纹理坐标约定：左上角原点 vs 左下角原点（API 差异屏蔽）</div>
+      <div class="sub-req"><span class="code">SR-02-06-08</span> 纹理句柄管理：Handle、Ref Count、LRU 缓存、自动销毁</div>
+      <div class="sub-req"><span class="code">SR-02-06-09</span> 1x1 纯色默认纹理：缺失纹理时的安全回退</div>
+      <div class="sub-req"><span class="code">SR-02-06-10</span> 纹理数组（Texture Array）预留：用于动画帧图集</div>
+      <div class="sub-req"><span class="code">SR-02-06-11</span> 渲染目标纹理（RT）：离屏渲染、后处理预留</div>
+      <div class="sub-req"><span class="code">SR-02-06-12</span> 示例：加载一张 256x256 PNG 纹理并全屏显示</div>
+    </div>
+
+    <!-------- Sprint 3 -------->
+    <div class="sprint-box">
+      <div class="sprint-head">
+        <div>
+          <div class="sprint-title">Sprint 3 · ECS 实体组件系统 与 场景节点树（双架构）</div>
+          <div class="sprint-meta">第 5~6 周 · 9 个 PR · 90+ SR · 核心目标：组件化的数据驱动架构</div>
+        </div>
+        <div><span class="tag tag-phase1">阶段一</span></div>
+      </div>
+
+      <h4>项目需求清单（9 PR）</h4>
+      <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>PR-ID</th><th>项目需求名称</th><th>简述</th><th>优先级</th><th>SR</th></tr></thead>
+        <tbody>
+          <tr><td class="id">PR-03-01</td><td>ECS World 与 Entity/Component 基础</td><td>World 数据容器、Entity 句柄、Component 存储</td><td><span class="tag tag-p0">P0</span></td><td>12</td></tr>
+          <tr><td class="id">PR-03-02</td><td>Sparse Set 组件存储与 Archetype</td><td>SparseArray、Component Array、Archetype 布局</td><td><span class="tag tag-p0">P0</span></td><td>12</td></tr>
+          <tr><td class="id">PR-03-03</td><td>System 与 Query 系统</td><td>System trait、Query 迭代器、Query Filter、变更跟踪</td><td><span class="tag tag-p0">P0</span></td><td>12</td></tr>
+          <tr><td class="id">PR-03-04</td><td>系统调度与阶段编排</td><td>Startup / Update / PreUpdate / PostUpdate / Render 阶段</td><td><span class="tag tag-p0">P0</span></td><td>10</td></tr>
+          <tr><td class="id">PR-03-05</td><td>内置基础组件集</td><td>Transform、Sprite、Camera、Light、Tag、Name、Visibility</td><td><span class="tag tag-p0">P0</span></td><td>10</td></tr>
+          <tr><td class="id">PR-03-06</td><td>场景节点树 (Scene Tree)</td><td>父子关系、层级变换计算、场景遍历</td><td><span class="tag tag-p0">P0</span></td><td>12</td></tr>
+          <tr><td class="id">PR-03-07</td><td>场景序列化（JSON/二进制）</td><td>serde 集成、场景文件格式、Prefab 机制</td><td><span class="tag tag-p1">P1</span></td><td>10</td></tr>
+          <tr><td class="id">PR-03-08</td><td>资源管理器（Asset Server）</td><td>路径解析、异步加载、Handle、依赖追踪</td><td><span class="tag tag-p1">P1</span></td><td>10</td></tr>
+          <tr><td class="id">PR-03-09</td><td>ECS 与节点树双向同步桥</td><td>两种架构共存的数据同步机制</td><td><span class="tag tag-p1">P1</span></td><td>8</td></tr>
+        </tbody>
+      </table>
+      </div>
+
+      <p><strong class="id">PR-03-01 · ECS World 与 Entity/Component 基础</strong></p>
+      <div class="sub-req"><span class="code">SR-03-01-01</span> <code>World</code> 结构体：包含所有 Entity/Component/Resource 的根容器</div>
+      <div class="sub-req"><span class="code">SR-03-01-02</span> <code>Entity</code> 句柄：<code>index: u32 + generation: u32</code> 防止 ABA 问题</div>
+      <div class="sub-req"><span class="code">SR-03-01-03</span> <code>Entity</code> 创建 / 销毁 / 存活判定接口</div>
+      <div class="sub-req"><span class="code">SR-03-01-04</span> <code>Component</code> trait 定义（派生宏），要求 Send + Sync + 'static</div>
+      <div class="sub-req"><span class="code">SR-03-01-05</span> 为单个 Entity 添加 / 移除 / 查询组件</div>
+      <div class="sub-req"><span class="code">SR-03-01-06</span> <code>Resource</code> 全局资源（单例组件）：插入 / 获取 / 移除</div>
+      <div class="sub-req"><span class="code">SR-03-01-07</span> <code>Event&lt;T&gt;</code> 事件通道：发送 / 接收 / 清空</div>
+      <div class="sub-req"><span class="code">SR-03-01-08</span> Entity 批量创建（Spawn Batch）：从模板批量生成大量 Entity</div>
+      <div class="sub-req"><span class="code">SR-03-01-09</span> Entity 生命周期事件：<code>OnAdd</code> / <code>OnRemove</code> / <code>OnSpawn</code></div>
+      <div class="sub-req"><span class="code">SR-03-01-10</span> Entity 引用关系（EntityRef）：可安全引用其他 Entity</div>
+      <div class="sub-req"><span class="code">SR-03-01-11</span> World 的 Borrow Checker 规则：避免读写冲突</div>
+      <div class="sub-req"><span class="code">SR-03-01-12</span> 宏派生 <code>#[derive(Component)]</code> / <code>#[derive(Resource)]</code> 简化使用</div>
+
+      <p><strong class="id">PR-03-05 · 内置基础组件集</strong></p>
+      <div class="sub-req"><span class="code">SR-03-05-01</span> <code>Transform</code>：translation(Vec3) + rotation(Quat) + scale(Vec3)</div>
+      <div class="sub-req"><span class="code">SR-03-05-02</span> <code>GlobalTransform</code>：从根节点到当前节点的累计变换（系统自动计算）</div>
+      <div class="sub-req"><span class="code">SR-03-05-03</span> <code>Sprite</code>：纹理句柄 + 颜色叠加 + 尺寸 + 裁剪矩形（UV 裁剪）</div>
+      <div class="sub-req"><span class="code">SR-03-05-04</span> <code>TextureAtlasSprite</code>：图集精灵 + 帧索引</div>
+      <div class="sub-req"><span class="code">SR-03-05-05</span> <code>Camera2d</code>：正交投影 + 视图尺寸 + 缩放因子</div>
+      <div class="sub-req"><span class="code">SR-03-05-06</code> <code>Camera3d</code>：透视投影 + FOV + Near/Far 平面</div>
+      <div class="sub-req"><span class="code">SR-03-05-07</code> <code>Name</code>：字符串标识，便于调试与场景面板显示</div>
+      <div class="sub-req"><span class="code">SR-03-05-08</code> <code>Visibility</code>：Inherit / Visible / Hidden 三级可见性</div>
+      <div class="sub-req"><span class="code">SR-03-05-09</code> <code>Tag&lt;T&gt;</code>：零大小标签组件，用于快速分组筛选</div>
+      <div class="sub-req"><span class="code">SR-03-05-10</code> <code>Parent</code> / <code>Children</code>：父子关系组件（与场景树桥接）</div>
+    </div>
+
+    <!-------- Sprint 4 -------->
+    <div class="sprint-box">
+      <div class="sprint-head">
+        <div>
+          <div class="sprint-title">Sprint 4 · 2D 物理、输入系统、音频基础 与 MVP Demo 整合</div>
+          <div class="sprint-meta">第 7~8 周 · 8 个 PR · 80+ SR · 核心目标：完整 2D 像素游戏可玩 Demo</div>
+        </div>
+        <div><span class="tag tag-phase1">阶段一</span></div>
+      </div>
+
+      <h4>项目需求清单（8 PR）</h4>
+      <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>PR-ID</th><th>项目需求名称</th><th>简述</th><th>优先级</th><th>SR</th></tr></thead>
+        <tbody>
+          <tr><td class="id">PR-04-01</td><td>统一输入系统（键盘/鼠标/触屏）</td><td>InputState、按键检测、按下/持续/释放事件</td><td><span class="tag tag-p0">P0</span></td><td>12</td></tr>
+          <tr><td class="id">PR-04-02</td><td>输入映射与按键配置</td><td>抽象输入动作，支持键盘/手柄/触屏映射</td><td><span class="tag tag-p0">P0</span></td><td>10</td></tr>
+          <tr><td class="id">PR-04-03</td><td>轻量 2D 物理引擎（自研）</td><td>AABB 碰撞、圆形碰撞、动态/运动学/静态刚体</td><td><span class="tag tag-p0">P0</span></td><td>14</td></tr>
+          <tr><td class="id">PR-04-04</td><td>瓦片地图（TileMap）系统</td><td>瓦片集、网格地图、碰撞瓦片、自动平铺</td><td><span class="tag tag-p0">P0</span></td><td>12</td></tr>
+          <tr><td class="id">PR-04-05</td><td>序列帧动画与 2D 骨骼动画基础</td><td>帧动画播放、速度控制、循环模式</td><td><span class="tag tag-p1">P1</span></td><td>10</td></tr>
+          <tr><td class="id">PR-04-06</td><td>音频引擎基础（MP3/WAV/OGG）</td><td>CPAL 集成、音频播放、音量控制、循环</td><td><span class="tag tag-p1">P1</span></td><td>10</td></tr>
+          <tr><td class="id">PR-04-07</td><td>基础文本渲染（字体 + 布局）</td><td>ttf 字体解析、简单文本绘制（调试用）</td><td><span class="tag tag-p1">P1</span></td><td>8</td></tr>
+          <tr><td class="id">PR-04-08</td><td>MVP 横版闯关 Demo 整合</td><td>玩家角色、移动、跳跃、碰撞、关卡、敌人、得分</td><td><span class="tag tag-p0">P0</span></td><td>12</td></tr>
+        </tbody>
+      </table>
+      </div>
+
+      <p><strong class="id">PR-04-03 · 轻量 2D 物理引擎</strong></p>
+      <div class="sub-req"><span class="code">SR-04-03-01</span> <code>RigidBody2d</code> 组件：BodyType（Dynamic / Kinematic / Static）</div>
+      <div class="sub-req"><span class="code">SR-04-03-02</span> 质量 / 线速度 / 角速度 / 重力缩放</div>
+      <div class="sub-req"><span class="code">SR-04-03-03</span> <code>Collider2d::Aabb</code> 碰撞体：半宽 / 半高 / 偏移</div>
+      <div class="sub-req"><span class="code">SR-04-03-04</span> <code>Collider2d::Circle</code> 碰撞体：半径 / 偏移</div>
+      <div class="sub-req"><span class="code">SR-04-03-05</span> <code>Collider2d::Polygon</code> 凸多边形（3~8 顶点）</div>
+      <div class="sub-req"><span class="code">SR-04-03-06</span> 物理材质：弹力（Restitution）、摩擦（Friction）、密度</div>
+      <div class="sub-req"><span class="code">SR-04-03-07</span> AABB vs AABB 相交检测与法线计算</div>
+      <div class="sub-req"><span class="code">SR-04-03-08</span> Circle vs Circle / Circle vs AABB 相交检测</div>
+      <div class="sub-req"><span class="code">SR-04-03-09</span> 扫掠检测（Swept AABB）：防止快速穿透（Tunneling）</div>
+      <div class="sub-req"><span class="code">SR-04-03-10</span> 碰撞解算（Impulse-based）：冲量法求解速度响应</div>
+      <div class="sub-req"><span class="code">SR-04-03-11</span> 碰撞分组 / 掩码 / 过滤：玩家只与地面碰撞等规则</div>
+      <div class="sub-req"><span class="code">SR-04-03-12</span> <code>ContactEvent</code>：碰撞开始 / 持续 / 结束事件</div>
+      <div class="sub-req"><span class="code">SR-04-03-13</span> 射线检测（Raycast2d）：用于 AI 感知与交互</div>
+      <div class="sub-req"><span class="code">SR-04-03-14</span> 物理调试可视化：绘制碰撞体外框、法线向量</div>
+    </div>
+
+  </div>
+
+  <!---------------------------- 阶段二 ---------------------------->
+  <section id="phase2">
+    <div class="phase-banner">
+      <h2 style="margin-top:0">阶段二 · 编辑器与跨平台</h2>
+      <p><strong>时间</strong>：8 周 / 4 个 Sprint · <strong>目标</strong>：完整可视化编辑器 + UI 系统 + 多平台打包 + 图集/瓦片地图工具</p>
+      <p><strong>阶段交付物</strong>：Windows/macOS/Linux 可视化编辑器 + Android/iOS/Web 打包 + 2D UI 系统 + 完整 RPG 横版 Demo</p>
+      <p><strong>验收标准</strong>：非程序员用户可通过拖拽方式在编辑器中搭建 2D 场景，一键打包到手机浏览器运行</p>
+    </div>
+
+    <!-------- Sprint 5 -------->
+    <div class="sprint-box">
+      <div class="sprint-head">
+        <div>
+          <div class="sprint-title">Sprint 5 · 可视化编辑器核心框架与场景视图</div>
+          <div class="sprint-meta">第 9~10 周 · 9 个 PR · 90+ SR</div>
+        </div>
+        <div><span class="tag tag-phase2">阶段二</span></div>
+      </div>
+
+      <h4>项目需求清单（9 PR）</h4>
+      <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>PR-ID</th><th>项目需求名称</th><th>简述</th><th>优先级</th><th>SR</th></tr></thead>
+        <tbody>
+          <tr><td class="id">PR-05-01</td><td>编辑器 UI 框架选型与集成（egui/自研）</td><td>编辑器主窗口、Dock 布局、样式主题</td><td><span class="tag tag-p0">P0</span></td><td>12</td></tr>
+          <tr><td class="id">PR-05-02</td><td>场景视图（Scene View）渲染</td><td>引擎渲染结果嵌入编辑器视口、Gizmo 绘制</td><td><span class="tag tag-p0">P0</span></td><td>12</td></tr>
+          <tr><td class="id">PR-05-03</td><td>节点/实体层级面板（Hierarchy）</td><td>树形显示场景结构、增删改、拖拽重排、搜索</td><td><span class="tag tag-p0">P0</span></td><td>12</td></tr>
+          <tr><td class="id">PR-05-04</td><td>属性面板（Inspector）</td><td>按组件类型显示可编辑属性字段、Undo/Redo</td><td><span class="tag tag-p0">P0</span></td><td>12</td></tr>
+          <tr><td class="id">PR-05-05</td><td>变换工具（Translate/Rotate/Scale Gizmo）</td><td>鼠标在场景中拖拽操作对象变换</td><td><span class="tag tag-p0">P0</span></td><td>10</td></tr>
+          <tr><td class="id">PR-05-06</td><td>资源浏览器（Asset Browser）</td><td>文件树、缩略图、拖拽到场景、资源导入</td><td><span class="tag tag-p0">P0</span></td><td>10</td></tr>
+          <tr><td class="id">PR-05-07</td><td>撤销重做系统（Command Pattern）</td><td>所有编辑操作可撤销、历史栈管理</td><td><span class="tag tag-p1">P1</span></td><td>8</td></tr>
+          <tr><td class="id">PR-05-08</td><td>项目工程文件格式与加载保存</td><td>工程文件结构、场景文件、资源清单、自动保存</td><td><span class="tag tag-p0">P0</span></td><td>8</td></tr>
+          <tr><td class="id">PR-05-09</td><td>编辑器日志面板与控制台</td><td>日志显示、过滤、点击跳转、命令行输入（Cheat Console）</td><td><span class="tag tag-p1">P1</span></td><td>8</td></tr>
+        </tbody>
+      </table>
+      </div>
+
+      <p><strong class="id">PR-05-04 · 属性面板（Inspector）</strong></p>
+      <div class="sub-req"><span class="code">SR-05-04-01</span> Entity 基本信息区：ID、Name、Tag、Active(启用)、Static(静态)</div>
+      <div class="sub-req"><span class="code">SR-05-04-02</span> Transform 组件编辑：位置 / 旋转 / 缩放数值输入</div>
+      <div class="sub-req"><span class="code">SR-05-04-03</span> Sprite 组件编辑：纹理选择下拉 + 颜色拾取器 + 尺寸</div>
+      <div class="sub-req"><span class="code">SR-05-04-04</span> Camera 组件编辑：投影模式切换、FOV/尺寸、Near/Far 平面</div>
+      <div class="sub-req"><span class="code">SR-05-04-05</span> 自定义组件自动反射：通过派生宏生成 UI</div>
+      <div class="sub-req"><span class="code">SR-05-04-06</span> 添加 / 移除组件按钮与组件选择器</div>
+      <div class="sub-req"><span class="code">SR-05-04-07</span> 多对象属性同时编辑（相同字段批量修改）</div>
+      <div class="sub-req"><span class="code">SR-05-04-08</span> 属性变更事件：通知其他面板刷新（双向绑定）</div>
+      <div class="sub-req"><span class="code">SR-05-04-09</span> Reset to Default：组件属性一键重置为默认值</div>
+      <div class="sub-req"><span class="code">SR-05-04-10</span> 颜色拾取器（Color Picker）：RGB/RGBA/HSV 支持</div>
+      <div class="sub-req"><span class="code">SR-05-04-11</span> 向量编辑（Vec2/Vec3）：数值输入 + 滑动条双模式</div>
+      <div class="sub-req"><span class="code">SR-05-04-12</span> 属性面板实时刷新：引擎运行时属性变化也反映到 UI</div>
+
+    <!-------- Sprint 6 -------->
+    <div class="sprint-box">
+      <div class="sprint-head">
+        <div>
+          <div class="sprint-title">Sprint 6 · UI 系统（游戏内 UI）与 2D 文本渲染</div>
+          <div class="sprint-meta">第 11~12 周 · 9 个 PR · 90+ SR</div>
+        </div>
+        <div><span class="tag tag-phase2">阶段二</span></div>
+      </div>
+
+      <h4>项目需求清单（9 PR）</h4>
+      <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>PR-ID</th><th>项目需求名称</th><th>简述</th><th>优先级</th><th>SR</th></tr></thead>
+        <tbody>
+          <tr><td class="id">PR-06-01</td><td>UI 根节点与画布（Canvas）系统</td><td>屏幕空间 / 世界空间画布、分辨率适配、DPI</td><td><span class="tag tag-p0">P0</span></td><td>10</td></tr>
+          <tr><td class="id">PR-06-02</td><td>UI 布局系统（锚点 + 相对布局）</td><td>Anchor、Margin、Stretch、Center、自动尺寸</td><td><span class="tag tag-p0">P0</span></td><td>14</td></tr>
+          <tr><td class="id">PR-06-03</td><td>基础控件库（按钮/图片/文本/滑动条）</td><td>Button、Image、Text、Slider、Input、Panel、ScrollView</td><td><span class="tag tag-p0">P0</span></td><td>14</td></tr>
+          <tr><td class="id">PR-06-04</td><td>字体系统（TTF/OTF 解析 + 字形渲染）</td><td>fontdue 或 rusttype 集成、字形缓存、富文本</div>
+          <div class="sub-req" style="display:none"><span class="tag tag-p0">P0</span></div></td>
+          <tr><td class="id">PR-06-05</td><td>文本布局与换行（Unicode 支持）</td><td>BiDi、行内布局、自动换行、省略号、中日韩文支持</td><td><span class="tag tag-p0">P0</span></td><td>10</td></tr>
+          <tr><td class="id">PR-06-06</td><td>UI 事件系统（点击/悬停/拖拽/键盘）</td><td>事件冒泡、命中检测、焦点管理</div>
+          <div class="sub-req" style="display:none"><span class="tag tag-p0">P0</span></div></td>
+          <tr><td class="id">PR-06-07</td><td>UI 图集与合批（减少 Draw Call）</td><td>UI 元素自动合批渲染、图集打包、字体图集</td><td><span class="tag tag-p1">P1</span></td><td>10</td></tr>
+          <tr><td class="id">PR-06-08</td><td>UI 动画（Tween 补间动画）</td><td>位移动画、缩放动画、渐入渐出、弹性动画</div>
+          <div class="sub-req" style="display:none"><span class="tag tag-p1">P1</span></div></td>
+          <tr><td class="id">PR-06-09</td><td>UI 样式与主题系统（Style Sheet）</td><td>类似 CSS 的样式表、颜色/字体/边距统一管理</td><td><span class="tag tag-p1">P1</span></td><td>10</td></tr>
+        </tbody>
+      </table>
+      </div>
+
+      <p style="color:var(--muted);font-size:.85rem">※ 由于篇幅限制，本阶段 Sprint 5~8 的完整细分需求（共 36 PR × 10+ SR = 360+ 条目）已在 <code>sprint-roadmap-part2.html</code> 中展开，此处保留 20+ 条代表性 SR 作为示例展示架构与粒度。</p>
+
+    <!-------- Sprint 7 -------->
+    <div class="sprint-box">
+      <div class="sprint-head">
+        <div>
+          <div class="sprint-title">Sprint 7 · 跨平台编译与打包（Android / iOS / Web H5）</div>
+          <div class="sprint-meta">第 13~14 周 · 9 个 PR · 90+ SR</div>
+        </div>
+        <div><span class="tag tag-phase2">阶段二</span></div>
+      </div>
+
+      <h4>项目需求清单（9 PR）</h4>
+      <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>PR-ID</th><th>项目需求名称</th><th>简述</th><th>优先级</th><th>SR</th></tr></thead>
+        <tbody>
+          <tr><td class="id">PR-07-01</td><td>WebAssembly（Web H5）编译目标</td><td>wasm-bindgen、WebGPU/Canvas 渲染、资源异步加载</td><td><span class="tag tag-p0">P0</span></td><td>14</td></tr>
+          <tr><td class="id">PR-07-02</td><td>Android NDK 交叉编译</td><td>APK 打包、JNI、Gradle 集成、arm64-v8a / armeabi-v7a / x86_64</td><td><span class="tag tag-p0">P0</span></td><td>12</td></tr>
+          <tr><td class="id">PR-07-03</td><td>iOS 交叉编译</td><td>Xcode 工程生成、Metal 渲染、签名</td><td><span class="tag tag-p0">P0</span></td><td>12</td></tr>
+          <tr><td class="id">PR-07-04</td><td>资源打包与加密</td><td>资源清单生成、差分更新支持、简单加密</td><td><span class="tag tag-p0">P0</span></td><td>10</td></tr>
+          <tr><td class="id">PR-07-05</td><td>WebGPU 渲染后端</td><td>Web 平台原生图形 API 实现</td><td><span class="tag tag-p1">P1</span></td><td>12</td></tr>
+          <tr><td class="id">PR-07-06</td><td>触屏/手势输入系统（移动端）</td><td>单指点击、双指缩放、滑动、长按</td><td><span class="tag tag-p0">P0</span></td><td>10</td></tr>
+          <tr><td class="id">PR-07-07</td><td>一键打包工具（CLI）</td><td><code>engine build --platform android</code>，自动化脚本</td><td><span class="tag tag-p0">P0</span></td><td>10</td></tr>
+          <tr><td class="id">PR-07-08</td><td>平台特有 API 封装层（Platform Abstraction）</td><td>文件路径、剪贴板、震动、通知、网络状态</td><td><span class="tag tag-p1">P1</span></td><td>8</td></tr>
+          <tr><td class="id">PR-07-09</td><td>小程序适配基础（微信/抖音/字节）</td><td>Canvas 2D 渲染适配、目录规范、包体优化</td><td><span class="tag tag-p2">P2</span></td><td>8</td></tr>
+        </tbody>
+      </table>
+      </div>
+
+    <!-------- Sprint 8 -------->
+    <div class="sprint-box">
+      <div class="sprint-head">
+        <div>
+          <div class="sprint-title">Sprint 8 · 图集系统、瓦片地图编辑器、调试工具 与 RPG Demo</div>
+          <div class="sprint-meta">第 15~16 周 · 9 个 PR · 90+ SR</div>
+        </div>
+        <div><span class="tag tag-phase2">阶段二</span></div>
+      </div>
+
+      <h4>项目需求清单（9 PR）</h4>
+      <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>PR-ID</th><th>项目需求名称</th><th>简述</th><th>优先级</th><th>SR</th></tr></thead>
+        <tbody>
+          <tr><td class="id">PR-08-01</td><td>自动图集打包系统（Texture Atlas）</td><td>矩形装箱算法、自动图集、UV 坐标、多图集管理</td><td><span class="tag tag-p0">P0</span></td><td>12</td></tr>
+          <tr><td class="id">PR-08-02</td><td>瓦片地图编辑器（TileMap Editor）</td><td>瓦片刷、橡皮擦、图层、自动平铺规则、碰撞瓦片</td><td><span class="tag tag-p0">P0</span></td><td>14</td></tr>
+          <tr><td class="id">PR-08-03</td><td>预制体（Prefab）系统</td><td>对象模板、实例化、修改模板自动同步实例</td><td><span class="tag tag-p0">P0</span></td><td>12</td></tr>
+          <tr><td class="id">PR-08-04</td><td>运行时性能分析面板（Profiler）</td><td>FPS、Draw Call、内存、CPU/GPU 耗时、热图</td><td><span class="tag tag-p0">P0</span></td><td>10</td></tr>
+          <tr><td class="id">PR-08-05</td><td>场景管理器（Scene Manager）</td><td>多场景并行、异步加载、场景切换过渡动画</td><td><span class="tag tag-p0">P0</span></td><td>10</td></tr>
+          <tr><td class="id">PR-08-06</td><td>精灵渲染批处理优化（Sprite Batching）</td><td>同图集精灵合批、动态顶点缓冲、索引缓冲复用</td><td><span class="tag tag-p1">P1</span></td><td>10</td></tr>
+          <tr><td class="id">PR-08-07</td><td>2D 骨骼动画（Spine 兼容导入）</td><td>骨骼数据解析、蒙皮、逆运动学 IK</td><td><span class="tag tag-p2">P2</span></td><td>10</td></tr>
+          <tr><td class="id">PR-08-08</td><td>粒子系统（2D）</td><td>生命/速度/旋转/颜色渐变/受力/碰撞</td><td><span class="tag tag-p1">P1</span></td><td>10</td></tr>
+          <tr><td class="id">PR-08-09</td><td>完整 2D RPG Demo 整合</td><td>角色、对话、战斗、背包、关卡、敌人 AI</td><td><span class="tag tag-p0">P0</span></td><td>12</td></tr>
+        </tbody>
+      </table>
+      </div>
+
+    </div>
+  </section>
+
+  <footer>
+    <p style="text-align:center;color:var(--muted);font-size:.9rem">
+      — 上卷完 · 阶段三（3D 渲染管线）与阶段四（蓝图系统/脚本系统/生态建设）详见 <code>sprint-roadmap-part2.html</code> —
+    </p>
+    <p style="text-align:center;color:var(--muted);font-size:.85rem">
+      Rust 通用游戏引擎 · Sprint 路线图 V1.0 · 总计 134 PR · 1340+ SR · 2026
+    </p>
+  </footer>
+
+</article>
+
+</body>
+</html>
