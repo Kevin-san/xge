@@ -1,14 +1,18 @@
+use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
-use std::collections::VecDeque;
+
+/// Task queue type alias
+type TaskQueue = Arc<Mutex<VecDeque<Box<dyn FnOnce() + Send>>>>;
 
 /// 线程池
 pub struct ThreadPool {
     workers: Vec<Worker>,
-    task_queue: Arc<Mutex<VecDeque<Box<dyn FnOnce() + Send>>>>,
+    task_queue: TaskQueue,
 }
 
 struct Worker {
+    #[allow(dead_code)]
     thread: Option<JoinHandle<()>>,
 }
 
@@ -27,7 +31,10 @@ impl ThreadPool {
             workers.push(worker);
         }
 
-        Self { workers, task_queue }
+        Self {
+            workers,
+            task_queue,
+        }
     }
 
     pub fn spawn<F: FnOnce() + Send + 'static>(&self, f: F) {
@@ -55,23 +62,23 @@ impl ThreadPool {
 }
 
 impl Worker {
-    fn new(task_queue: Arc<Mutex<VecDeque<Box<dyn FnOnce() + Send>>>>) -> Self {
-        let thread = thread::spawn(move || {
-            loop {
-                let task = {
-                    let mut queue = task_queue.lock().unwrap();
-                    queue.pop_front()
-                };
+    fn new(task_queue: TaskQueue) -> Self {
+        let thread = thread::spawn(move || loop {
+            let task = {
+                let mut queue = task_queue.lock().unwrap();
+                queue.pop_front()
+            };
 
-                if let Some(task) = task {
-                    task();
-                } else {
-                    thread::park_timeout(std::time::Duration::from_millis(1));
-                }
+            if let Some(task) = task {
+                task();
+            } else {
+                thread::park_timeout(std::time::Duration::from_millis(1));
             }
         });
 
-        Self { thread: Some(thread) }
+        Self {
+            thread: Some(thread),
+        }
     }
 }
 

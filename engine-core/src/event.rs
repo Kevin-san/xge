@@ -4,25 +4,31 @@ use std::sync::{Arc, Mutex};
 
 pub type SubscriptionHandle = usize;
 
+/// Callback type alias
+type Callback<T> = Arc<dyn Fn(T) + Send + Sync>;
+
+/// Subscriber map type alias
+type SubscriberMap<T> = HashMap<SubscriptionHandle, Callback<T>>;
+
 /// 事件总线
-/// 
+///
 /// 提供类型安全的发布-订阅模式
-/// 
+///
 /// # Example
 /// ```ignore
 /// use engine_core::EventBus;
-/// 
+///
 /// let mut bus = EventBus::<String>::new();
-/// 
+///
 /// let handle = bus.subscribe(|msg| {
 ///     println!("Received: {}", msg);
 /// });
-/// 
+///
 /// bus.send("Hello".to_string());
 /// bus.unsubscribe(handle);
 /// ```
 pub struct EventBus<T: Clone + Send + Sync + 'static> {
-    subscribers: Arc<Mutex<HashMap<SubscriptionHandle, Arc<dyn Fn(T) + Send + Sync>>>>,
+    subscribers: Arc<Mutex<SubscriberMap<T>>>,
     next_handle: Arc<Mutex<usize>>,
 }
 
@@ -42,7 +48,7 @@ impl<T: Clone + Send + Sync + 'static> EventBus<T> {
     }
 
     /// 订阅事件
-    /// 
+    ///
     /// 返回一个 handle，可用于取消订阅
     pub fn subscribe<F>(&self, callback: F) -> SubscriptionHandle
     where
@@ -65,7 +71,7 @@ impl<T: Clone + Send + Sync + 'static> EventBus<T> {
     }
 
     /// 发送事件
-    /// 
+    ///
     /// 所有订阅者都会收到事件
     pub fn send(&self, event: T) {
         // 复制订阅者列表，在锁外调用回调
@@ -95,7 +101,7 @@ impl<T: Clone + Send + Sync + 'static> EventBus<T> {
     }
 
     /// 克隆事件总线（共享订阅者）
-    pub fn clone(&self) -> Self {
+    pub fn clone_shared(&self) -> Self {
         Self {
             subscribers: self.subscribers.clone(),
             next_handle: self.next_handle.clone(),
@@ -149,10 +155,14 @@ mod tests {
         let count2 = Arc::new(Mutex::new(0));
 
         let c1 = count1.clone();
-        bus.subscribe(move |_| { *c1.lock().unwrap() += 1; });
-        
+        bus.subscribe(move |_| {
+            *c1.lock().unwrap() += 1;
+        });
+
         let c2 = count2.clone();
-        bus.subscribe(move |_| { *c2.lock().unwrap() += 1; });
+        bus.subscribe(move |_| {
+            *c2.lock().unwrap() += 1;
+        });
 
         bus.send(42);
 
@@ -163,14 +173,14 @@ mod tests {
     #[test]
     fn test_drain() {
         let bus = EventBus::<String>::new();
-        
+
         bus.subscribe(|_| {});
         bus.subscribe(|_| {});
 
         assert_eq!(bus.subscriber_count(), 2);
-        
+
         bus.drain();
-        
+
         assert_eq!(bus.subscriber_count(), 0);
     }
 }

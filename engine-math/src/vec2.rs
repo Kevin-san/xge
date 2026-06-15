@@ -1,5 +1,5 @@
-use core::ops::{Add, Sub, Mul, Div, Neg};
 use core::fmt;
+use core::ops::{Add, Div, Mul, Neg, Sub};
 
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
 #[repr(C)]
@@ -158,7 +158,7 @@ mod tests {
     fn test_basic_operations() {
         let a = Vec2::new(1.0, 2.0);
         let b = Vec2::new(3.0, 4.0);
-        
+
         assert_eq!(a + b, Vec2::new(4.0, 6.0));
         assert_eq!(a - b, Vec2::new(-2.0, -2.0));
         assert_eq!(a * 2.0, Vec2::new(2.0, 4.0));
@@ -169,7 +169,7 @@ mod tests {
     fn test_dot_cross() {
         let a = Vec2::new(1.0, 2.0);
         let b = Vec2::new(3.0, 4.0);
-        
+
         assert_eq!(a.dot(b), 11.0);
         assert_eq!(a.cross(b), -2.0);
     }

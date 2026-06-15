@@ -1,7 +1,7 @@
 use core::fmt;
 use core::hash::{Hash, Hasher};
-use std::path::Path;
 use std::collections::hash_map::DefaultHasher;
+use std::path::Path;
 
 /// 资源唯一标识符
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -12,20 +12,17 @@ pub struct AssetId {
 
 impl AssetId {
     pub fn new(uuid: u64) -> Self {
-        Self {
-            uuid,
-            path_hash: 0,
-        }
+        Self { uuid, path_hash: 0 }
     }
 
     pub fn from_path(path: &Path) -> Self {
         use core::hash::Hash;
-        
+
         let path_str = path.to_string_lossy();
         let mut hasher = DefaultHasher::new();
         path_str.hash(&mut hasher);
         let path_hash = hasher.finish();
-        
+
         Self {
             uuid: path_hash,
             path_hash,
@@ -52,7 +49,11 @@ impl Hash for AssetId {
 
 impl fmt::Debug for AssetId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "AssetId {{ uuid: {}, path_hash: {} }}", self.uuid, self.path_hash)
+        write!(
+            f,
+            "AssetId {{ uuid: {}, path_hash: {} }}",
+            self.uuid, self.path_hash
+        )
     }
 }
 

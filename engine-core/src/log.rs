@@ -1,7 +1,7 @@
 // 日志模块
 
-use std::sync::Mutex;
 use std::io::{self, Write};
+use std::sync::Mutex;
 
 /// 日志级别
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd)]
@@ -43,7 +43,14 @@ fn log_impl(level: Level, target: &str, msg: &str) {
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_secs())
             .unwrap_or(0);
-        let _ = writeln!(io::stderr(), "[{}][{}][{}] {}", timestamp, level.as_str(), target, msg);
+        let _ = writeln!(
+            io::stderr(),
+            "[{}][{}][{}] {}",
+            timestamp,
+            level.as_str(),
+            target,
+            msg
+        );
     }
 }
 

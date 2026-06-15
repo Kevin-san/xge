@@ -11,14 +11,22 @@ pub struct Handle<T> {
 
 impl<T> Clone for Handle<T> {
     fn clone(&self) -> Self {
-        Handle { index: self.index, generation: self.generation, _phantom: PhantomData }
+        Handle {
+            index: self.index,
+            generation: self.generation,
+            _phantom: PhantomData,
+        }
     }
 }
 
 impl<T> Handle<T> {
     #[inline]
     pub const fn new(index: u32, generation: u32) -> Self {
-        Self { index, generation, _phantom: PhantomData }
+        Self {
+            index,
+            generation,
+            _phantom: PhantomData,
+        }
     }
 
     #[inline]
@@ -54,7 +62,11 @@ impl<T> Default for Handle<T> {
 
 impl<T> fmt::Debug for Handle<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Handle {{ index: {}, generation: {} }}", self.index, self.generation)
+        write!(
+            f,
+            "Handle {{ index: {}, generation: {} }}",
+            self.index, self.generation
+        )
     }
 }
 
@@ -88,14 +100,14 @@ mod tests {
     fn test_hash() {
         use core::hash::{Hash, Hasher};
         use std::collections::HashSet;
-        
+
         let h1 = Handle::<i32>::new(1, 1);
         let h2 = Handle::<i32>::new(1, 1);
         let h3 = Handle::<i32>::new(2, 1);
-        
+
         let mut set = HashSet::new();
         set.insert(h1);
-        
+
         assert!(set.contains(&h2));
         assert!(!set.contains(&h3));
     }

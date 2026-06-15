@@ -1,5 +1,5 @@
-use core::ops::{Add, Sub, Mul, Div, Neg};
 use core::fmt;
+use core::ops::{Add, Div, Mul, Neg, Sub};
 
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
 #[repr(C)]
@@ -10,11 +10,31 @@ pub struct Vec3 {
 }
 
 impl Vec3 {
-    pub const ZERO: Self = Self { x: 0.0, y: 0.0, z: 0.0 };
-    pub const ONE: Self = Self { x: 1.0, y: 1.0, z: 1.0 };
-    pub const X: Self = Self { x: 1.0, y: 0.0, z: 0.0 };
-    pub const Y: Self = Self { x: 0.0, y: 1.0, z: 0.0 };
-    pub const Z: Self = Self { x: 0.0, y: 0.0, z: 1.0 };
+    pub const ZERO: Self = Self {
+        x: 0.0,
+        y: 0.0,
+        z: 0.0,
+    };
+    pub const ONE: Self = Self {
+        x: 1.0,
+        y: 1.0,
+        z: 1.0,
+    };
+    pub const X: Self = Self {
+        x: 1.0,
+        y: 0.0,
+        z: 0.0,
+    };
+    pub const Y: Self = Self {
+        x: 0.0,
+        y: 1.0,
+        z: 0.0,
+    };
+    pub const Z: Self = Self {
+        x: 0.0,
+        y: 0.0,
+        z: 1.0,
+    };
 
     #[inline]
     pub const fn new(x: f32, y: f32, z: f32) -> Self {
@@ -164,7 +184,7 @@ mod tests {
     fn test_basic_operations() {
         let a = Vec3::new(1.0, 2.0, 3.0);
         let b = Vec3::new(4.0, 5.0, 6.0);
-        
+
         assert_eq!(a + b, Vec3::new(5.0, 7.0, 9.0));
         assert_eq!(a - b, Vec3::new(-3.0, -3.0, -3.0));
         assert_eq!(a * 2.0, Vec3::new(2.0, 4.0, 6.0));

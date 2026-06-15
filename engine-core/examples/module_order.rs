@@ -1,7 +1,10 @@
 //! module_order - 模块注册与依赖顺序初始化示例
 
-use engine_core::{Engine, Module, ModuleRegistry, EngineConfig};
-use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
+use engine_core::{Engine, EngineConfig, Module, ModuleRegistry};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 
 // 模块 A：无依赖
 struct ModuleA {
@@ -11,13 +14,20 @@ struct ModuleA {
 
 impl ModuleA {
     fn new(quit_flag: Arc<AtomicBool>) -> Self {
-        Self { name: "ModuleA".into(), quit_flag }
+        Self {
+            name: "ModuleA".into(),
+            quit_flag,
+        }
     }
 }
 
 impl Module for ModuleA {
-    fn name(&self) -> &str { &self.name }
-    fn dependencies(&self) -> Vec<&str> { vec![] }
+    fn name(&self) -> &str {
+        &self.name
+    }
+    fn dependencies(&self) -> Vec<&str> {
+        vec![]
+    }
     fn on_init(&mut self) {
         println!("[{}] Initialized", self.name);
     }
@@ -31,7 +41,9 @@ impl Module for ModuleA {
     fn on_shutdown(&mut self) {
         println!("[{}] Shutdown", self.name);
     }
-    fn enabled(&self) -> bool { true }
+    fn enabled(&self) -> bool {
+        true
+    }
 }
 
 // 模块 B：依赖 A
@@ -43,13 +55,20 @@ struct ModuleB {
 
 impl ModuleB {
     fn new(quit_flag: Arc<AtomicBool>) -> Self {
-        Self { name: "ModuleB".into(), quit_flag }
+        Self {
+            name: "ModuleB".into(),
+            quit_flag,
+        }
     }
 }
 
 impl Module for ModuleB {
-    fn name(&self) -> &str { &self.name }
-    fn dependencies(&self) -> Vec<&str> { vec!["ModuleA"] }
+    fn name(&self) -> &str {
+        &self.name
+    }
+    fn dependencies(&self) -> Vec<&str> {
+        vec!["ModuleA"]
+    }
     fn on_init(&mut self) {
         println!("[{}] Initialized", self.name);
     }
@@ -58,7 +77,9 @@ impl Module for ModuleB {
     fn on_shutdown(&mut self) {
         println!("[{}] Shutdown", self.name);
     }
-    fn enabled(&self) -> bool { true }
+    fn enabled(&self) -> bool {
+        true
+    }
 }
 
 fn main() {

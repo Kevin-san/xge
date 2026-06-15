@@ -13,22 +13,34 @@ pub enum Platform {
 impl Platform {
     pub fn current() -> Self {
         #[cfg(target_os = "windows")]
-        { Platform::Windows }
+        {
+            Platform::Windows
+        }
 
         #[cfg(target_os = "linux")]
-        { Platform::Linux }
+        {
+            Platform::Linux
+        }
 
         #[cfg(target_os = "macos")]
-        { Platform::MacOS }
+        {
+            Platform::MacOS
+        }
 
         #[cfg(target_os = "android")]
-        { Platform::Android }
+        {
+            Platform::Android
+        }
 
         #[cfg(target_os = "ios")]
-        { Platform::IOS }
+        {
+            Platform::IOS
+        }
 
         #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
-        { Platform::Web }
+        {
+            Platform::Web
+        }
 
         #[cfg(not(any(
             target_os = "windows",
@@ -38,7 +50,9 @@ impl Platform {
             target_os = "ios",
             all(target_arch = "wasm32", target_os = "unknown")
         )))]
-        { Platform::Unknown }
+        {
+            Platform::Unknown
+        }
     }
 
     pub fn is_desktop(&self) -> bool {

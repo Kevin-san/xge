@@ -1,5 +1,5 @@
-use alloc::collections::BTreeMap;
 use crate::AssetId;
+use alloc::collections::BTreeMap;
 
 /// 通用资源管理器
 pub struct ResourceManager<T> {

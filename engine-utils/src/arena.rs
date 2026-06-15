@@ -1,5 +1,5 @@
-use alloc::vec::Vec;
 use crate::Handle;
+use alloc::vec::Vec;
 
 /// 使用 free list 的对象池，提供 O(1) 平均复杂度的增删改查
 pub struct Arena<T> {
@@ -46,7 +46,7 @@ impl<T> Arena<T> {
             self.generations.push(0);
             (index, 0)
         };
-        
+
         self.len += 1;
         Handle::<T>::new(index, generation)
     }
@@ -56,23 +56,23 @@ impl<T> Arena<T> {
         if handle.is_null() {
             return None;
         }
-        
+
         let index = handle.index() as usize;
         if index >= self.items.len() {
             return None;
         }
-        
+
         if self.generations[index] != handle.generation() {
             return None;
         }
-        
+
         let value = self.items[index].take();
         if value.is_some() {
             self.generations[index] += 1;
             self.free_indices.push(handle.index());
             self.len -= 1;
         }
-        
+
         value
     }
 
@@ -81,16 +81,16 @@ impl<T> Arena<T> {
         if handle.is_null() {
             return None;
         }
-        
+
         let index = handle.index() as usize;
         if index >= self.items.len() {
             return None;
         }
-        
+
         if self.generations[index] != handle.generation() {
             return None;
         }
-        
+
         self.items[index].as_ref()
     }
 
@@ -99,16 +99,16 @@ impl<T> Arena<T> {
         if handle.is_null() {
             return None;
         }
-        
+
         let index = handle.index() as usize;
         if index >= self.items.len() {
             return None;
         }
-        
+
         if self.generations[index] != handle.generation() {
             return None;
         }
-        
+
         self.items[index].as_mut()
     }
 
@@ -180,7 +180,7 @@ impl<'a, T> Iterator for ArenaIter<'a, T> {
         while self.index < self.arena.items.len() {
             let idx = self.index;
             self.index += 1;
-            
+
             if let Some(ref item) = self.arena.items[idx] {
                 let handle: Handle<T> = Handle::new(idx as u32, self.arena.generations[idx]);
                 return Some((handle, item));
@@ -215,7 +215,7 @@ mod tests {
         let h = arena.insert(1);
         arena.remove(h);
         let h2 = arena.insert(2);
-        
+
         // 不同 generation，不是同一个对象
         assert!(arena.get(h).is_none());
         assert_eq!(arena.get(h2), Some(&2));
@@ -227,9 +227,9 @@ mod tests {
         let h1 = arena.insert(1);
         let h2 = arena.insert(2);
         let h3 = arena.insert(3);
-        
+
         arena.remove(h2);
-        
+
         let h4 = arena.insert(4);
         // 应该复用 freed slot
         assert_eq!(h4.index(), h2.index());
@@ -242,7 +242,7 @@ mod tests {
         arena.insert(1);
         arena.insert(2);
         arena.insert(3);
-        
+
         let sum: i32 = arena.iter().map(|(_, v)| *v).sum();
         assert_eq!(sum, 6);
     }
@@ -251,10 +251,10 @@ mod tests {
     fn test_len() {
         let mut arena = Arena::new();
         assert!(arena.is_empty());
-        
+
         arena.insert(1);
         assert_eq!(arena.len(), 1);
-        
+
         let h = arena.insert(2);
         arena.remove(h);
         assert_eq!(arena.len(), 1);
@@ -266,7 +266,7 @@ mod tests {
         let h1 = arena.insert(1);
         arena.insert(2);
         arena.insert(3);
-        
+
         arena.retain(|_, v| *v > 1);
         assert!(arena.get(h1).is_none());
         assert_eq!(arena.len(), 2);

@@ -45,7 +45,10 @@ impl Time {
         let steps = (self.fixed_timestep_accumulator / self.fixed_timestep).floor() as usize;
         self.fixed_timestep_accumulator -= steps as f64 * self.fixed_timestep;
 
-        FixedTimestepSteps { steps, fixed_timestep: self.fixed_timestep }
+        FixedTimestepSteps {
+            steps,
+            fixed_timestep: self.fixed_timestep,
+        }
     }
 
     pub fn delta_seconds(&self) -> f64 {
@@ -156,12 +159,11 @@ impl Stopwatch {
     }
 
     pub fn elapsed(&self) -> Duration {
-        let current = if let Some(start) = self.start {
+        if let Some(start) = self.start {
             self.elapsed + Instant::now().duration_since(start)
         } else {
             self.elapsed
-        };
-        current
+        }
     }
 
     pub fn elapsed_secs(&self) -> f64 {
@@ -200,7 +202,10 @@ mod tests {
 
     #[test]
     fn test_fixed_timestep_iter() {
-        let steps = FixedTimestepSteps { steps: 3, fixed_timestep: 0.016 };
+        let steps = FixedTimestepSteps {
+            steps: 3,
+            fixed_timestep: 0.016,
+        };
         let sum: f64 = steps.iter().sum();
         assert!((sum - 0.048).abs() < 1e-6);
     }

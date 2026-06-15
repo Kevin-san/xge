@@ -8,14 +8,15 @@ pub const SHUTDOWN: &str = "Shutdown";
 
 /// 执行阶段
 struct Stage {
+    #[allow(dead_code)]
     name: String,
     systems: Vec<Box<dyn FnMut() + Send + Sync + 'static>>,
 }
 
 /// 任务调度器
-/// 
+///
 /// 允许注册多个执行阶段，按注册顺序执行
-/// 
+///
 /// # Example
 /// ```ignore
 /// let mut schedule = Schedule::new();
@@ -45,13 +46,13 @@ impl Schedule {
             stages: HashMap::new(),
             stage_order: Vec::new(),
         };
-        
+
         // 添加默认阶段
         schedule.add_stage(STARTUP);
         schedule.add_stage(UPDATE);
         schedule.add_stage(RENDER);
         schedule.add_stage(SHUTDOWN);
-        
+
         schedule
     }
 
@@ -59,10 +60,13 @@ impl Schedule {
     pub fn add_stage(&mut self, name: impl Into<String>) -> &mut Self {
         let name = name.into();
         if !self.stages.contains_key(&name) {
-            self.stages.insert(name.clone(), Stage {
-                name: name.clone(),
-                systems: Vec::new(),
-            });
+            self.stages.insert(
+                name.clone(),
+                Stage {
+                    name: name.clone(),
+                    systems: Vec::new(),
+                },
+            );
             self.stage_order.push(name);
         }
         self
@@ -110,7 +114,10 @@ impl Schedule {
 
     /// 获取指定阶段的系统数量
     pub fn system_count(&self, stage_name: &str) -> usize {
-        self.stages.get(stage_name).map(|s| s.systems.len()).unwrap_or(0)
+        self.stages
+            .get(stage_name)
+            .map(|s| s.systems.len())
+            .unwrap_or(0)
     }
 
     /// 获取所有阶段名称
@@ -137,12 +144,12 @@ mod tests {
     fn test_add_system() {
         let mut schedule = Schedule::new();
         let counter = Arc::new(AtomicUsize::new(0));
-        
+
         let c = counter.clone();
         schedule.add_system_to_stage(UPDATE, move || {
             c.fetch_add(1, Ordering::SeqCst);
         });
-        
+
         schedule.run_stage(UPDATE);
         assert_eq!(counter.load(Ordering::SeqCst), 1);
     }
@@ -151,14 +158,14 @@ mod tests {
     fn test_multiple_systems() {
         let mut schedule = Schedule::new();
         let counter = Arc::new(AtomicUsize::new(0));
-        
+
         for _ in 0..3 {
             let c = counter.clone();
             schedule.add_system_to_stage(UPDATE, move || {
                 c.fetch_add(1, Ordering::SeqCst);
             });
         }
-        
+
         schedule.run_stage(UPDATE);
         assert_eq!(counter.load(Ordering::SeqCst), 3);
     }
@@ -167,14 +174,14 @@ mod tests {
     fn test_run_all_stages() {
         let mut schedule = Schedule::new();
         let counter = Arc::new(AtomicUsize::new(0));
-        
+
         for stage in [STARTUP, UPDATE, RENDER, SHUTDOWN] {
             let c = counter.clone();
             schedule.add_system_to_stage(stage, move || {
                 c.fetch_add(1, Ordering::SeqCst);
             });
         }
-        
+
         schedule.run();
         assert_eq!(counter.load(Ordering::SeqCst), 4);
     }
@@ -183,12 +190,12 @@ mod tests {
     fn test_clear_stage() {
         let mut schedule = Schedule::new();
         let counter = Arc::new(AtomicUsize::new(0));
-        
+
         let c = counter.clone();
         schedule.add_system_to_stage(UPDATE, move || {
             c.fetch_add(1, Ordering::SeqCst);
         });
-        
+
         schedule.clear_stage(UPDATE);
         schedule.run_stage(UPDATE);
         assert_eq!(counter.load(Ordering::SeqCst), 0);

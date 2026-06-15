@@ -1,5 +1,5 @@
 use core::fmt;
-use core::ops::{Mul};
+use core::ops::Mul;
 
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
 pub struct Quat {
@@ -10,24 +10,44 @@ pub struct Quat {
 }
 
 impl Quat {
-    pub const IDENTITY: Self = Self { x: 0.0, y: 0.0, z: 0.0, w: 1.0 };
+    pub const IDENTITY: Self = Self {
+        x: 0.0,
+        y: 0.0,
+        z: 0.0,
+        w: 1.0,
+    };
 
     #[inline]
     pub fn from_rotation_x(angle: f32) -> Self {
         let half = angle / 2.0;
-        Self { x: half.sin(), y: 0.0, z: 0.0, w: half.cos() }
+        Self {
+            x: half.sin(),
+            y: 0.0,
+            z: 0.0,
+            w: half.cos(),
+        }
     }
 
     #[inline]
     pub fn from_rotation_y(angle: f32) -> Self {
         let half = angle / 2.0;
-        Self { x: 0.0, y: half.sin(), z: 0.0, w: half.cos() }
+        Self {
+            x: 0.0,
+            y: half.sin(),
+            z: 0.0,
+            w: half.cos(),
+        }
     }
 
     #[inline]
     pub fn from_rotation_z(angle: f32) -> Self {
         let half = angle / 2.0;
-        Self { x: 0.0, y: 0.0, z: half.sin(), w: half.cos() }
+        Self {
+            x: 0.0,
+            y: 0.0,
+            z: half.sin(),
+            w: half.cos(),
+        }
     }
 
     #[inline]
@@ -63,12 +83,19 @@ impl Quat {
 
     #[inline]
     pub fn slerp(self, other: Self, t: f32) -> Self {
-        let mut cos_half = self.x * other.x + self.y * other.y + self.z * other.z + self.w * other.w;
-        
+        let mut cos_half =
+            self.x * other.x + self.y * other.y + self.z * other.z + self.w * other.w;
+
         if cos_half < 0.0 {
             cos_half = -cos_half;
             let (ox, oy, oz, ow) = (-other.x, -other.y, -other.z, -other.w);
-            Self { x: ox, y: oy, z: oz, w: ow }.slerp_impl(self, t, cos_half)
+            Self {
+                x: ox,
+                y: oy,
+                z: oz,
+                w: ow,
+            }
+            .slerp_impl(self, t, cos_half)
         } else {
             self.slerp_impl(other, t, cos_half)
         }
@@ -76,8 +103,8 @@ impl Quat {
 
     fn slerp_impl(self, other: Self, t: f32, cos_half: f32) -> Self {
         let half;
-        let mut sin_half = (1.0 - cos_half * cos_half).sqrt();
-        
+        let sin_half = (1.0 - cos_half * cos_half).sqrt();
+
         if sin_half < 0.001 {
             Self {
                 x: self.x * (1.0 - t) + other.x * t,
@@ -134,7 +161,11 @@ impl Mul<Vec3> for Quat {
 
 impl fmt::Display for Quat {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Quat({:.2}, {:.2}, {:.2}, {:.2})", self.x, self.y, self.z, self.w)
+        write!(
+            f,
+            "Quat({:.2}, {:.2}, {:.2}, {:.2})",
+            self.x, self.y, self.z, self.w
+        )
     }
 }
 

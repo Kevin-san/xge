@@ -1,5 +1,5 @@
-use core::ops::{Add, Sub, Mul, Div, Neg};
 use core::fmt;
+use core::ops::{Add, Div, Mul, Neg, Sub};
 
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
 #[repr(C)]
@@ -11,12 +11,42 @@ pub struct Vec4 {
 }
 
 impl Vec4 {
-    pub const ZERO: Self = Self { x: 0.0, y: 0.0, z: 0.0, w: 0.0 };
-    pub const ONE: Self = Self { x: 1.0, y: 1.0, z: 1.0, w: 1.0 };
-    pub const X: Self = Self { x: 1.0, y: 0.0, z: 0.0, w: 0.0 };
-    pub const Y: Self = Self { x: 0.0, y: 1.0, z: 0.0, w: 0.0 };
-    pub const Z: Self = Self { x: 0.0, y: 0.0, z: 1.0, w: 0.0 };
-    pub const W: Self = Self { x: 0.0, y: 0.0, z: 0.0, w: 1.0 };
+    pub const ZERO: Self = Self {
+        x: 0.0,
+        y: 0.0,
+        z: 0.0,
+        w: 0.0,
+    };
+    pub const ONE: Self = Self {
+        x: 1.0,
+        y: 1.0,
+        z: 1.0,
+        w: 1.0,
+    };
+    pub const X: Self = Self {
+        x: 1.0,
+        y: 0.0,
+        z: 0.0,
+        w: 0.0,
+    };
+    pub const Y: Self = Self {
+        x: 0.0,
+        y: 1.0,
+        z: 0.0,
+        w: 0.0,
+    };
+    pub const Z: Self = Self {
+        x: 0.0,
+        y: 0.0,
+        z: 1.0,
+        w: 0.0,
+    };
+    pub const W: Self = Self {
+        x: 0.0,
+        y: 0.0,
+        z: 0.0,
+        w: 1.0,
+    };
 
     #[inline]
     pub const fn new(x: f32, y: f32, z: f32, w: f32) -> Self {
@@ -25,7 +55,12 @@ impl Vec4 {
 
     #[inline]
     pub fn splat(v: f32) -> Self {
-        Self { x: v, y: v, z: v, w: v }
+        Self {
+            x: v,
+            y: v,
+            z: v,
+            w: v,
+        }
     }
 
     #[inline]
@@ -78,7 +113,12 @@ impl Add for Vec4 {
     type Output = Self;
     #[inline]
     fn add(self, other: Self) -> Self {
-        Self::new(self.x + other.x, self.y + other.y, self.z + other.z, self.w + other.w)
+        Self::new(
+            self.x + other.x,
+            self.y + other.y,
+            self.z + other.z,
+            self.w + other.w,
+        )
     }
 }
 
@@ -86,7 +126,12 @@ impl Sub for Vec4 {
     type Output = Self;
     #[inline]
     fn sub(self, other: Self) -> Self {
-        Self::new(self.x - other.x, self.y - other.y, self.z - other.z, self.w - other.w)
+        Self::new(
+            self.x - other.x,
+            self.y - other.y,
+            self.z - other.z,
+            self.w - other.w,
+        )
     }
 }
 
@@ -94,7 +139,12 @@ impl Mul<Vec4> for Vec4 {
     type Output = Self;
     #[inline]
     fn mul(self, other: Vec4) -> Self {
-        Self::new(self.x * other.x, self.y * other.y, self.z * other.z, self.w * other.w)
+        Self::new(
+            self.x * other.x,
+            self.y * other.y,
+            self.z * other.z,
+            self.w * other.w,
+        )
     }
 }
 
@@ -102,7 +152,12 @@ impl Mul<f32> for Vec4 {
     type Output = Self;
     #[inline]
     fn mul(self, scalar: f32) -> Self {
-        Self::new(self.x * scalar, self.y * scalar, self.z * scalar, self.w * scalar)
+        Self::new(
+            self.x * scalar,
+            self.y * scalar,
+            self.z * scalar,
+            self.w * scalar,
+        )
     }
 }
 
@@ -110,7 +165,12 @@ impl Mul<Vec4> for f32 {
     type Output = Vec4;
     #[inline]
     fn mul(self, other: Vec4) -> Vec4 {
-        Vec4::new(self * other.x, self * other.y, self * other.z, self * other.w)
+        Vec4::new(
+            self * other.x,
+            self * other.y,
+            self * other.z,
+            self * other.w,
+        )
     }
 }
 
@@ -118,7 +178,12 @@ impl Div for Vec4 {
     type Output = Self;
     #[inline]
     fn div(self, other: Self) -> Self {
-        Self::new(self.x / other.x, self.y / other.y, self.z / other.z, self.w / other.w)
+        Self::new(
+            self.x / other.x,
+            self.y / other.y,
+            self.z / other.z,
+            self.w / other.w,
+        )
     }
 }
 
@@ -126,7 +191,12 @@ impl Div<f32> for Vec4 {
     type Output = Self;
     #[inline]
     fn div(self, scalar: f32) -> Self {
-        Self::new(self.x / scalar, self.y / scalar, self.z / scalar, self.w / scalar)
+        Self::new(
+            self.x / scalar,
+            self.y / scalar,
+            self.z / scalar,
+            self.w / scalar,
+        )
     }
 }
 
@@ -152,7 +222,7 @@ mod tests {
     fn test_basic_operations() {
         let a = Vec4::new(1.0, 2.0, 3.0, 4.0);
         let b = Vec4::new(5.0, 6.0, 7.0, 8.0);
-        
+
         assert_eq!(a + b, Vec4::new(6.0, 8.0, 10.0, 12.0));
         assert_eq!(a - b, Vec4::new(-4.0, -4.0, -4.0, -4.0));
         assert_eq!(a * 2.0, Vec4::new(2.0, 4.0, 6.0, 8.0));

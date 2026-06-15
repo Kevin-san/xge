@@ -1,6 +1,6 @@
-use std::sync::{Arc, atomic::AtomicBool};
 use crate::engine::{Engine, EngineConfig};
 use crate::module::Module;
+use std::sync::{atomic::AtomicBool, Arc};
 
 pub trait App: Send + Sync {
     fn setup(&mut self) {}

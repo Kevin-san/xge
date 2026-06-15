@@ -2,10 +2,10 @@
 //!
 //! Provides time management, file system abstraction, thread pool, and platform detection.
 
-mod time;
-mod thread_pool;
 mod platform;
+mod thread_pool;
+mod time;
 
-pub use time::{Time, FixedTimestepSteps, Stopwatch};
+pub use platform::{Feature, Platform};
 pub use thread_pool::ThreadPool;
-pub use platform::{Platform, Feature};
+pub use time::{FixedTimestepSteps, Stopwatch, Time};

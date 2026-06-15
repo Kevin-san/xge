@@ -39,7 +39,5 @@ fn get_git_commit_hash() -> Option<String> {
 }
 
 fn get_build_timestamp() -> String {
-    chrono::Local::now()
-        .format("%Y-%m-%d %H:%M:%S")
-        .to_string()
+    chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string()
 }
