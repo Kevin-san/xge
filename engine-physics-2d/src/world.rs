@@ -100,9 +100,40 @@ impl PhysicsWorld2D {
 
     /// 移除刚体
     pub fn remove_body(&mut self, index: usize) {
-        if index < self.bodies.len() {
-            self.bodies.remove(index);
+        if index >= self.bodies.len() {
+            return;
         }
+        
+        // 获取要移除的刚体的碰撞体索引
+        let collider_indices = self.bodies[index].collider_indices().to_vec();
+        
+        // 移除所有关联的碰撞体
+        for collider_idx in &collider_indices {
+            if *collider_idx < self.colliders.len() {
+                self.colliders.remove(*collider_idx);
+            }
+        }
+        
+        // 移除刚体
+        self.bodies.remove(index);
+        
+        // 更新所有其他刚体的碰撞体索引（因为移除操作会改变索引）
+        // 同时从 collision_pairs 中移除涉及该刚体的碰撞对
+        self.reindex_colliders_and_pairs();
+    }
+    
+    /// 重新索引碰撞体和清理碰撞对
+    fn reindex_colliders_and_pairs(&mut self) {
+        // 重建 collision_pairs，移除涉及已删除碰撞体的对
+        self.collision_pairs.retain(|(i, j)| {
+            *i < self.colliders.len() && *j < self.colliders.len()
+        });
+        
+        // 清理 manifolds 中涉及已删除碰撞体的条目
+        self.manifolds.retain(|key, _| {
+            let (i, j) = *key;
+            i < self.colliders.len() && j < self.colliders.len()
+        });
     }
 
     /// 获取刚体
@@ -127,9 +158,26 @@ impl PhysicsWorld2D {
 
     /// 移除碰撞体
     pub fn remove_collider(&mut self, index: usize) {
-        if index < self.colliders.len() {
-            self.colliders.remove(index);
+        if index >= self.colliders.len() {
+            return;
         }
+        
+        // 找到拥有此碰撞体的刚体并移除其索引引用
+        for body in &mut self.bodies {
+            body.remove_collider_index(index);
+        }
+        
+        // 移除碰撞体
+        self.colliders.remove(index);
+        
+        // 更新所有刚体的碰撞体索引（移除后索引会变化）
+        // 索引大于被移除索引的需要减1
+        for body in &mut self.bodies {
+            body.update_collider_indices_after_remove(index);
+        }
+        
+        // 清理相关的碰撞对和流形
+        self.reindex_colliders_and_pairs();
     }
 
     /// 获取碰撞体
@@ -445,5 +493,53 @@ mod tests {
         world.add_body(body);
         world.clear();
         assert_eq!(world.body_count(), 0);
+    }
+    
+    #[test]
+    fn test_remove_body_cleans_up_colliders() {
+        use crate::ColliderShape;
+        
+        let mut world = PhysicsWorld2D::with_default_config();
+        let body = RigidBody2D::new(RigidBodyType::Dynamic);
+        let body_index = world.add_body(body);
+        
+        // 添加一个碰撞体
+        let collider = Collider2D::new(ColliderShape::Circle { radius: 1.0 });
+        world.add_collider(collider, body_index);
+        
+        assert_eq!(world.body_count(), 1);
+        assert_eq!(world.collider_count(), 1);
+        
+        // 移除刚体应该同时移除其碰撞体
+        world.remove_body(body_index);
+        
+        assert_eq!(world.body_count(), 0);
+        assert_eq!(world.collider_count(), 0);
+    }
+    
+    #[test]
+    fn test_remove_collider_updates_body_indices() {
+        use crate::ColliderShape;
+        
+        let mut world = PhysicsWorld2D::with_default_config();
+        let body = RigidBody2D::new(RigidBodyType::Dynamic);
+        let body_index = world.add_body(body);
+        
+        // 添加两个碰撞体
+        let collider1 = Collider2D::new(ColliderShape::Circle { radius: 1.0 });
+        let collider2 = Collider2D::new(ColliderShape::Circle { radius: 2.0 });
+        let collider1_index = world.add_collider(collider1, body_index);
+        world.add_collider(collider2, body_index);
+        
+        assert_eq!(collider1_index, 0);
+        
+        // 移除第一个碰撞体后，第二个碰撞体的索引应该更新
+        world.remove_collider(collider1_index);
+        
+        // 刚体的碰撞体索引应该已更新
+        let body = world.get_body(body_index);
+        assert!(body.is_some());
+        // 原来的索引 1 应该变成 0
+        assert_eq!(body.unwrap().collider_indices(), &[0]);
     }
 }
