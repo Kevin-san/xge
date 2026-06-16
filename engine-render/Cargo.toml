@@ -18,6 +18,7 @@ image = { version = "0.25", features = ["png", "jpeg", "bmp", "gif"] }
 anyhow = "1.0"
 parking_lot = "0.12"
 thiserror = "1.0"
+bytemuck = { version = "1.14", features = ["derive"] }
 
 # Internal crates
 engine-core = { path = "../engine-core" }
