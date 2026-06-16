@@ -168,7 +168,7 @@ impl TextureAtlasBuilder {
 
     /// 构建图集
     ///
-    /// 返回 (TextureAtlas, Vec<Rect>) 元组
+    /// 返回 `(TextureAtlas, Vec<Rect>)` 元组
     pub fn build(&self, _ctx: &super::RenderContext) -> anyhow::Result<(TextureAtlas, Vec<Rect>)> {
         if self.images.is_empty() {
             return Err(anyhow::anyhow!("No images to pack"));

@@ -109,16 +109,13 @@ impl Joint2D {
     }
 
     #[allow(dead_code)]
-    fn pre_solve(&mut self, _world: &PhysicsWorld2D, _dt: f32) {
-    }
+    fn pre_solve(&mut self, _world: &PhysicsWorld2D, _dt: f32) {}
 
     #[allow(dead_code)]
-    fn solve(&mut self, _world: &PhysicsWorld2D) {
-    }
+    fn solve(&mut self, _world: &PhysicsWorld2D) {}
 
     #[allow(dead_code)]
-    fn post_solve(&mut self) {
-    }
+    fn post_solve(&mut self) {}
 }
 
 /// 距离关节

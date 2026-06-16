@@ -288,8 +288,7 @@ impl PhysicsWorld2D {
     }
 
     #[allow(dead_code)]
-    fn resolve_contact(&self, _contact: &Contact) {
-    }
+    fn resolve_contact(&self, _contact: &Contact) {}
 
     /// 关节约束求解
     fn solve_joints(&mut self) {

@@ -1,0 +1,23 @@
+[package]
+name = "engine-physics-3d"
+version = "0.1.0"
+edition = "2021"
+authors = ["Game Engine Team"]
+description = "3D Physics engine for game development"
+license = "MIT OR Apache-2.0"
+repository = ""
+keywords = ["game", "physics", "3d", "engine"]
+categories = ["game-engine", "simulation"]
+
+[dependencies]
+# Internal crates
+engine-math = { path = "../engine-math" }
+engine-utils = { path = "../engine-utils" }
+
+# External crates
+anyhow = "1.0"
+thiserror = "1.0"
+parking_lot = "0.12"
+
+[dev-dependencies]
+criterion = "0.5"

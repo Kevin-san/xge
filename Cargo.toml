@@ -7,10 +7,20 @@ members = [
     "engine-platform",
     "engine-window",
     "engine-render",
+    "engine-render-3d",
     "engine-physics-2d",
+    "engine-physics-3d",
     "engine-scene",
     "engine-ecs",
     "engine-ui",
+    "engine-editor",
+    "engine-build",
+    "engine-pbr",
+    "engine-particles",
+    "engine-animation",
+    "engine-blueprint",
+    "engine-network",
+    "engine-ecosystem",
     "examples",
 ]
 
@@ -34,6 +44,15 @@ engine-platform = { path = "engine-platform" }
 engine-window = { path = "engine-window" }
 engine-render = { path = "engine-render" }
 engine-physics-2d = { path = "engine-physics-2d" }
+engine-physics-3d = { path = "engine-physics-3d" }
 engine-scene = { path = "engine-scene" }
 engine-ecs = { path = "engine-ecs" }
 engine-ui = { path = "engine-ui" }
+engine-editor = { path = "engine-editor" }
+engine-build = { path = "engine-build" }
+engine-pbr = { path = "engine-pbr" }
+engine-particles = { path = "engine-particles" }
+engine-render-3d = { path = "engine-render-3d" }
+engine-animation = { path = "engine-animation" }
+engine-blueprint = { path = "engine-blueprint" }
+engine-network = { path = "engine-network" }

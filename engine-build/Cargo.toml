@@ -1,0 +1,35 @@
+[package]
+name = "engine-build"
+version = "0.8.0"
+edition = "2021"
+rust-version = "1.70"
+authors = ["Game Engine Team"]
+license = "MIT OR Apache-2.0"
+description = "Game engine build pipeline and asset processing library"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+sha2 = "0.10"
+thiserror = "1.0"
+walkdir = "2.5"
+
+# Compression
+zstd = "0.13"
+flate2 = "1.0"
+
+# Encryption (optional)
+aes-gcm = { version = "0.10", optional = true }
+chacha20poly1305 = { version = "0.10", optional = true }
+
+# Image processing
+image = { version = "0.25", optional = true }
+
+[features]
+default = []
+encryption = ["aes-gcm", "chacha20poly1305"]
+image-processing = ["image"]
+
+[dev-dependencies]
+tempfile = "3.10"

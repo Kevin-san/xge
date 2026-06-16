@@ -284,13 +284,15 @@ impl UiRoot {
     }
 
     fn layout_children_internal(&self, world: &mut World, entity: Entity) {
-        let layout_data = world.get_component::<UiNode>(entity).map(|node| (
-            node.layout_dir,
-            node.layout_props.padding.left,
-            node.layout_props.padding.top,
-            node.layout_props.spacing,
-            node.children().to_vec(),
-        ));
+        let layout_data = world.get_component::<UiNode>(entity).map(|node| {
+            (
+                node.layout_dir,
+                node.layout_props.padding.left,
+                node.layout_props.padding.top,
+                node.layout_props.spacing,
+                node.children().to_vec(),
+            )
+        });
 
         if let Some((layout_dir, padding_left, padding_top, spacing, children)) = layout_data {
             let mut pos = Vec2::new(padding_left, padding_top);

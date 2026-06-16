@@ -22,9 +22,9 @@
 //! - [`camera`] - OrthographicCamera / Camera2D 正交相机
 //! - [`color`] - Color RGBA 颜色与 BlendMode 混合模式
 //! - [`draw_params`] - DrawParams 绘制参数
-//! - [`shader`] - Shader / Pipeline / Buffer / BindGroup 着色器抽象
-//! - [`debug_renderer`] - DebugRenderer 调试图形
-//! - [`render_stats`] - RenderStats 渲染统计
+//! - Shader / Pipeline / Buffer / BindGroup - 着色器抽象（内部实现）
+//! - DebugRenderer - 调试图形（内部实现）
+//! - [`RenderStats`] - 渲染统计（已公开）
 
 // Re-export commonly used types
 pub use animated_sprite::{AnimatedSprite, LoopMode};

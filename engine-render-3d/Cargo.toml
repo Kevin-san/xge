@@ -1,0 +1,18 @@
+[package]
+name = "engine-render-3d"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.70"
+authors = ["Game Engine Team"]
+license = "MIT OR Apache-2.0"
+description = "Game engine 3D rendering library"
+
+[features]
+default = ["std"]
+std = []
+
+[dependencies]
+engine-math = { path = "../engine-math" }
+engine-utils = { path = "../engine-utils" }
+
+[dev-dependencies]

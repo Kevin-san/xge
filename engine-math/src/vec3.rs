@@ -1,5 +1,5 @@
 use core::fmt;
-use core::ops::{Add, Div, Mul, Neg, Sub};
+use core::ops::{Add, AddAssign, Div, Mul, MulAssign, Neg, Sub, SubAssign};
 
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
 #[repr(C)]
@@ -104,6 +104,11 @@ impl Vec3 {
     pub fn distance_squared(self, other: Self) -> f32 {
         (self - other).length_squared()
     }
+
+    #[inline]
+    pub fn abs(self) -> Self {
+        Self::new(self.x.abs(), self.y.abs(), self.z.abs())
+    }
 }
 
 impl Add for Vec3 {
@@ -167,6 +172,33 @@ impl Neg for Vec3 {
     #[inline]
     fn neg(self) -> Self {
         Self::new(-self.x, -self.y, -self.z)
+    }
+}
+
+impl AddAssign for Vec3 {
+    #[inline]
+    fn add_assign(&mut self, other: Self) {
+        self.x += other.x;
+        self.y += other.y;
+        self.z += other.z;
+    }
+}
+
+impl SubAssign for Vec3 {
+    #[inline]
+    fn sub_assign(&mut self, other: Self) {
+        self.x -= other.x;
+        self.y -= other.y;
+        self.z -= other.z;
+    }
+}
+
+impl MulAssign<f32> for Vec3 {
+    #[inline]
+    fn mul_assign(&mut self, scalar: f32) {
+        self.x *= scalar;
+        self.y *= scalar;
+        self.z *= scalar;
     }
 }
 
