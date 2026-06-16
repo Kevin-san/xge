@@ -7,6 +7,7 @@ members = [
     "engine-platform",
     "engine-window",
     "engine-render",
+    "engine-render-3d",
     "engine-physics-2d",
     "engine-scene",
     "engine-ecs",
@@ -33,6 +34,7 @@ engine-utils = { path = "engine-utils" }
 engine-platform = { path = "engine-platform" }
 engine-window = { path = "engine-window" }
 engine-render = { path = "engine-render" }
+engine-render-3d = { path = "engine-render-3d" }
 engine-physics-2d = { path = "engine-physics-2d" }
 engine-scene = { path = "engine-scene" }
 engine-ecs = { path = "engine-ecs" }

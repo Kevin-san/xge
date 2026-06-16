@@ -749,6 +749,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "engine-render-3d"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bytemuck",
+ "criterion",
+ "engine-math",
+ "engine-render",
+ "engine-utils",
+ "glow",
+ "image",
+ "parking_lot",
+ "thiserror 1.0.69",
+]
+
+[[package]]
 name = "engine-scene"
 version = "0.1.0"
 dependencies = [

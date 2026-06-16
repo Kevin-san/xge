@@ -104,6 +104,26 @@ impl Vec3 {
     pub fn distance_squared(self, other: Self) -> f32 {
         (self - other).length_squared()
     }
+
+    /// 逐分量取最小
+    #[inline]
+    pub fn min(self, other: Self) -> Self {
+        Self::new(
+            if self.x < other.x { self.x } else { other.x },
+            if self.y < other.y { self.y } else { other.y },
+            if self.z < other.z { self.z } else { other.z },
+        )
+    }
+
+    /// 逐分量取最大
+    #[inline]
+    pub fn max(self, other: Self) -> Self {
+        Self::new(
+            if self.x > other.x { self.x } else { other.x },
+            if self.y > other.y { self.y } else { other.y },
+            if self.z > other.z { self.z } else { other.z },
+        )
+    }
 }
 
 impl Add for Vec3 {

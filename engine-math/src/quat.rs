@@ -17,6 +17,12 @@ impl Quat {
         w: 1.0,
     };
 
+    /// 从分量创建四元数
+    #[inline]
+    pub const fn new(x: f32, y: f32, z: f32, w: f32) -> Self {
+        Self { x, y, z, w }
+    }
+
     #[inline]
     pub fn from_rotation_x(angle: f32) -> Self {
         let half = angle / 2.0;
@@ -135,6 +141,60 @@ impl Quat {
         };
         result.normalize()
     }
+
+    /// 从矩阵创建四元数
+    pub fn from_matrix(m: &Mat4) -> Option<Self> {
+        let trace = m.cols[0][0] + m.cols[1][1] + m.cols[2][2];
+
+        if trace > 0.0 {
+            let s = (trace + 1.0).sqrt();
+            let inv_s = 1.0 / s;
+            Some(Self {
+                x: (m.cols[2][1] - m.cols[1][2]) * inv_s,
+                y: (m.cols[0][2] - m.cols[2][0]) * inv_s,
+                z: (m.cols[1][0] - m.cols[0][1]) * inv_s,
+                w: s * 0.5,
+            })
+        } else if m.cols[0][0] > m.cols[1][1] && m.cols[0][0] > m.cols[2][2] {
+            let s = (1.0 + m.cols[0][0] - m.cols[1][1] - m.cols[2][2]).sqrt();
+            let inv_s = 1.0 / s;
+            Some(Self {
+                x: 0.5 * s,
+                y: (m.cols[1][0] + m.cols[0][1]) * inv_s,
+                z: (m.cols[0][2] + m.cols[2][0]) * inv_s,
+                w: (m.cols[2][1] - m.cols[1][2]) * inv_s,
+            })
+        } else if m.cols[1][1] > m.cols[2][2] {
+            let s = (1.0 + m.cols[1][1] - m.cols[0][0] - m.cols[2][2]).sqrt();
+            let inv_s = 1.0 / s;
+            Some(Self {
+                x: (m.cols[1][0] + m.cols[0][1]) * inv_s,
+                y: 0.5 * s,
+                z: (m.cols[2][1] + m.cols[1][2]) * inv_s,
+                w: (m.cols[0][2] - m.cols[2][0]) * inv_s,
+            })
+        } else {
+            let s = (1.0 + m.cols[2][2] - m.cols[0][0] - m.cols[1][1]).sqrt();
+            let inv_s = 1.0 / s;
+            Some(Self {
+                x: (m.cols[0][2] + m.cols[2][0]) * inv_s,
+                y: (m.cols[2][1] + m.cols[1][2]) * inv_s,
+                z: 0.5 * s,
+                w: (m.cols[1][0] - m.cols[0][1]) * inv_s,
+            })
+        }
+    }
+
+    /// 乘以 Vec4
+    pub fn mul_vec4(&self, v: &Vec4) -> Vec4 {
+        let qv = Vec3::new(self.x, self.y, self.z);
+        let uv = qv.cross(Vec3::new(v.x, v.y, v.z));
+        let uuv = qv.cross(uv);
+        let uuv = uuv * 2.0 * self.w;
+        let uv = uv * 2.0;
+        let result = Vec3::new(v.x, v.y, v.z) + uuv + uv;
+        Vec4::new(result.x, result.y, result.z, v.w)
+    }
 }
 
 impl Mul for Quat {
@@ -170,3 +230,5 @@ impl fmt::Display for Quat {
 }
 
 use super::Vec3;
+use super::Vec4;
+use super::Mat4;
