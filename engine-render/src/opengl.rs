@@ -7,7 +7,10 @@ use std::collections::HashMap;
 use std::ptr;
 
 use crate::sprite::Rect;
-use crate::{BlendMode, Camera2D, Color, DrawParams, Image, OrthographicCamera, RenderStats, Renderer, Texture2D, TextureHandle};
+use crate::{
+    BlendMode, Camera2D, Color, DrawParams, Image, OrthographicCamera, RenderStats, Renderer,
+    Texture2D, TextureHandle,
+};
 use engine_math::{Mat4, Vec2, Vec3};
 
 /// 精灵顶点格式
@@ -155,7 +158,8 @@ impl GlRenderer {
             self.gl.disable(glow::DEPTH_TEST);
 
             // 设置视口
-            self.gl.viewport(0, 0, self.window_size.0 as i32, self.window_size.1 as i32);
+            self.gl
+                .viewport(0, 0, self.window_size.0 as i32, self.window_size.1 as i32);
 
             // 设置清除颜色
             self.set_clear_color(self.clear_color);
@@ -168,7 +172,7 @@ impl GlRenderer {
             let vertex_shader = gl
                 .create_shader(glow::VERTEX_SHADER)
                 .expect("Failed to create vertex shader");
-            
+
             gl.shader_source(
                 vertex_shader,
                 r#"
@@ -192,7 +196,7 @@ impl GlRenderer {
                 "#,
             );
             gl.compile_shader(vertex_shader);
-            
+
             if !gl.get_shader_compile_status(vertex_shader) {
                 let msg = gl.get_shader_info_log(vertex_shader);
                 panic!("Vertex shader compile error: {}", msg);
@@ -201,7 +205,7 @@ impl GlRenderer {
             let fragment_shader = gl
                 .create_shader(glow::FRAGMENT_SHADER)
                 .expect("Failed to create fragment shader");
-            
+
             gl.shader_source(
                 fragment_shader,
                 r#"
@@ -226,16 +230,14 @@ impl GlRenderer {
                 "#,
             );
             gl.compile_shader(fragment_shader);
-            
+
             if !gl.get_shader_compile_status(fragment_shader) {
                 let msg = gl.get_shader_info_log(fragment_shader);
                 panic!("Fragment shader compile error: {}", msg);
             }
 
-            let program = gl
-                .create_program()
-                .expect("Failed to create program");
-            
+            let program = gl.create_program().expect("Failed to create program");
+
             gl.attach_shader(program, vertex_shader);
             gl.attach_shader(program, fragment_shader);
             gl.link_program(program);
@@ -259,7 +261,7 @@ impl GlRenderer {
             let vertex_shader = gl
                 .create_shader(glow::VERTEX_SHADER)
                 .expect("Failed to create vertex shader");
-            
+
             gl.shader_source(
                 vertex_shader,
                 r#"
@@ -284,7 +286,7 @@ impl GlRenderer {
             let fragment_shader = gl
                 .create_shader(glow::FRAGMENT_SHADER)
                 .expect("Failed to create fragment shader");
-            
+
             gl.shader_source(
                 fragment_shader,
                 r#"
@@ -299,10 +301,8 @@ impl GlRenderer {
             );
             gl.compile_shader(fragment_shader);
 
-            let program = gl
-                .create_program()
-                .expect("Failed to create program");
-            
+            let program = gl.create_program().expect("Failed to create program");
+
             gl.attach_shader(program, vertex_shader);
             gl.attach_shader(program, fragment_shader);
             gl.link_program(program);
@@ -319,7 +319,8 @@ impl GlRenderer {
         unsafe {
             match mode {
                 BlendMode::Alpha => {
-                    self.gl.blend_func(glow::SRC_ALPHA, glow::ONE_MINUS_SRC_ALPHA);
+                    self.gl
+                        .blend_func(glow::SRC_ALPHA, glow::ONE_MINUS_SRC_ALPHA);
                 }
                 BlendMode::Additive => {
                     self.gl.blend_func(glow::SRC_ALPHA, glow::ONE);
@@ -334,7 +335,8 @@ impl GlRenderer {
                     self.gl.blend_func(glow::ONE, glow::ZERO);
                 }
                 BlendMode::Invert => {
-                    self.gl.blend_func(glow::ONE_MINUS_DST_COLOR, glow::ONE_MINUS_SRC_COLOR);
+                    self.gl
+                        .blend_func(glow::ONE_MINUS_DST_COLOR, glow::ONE_MINUS_SRC_COLOR);
                 }
                 BlendMode::PreMultiplied => {
                     self.gl.blend_func(glow::ONE, glow::ONE_MINUS_SRC_ALPHA);
@@ -347,7 +349,19 @@ impl GlRenderer {
     }
 
     /// 添加精灵到批处理
-    fn add_sprite_to_batch(&mut self, x: f32, y: f32, w: f32, h: f32, u0: f32, v0: f32, u1: f32, v1: f32, color: Color, texture_id: Option<u32>) {
+    fn add_sprite_to_batch(
+        &mut self,
+        x: f32,
+        y: f32,
+        w: f32,
+        h: f32,
+        u0: f32,
+        v0: f32,
+        u1: f32,
+        v1: f32,
+        color: Color,
+        texture_id: Option<u32>,
+    ) {
         // 检查是否需要切换纹理并刷新批处理
         if self.batch_texture.is_some() && self.batch_texture != texture_id {
             self.flush_batch();
@@ -386,7 +400,8 @@ impl GlRenderer {
             self.gl.use_program(Some(self.sprite_program));
 
             // 上传顶点数据
-            self.gl.bind_buffer(glow::ARRAY_BUFFER, Some(self.vertex_buffer));
+            self.gl
+                .bind_buffer(glow::ARRAY_BUFFER, Some(self.vertex_buffer));
             self.gl.buffer_data_u8_slice(
                 glow::ARRAY_BUFFER,
                 bytemuck::cast_slice(&self.batch_vertices),
@@ -394,7 +409,8 @@ impl GlRenderer {
             );
 
             // 上传索引数据
-            self.gl.bind_buffer(glow::ELEMENT_ARRAY_BUFFER, Some(self.index_buffer));
+            self.gl
+                .bind_buffer(glow::ELEMENT_ARRAY_BUFFER, Some(self.index_buffer));
             self.gl.buffer_data_u8_slice(
                 glow::ELEMENT_ARRAY_BUFFER,
                 bytemuck::cast_slice(&self.batch_indices),
@@ -406,15 +422,18 @@ impl GlRenderer {
 
             // 位置属性 (location = 0)
             self.gl.enable_vertex_attrib_array(0);
-            self.gl.vertex_attrib_pointer_f32(0, 3, glow::FLOAT, false, stride, 0);
+            self.gl
+                .vertex_attrib_pointer_f32(0, 3, glow::FLOAT, false, stride, 0);
 
             // UV 属性 (location = 1)
             self.gl.enable_vertex_attrib_array(1);
-            self.gl.vertex_attrib_pointer_f32(1, 2, glow::FLOAT, false, stride, 12);
+            self.gl
+                .vertex_attrib_pointer_f32(1, 2, glow::FLOAT, false, stride, 12);
 
             // 颜色属性 (location = 2)
             self.gl.enable_vertex_attrib_array(2);
-            self.gl.vertex_attrib_pointer_f32(2, 4, glow::FLOAT, false, stride, 20);
+            self.gl
+                .vertex_attrib_pointer_f32(2, 4, glow::FLOAT, false, stride, 20);
 
             // 设置相机矩阵
             let proj = self.ortho_camera.projection();
@@ -423,15 +442,19 @@ impl GlRenderer {
 
             if let Some(loc) = self.sprite_uniforms.projection {
                 let proj_slice = std::slice::from_raw_parts(proj.cols.as_ptr() as *const f32, 16);
-                self.gl.uniform_matrix_4_f32_slice(Some(&loc), false, proj_slice);
+                self.gl
+                    .uniform_matrix_4_f32_slice(Some(&loc), false, proj_slice);
             }
             if let Some(loc) = self.sprite_uniforms.view {
                 let view_slice = std::slice::from_raw_parts(view.cols.as_ptr() as *const f32, 16);
-                self.gl.uniform_matrix_4_f32_slice(Some(&loc), false, view_slice);
+                self.gl
+                    .uniform_matrix_4_f32_slice(Some(&loc), false, view_slice);
             }
             if let Some(loc) = self.sprite_uniforms.transform {
-                let trans_slice = std::slice::from_raw_parts(transform.cols.as_ptr() as *const f32, 16);
-                self.gl.uniform_matrix_4_f32_slice(Some(&loc), false, trans_slice);
+                let trans_slice =
+                    std::slice::from_raw_parts(transform.cols.as_ptr() as *const f32, 16);
+                self.gl
+                    .uniform_matrix_4_f32_slice(Some(&loc), false, trans_slice);
             }
 
             // 绑定纹理
@@ -451,7 +474,8 @@ impl GlRenderer {
                 self.gl.uniform_1_i32(Some(&loc), 0);
             }
             if let Some(loc) = self.sprite_uniforms.has_texture {
-                self.gl.uniform_1_i32(Some(&loc), if self.batch_texture.is_some() { 1 } else { 0 });
+                self.gl
+                    .uniform_1_i32(Some(&loc), if self.batch_texture.is_some() { 1 } else { 0 });
             }
             if let Some(loc) = self.sprite_uniforms.tint {
                 self.gl.uniform_4_f32(Some(&loc), 1.0, 1.0, 1.0, 1.0);
@@ -504,10 +528,26 @@ impl GlRenderer {
             );
 
             // 设置纹理参数
-            self.gl.tex_parameter_i32(glow::TEXTURE_2D, glow::TEXTURE_WRAP_S, glow::CLAMP_TO_EDGE as i32);
-            self.gl.tex_parameter_i32(glow::TEXTURE_2D, glow::TEXTURE_WRAP_T, glow::CLAMP_TO_EDGE as i32);
-            self.gl.tex_parameter_i32(glow::TEXTURE_2D, glow::TEXTURE_MIN_FILTER, glow::LINEAR as i32);
-            self.gl.tex_parameter_i32(glow::TEXTURE_2D, glow::TEXTURE_MAG_FILTER, glow::LINEAR as i32);
+            self.gl.tex_parameter_i32(
+                glow::TEXTURE_2D,
+                glow::TEXTURE_WRAP_S,
+                glow::CLAMP_TO_EDGE as i32,
+            );
+            self.gl.tex_parameter_i32(
+                glow::TEXTURE_2D,
+                glow::TEXTURE_WRAP_T,
+                glow::CLAMP_TO_EDGE as i32,
+            );
+            self.gl.tex_parameter_i32(
+                glow::TEXTURE_2D,
+                glow::TEXTURE_MIN_FILTER,
+                glow::LINEAR as i32,
+            );
+            self.gl.tex_parameter_i32(
+                glow::TEXTURE_2D,
+                glow::TEXTURE_MAG_FILTER,
+                glow::LINEAR as i32,
+            );
 
             self.textures.insert(handle.index(), texture);
             texture
@@ -527,7 +567,9 @@ impl GlRenderer {
 
 impl Renderer for GlRenderer {
     fn init(_window: &crate::RenderContext) -> anyhow::Result<Self> {
-        Err(anyhow::anyhow!("GlRenderer requires a valid glow::Context. Use GlRenderer::new() instead."))
+        Err(anyhow::anyhow!(
+            "GlRenderer requires a valid glow::Context. Use GlRenderer::new() instead."
+        ))
     }
 
     fn default_backend() -> &'static str
@@ -548,17 +590,17 @@ impl Renderer for GlRenderer {
 
     fn begin_frame(&mut self) -> anyhow::Result<()> {
         self.stats.reset();
-        
+
         unsafe {
             // 清除颜色缓冲
             self.gl.clear(glow::COLOR_BUFFER_BIT);
         }
-        
+
         // 重置批处理
         self.batch_vertices.clear();
         self.batch_indices.clear();
         self.batch_texture = None;
-        
+
         Ok(())
     }
 
@@ -695,13 +737,19 @@ impl Renderer for GlRenderer {
         } else {
             (0.0, 0.0, 1.0, 1.0)
         };
-        
+
         if let Some(_tex) = self.get_texture(&texture) {
             self.add_sprite_to_batch(
-                dest.x, dest.y, dest.width, dest.height,
-                u0, v0, u1, v1,
+                dest.x,
+                dest.y,
+                dest.width,
+                dest.height,
+                u0,
+                v0,
+                u1,
+                v1,
                 color,
-                Some(tex_index)
+                Some(tex_index),
             );
         } else {
             self.draw_rectangle(dest.x, dest.y, dest.width, dest.height, color);
@@ -729,10 +777,16 @@ impl Renderer for GlRenderer {
         let tex_index = texture.index();
         if let Some(_tex) = self.get_texture(&texture) {
             self.add_sprite_to_batch(
-                dest.x, dest.y, dest.width, dest.height,
-                source.x, source.y, source.x + source.width, source.y + source.height,
+                dest.x,
+                dest.y,
+                dest.width,
+                dest.height,
+                source.x,
+                source.y,
+                source.x + source.width,
+                source.y + source.height,
                 color,
-                Some(tex_index)
+                Some(tex_index),
             );
         } else {
             self.draw_rectangle(dest.x, dest.y, dest.width, dest.height, color);
@@ -763,7 +817,15 @@ impl Renderer for GlRenderer {
         self.draw_rectangle(x + w - t, y, t, h, color);
     }
 
-    fn draw_rectangle_rotated(&mut self, x: f32, y: f32, w: f32, h: f32, _angle: f32, color: Color) {
+    fn draw_rectangle_rotated(
+        &mut self,
+        x: f32,
+        y: f32,
+        w: f32,
+        h: f32,
+        _angle: f32,
+        color: Color,
+    ) {
         self.draw_rectangle(x, y, w, h, color);
     }
 
@@ -783,18 +845,18 @@ impl Renderer for GlRenderer {
         if length < 0.001 {
             return;
         }
-        
+
         // 简化实现：使用矩形
         let angle = dy.atan2(dx);
         let t = thickness.max(1.0);
-        
+
         // 保存当前变换
         self.push_transform(Mat4::from_translation(Vec3::new(x1, y1, 0.0)));
         self.push_transform(Mat4::from_rotation_z(angle));
-        
+
         // 绘制线段（矩形）
         self.draw_rectangle(-t / 2.0, 0.0, length, t, color);
-        
+
         // 恢复变换
         self.pop_transform();
         self.pop_transform();
@@ -802,15 +864,16 @@ impl Renderer for GlRenderer {
 
     fn draw_triangle(&mut self, p1: Vec2, p2: Vec2, p3: Vec2, color: Color) {
         let base_index = self.batch_vertices.len() as u32;
-        
+
         self.batch_vertices.extend_from_slice(&[
             SpriteVertex::new(p1.x, p1.y, 0.0, 0.0, 0.0, color),
             SpriteVertex::new(p2.x, p2.y, 0.0, 1.0, 0.0, color),
             SpriteVertex::new(p3.x, p3.y, 0.0, 0.5, 1.0, color),
         ]);
-        
-        self.batch_indices.extend_from_slice(&[base_index, base_index + 1, base_index + 2]);
-        
+
+        self.batch_indices
+            .extend_from_slice(&[base_index, base_index + 1, base_index + 2]);
+
         self.stats.add_vertices(3);
         self.stats.add_indices(3);
     }
@@ -823,24 +886,27 @@ impl Renderer for GlRenderer {
 
     fn draw_poly(&mut self, x: f32, y: f32, sides: u32, radius: f32, _rotation: f32, color: Color) {
         let base_index = self.batch_vertices.len() as u32;
-        
+
         // 中心点（用于三角形扇）
-        self.batch_vertices.push(SpriteVertex::new(x, y, 0.0, 0.5, 0.5, color));
-        
+        self.batch_vertices
+            .push(SpriteVertex::new(x, y, 0.0, 0.5, 0.5, color));
+
         for i in 0..=sides {
             let angle = (i as f32 / sides as f32) * std::f32::consts::PI * 2.0;
             let px = x + radius * angle.cos();
             let py = y + radius * angle.sin();
             let u = 0.5 + 0.5 * angle.cos();
             let v = 0.5 + 0.5 * angle.sin();
-            self.batch_vertices.push(SpriteVertex::new(px, py, 0.0, u, v, color));
+            self.batch_vertices
+                .push(SpriteVertex::new(px, py, 0.0, u, v, color));
         }
-        
+
         // 创建三角形扇索引
         for i in 1..=sides {
-            self.batch_indices.extend_from_slice(&[base_index, base_index + i, base_index + i + 1]);
+            self.batch_indices
+                .extend_from_slice(&[base_index, base_index + i, base_index + i + 1]);
         }
-        
+
         self.stats.add_vertices(sides + 2);
         self.stats.add_indices(sides * 3);
     }
@@ -857,7 +923,7 @@ impl Renderer for GlRenderer {
     ) {
         let mut prev_x = x + radius;
         let mut prev_y = y;
-        
+
         for i in 1..=sides {
             let angle = (i as f32 / sides as f32) * std::f32::consts::PI * 2.0 + rotation;
             let curr_x = x + radius * angle.cos();
@@ -885,7 +951,7 @@ impl Drop for GlRenderer {
             self.gl.delete_program(self.color_program);
             self.gl.delete_buffer(self.vertex_buffer);
             self.gl.delete_buffer(self.index_buffer);
-            
+
             // 删除所有纹理
             for (&_, &tex) in self.textures.iter() {
                 self.gl.delete_texture(tex);

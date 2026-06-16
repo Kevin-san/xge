@@ -192,11 +192,7 @@ mod tests {
         manifold.normal = Vec2::new(1.0, 0.0);
         manifold.penetration = 0.1;
 
-        manifold.add_contact(Contact::new(
-            Vec2::new(0.5, 0.0),
-            Vec2::new(-1.0, 0.0),
-            0.1,
-        ));
+        manifold.add_contact(Contact::new(Vec2::new(0.5, 0.0), Vec2::new(-1.0, 0.0), 0.1));
 
         assert_eq!(manifold.contact_count(), 1);
     }
@@ -237,11 +233,7 @@ mod tests {
 
     #[test]
     fn test_contact() {
-        let contact = Contact::new(
-            Vec2::new(1.0, 2.0),
-            Vec2::new(0.0, 1.0),
-            0.5,
-        );
+        let contact = Contact::new(Vec2::new(1.0, 2.0), Vec2::new(0.0, 1.0), 0.5);
 
         assert_eq!(contact.position, Vec2::new(1.0, 2.0));
         assert_eq!(contact.normal, Vec2::new(0.0, 1.0));

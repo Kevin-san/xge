@@ -21,6 +21,7 @@ impl SystemParam for World {}
 ///
 /// 将函数转换为系统。
 pub trait IntoSystem<S: System> {
+    /// 将自身转换为系统
     fn into_system(self) -> S;
 }
 
@@ -47,14 +48,17 @@ pub struct Schedule {
 }
 
 impl Schedule {
+    /// 创建新的调度器
     pub fn new() -> Self {
         Self { stages: Vec::new() }
     }
 
+    /// 添加系统到调度器
     pub fn add_system(&mut self, system: impl System) {
         self.stages.push(Box::new(system));
     }
 
+    /// 运行所有系统
     pub fn run(&mut self, world: &mut World) {
         for stage in &mut self.stages {
             stage.run(world);
@@ -70,6 +74,7 @@ impl Default for Schedule {
 
 /// Stage label trait
 pub trait StageLabel: Send + Sync + 'static {
+    /// 获取阶段标签
     fn label(&self) -> &'static str;
 }
 

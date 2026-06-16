@@ -5,20 +5,12 @@
 use engine_math::Vec2;
 
 /// 刚体类型
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum RigidBodyType {
-    /// 动态刚体 - 受物理力影响
+    #[default]
     Dynamic,
-    /// 静态刚体 - 不受物理力影响，位置固定
     Static,
-    /// 运动刚体 - 位置由代码控制，但可以影响其他物体
     Kinematic,
-}
-
-impl Default for RigidBodyType {
-    fn default() -> Self {
-        Self::Dynamic
-    }
 }
 
 /// 刚体状态
@@ -195,14 +187,14 @@ impl RigidBody2D {
     /// 应用力
     pub fn apply_force(&mut self, force: Vec2) {
         if self.body_type == RigidBodyType::Dynamic {
-            self.force = self.force + force;
+            self.force += force;
         }
     }
 
     /// 应用力在某个点
     pub fn apply_force_at_point(&mut self, force: Vec2, point: Vec2) {
         if self.body_type == RigidBodyType::Dynamic {
-            self.force = self.force + force;
+            self.force += force;
             let r = point - self.position;
             self.torque += r.cross(force);
         }
@@ -218,14 +210,14 @@ impl RigidBody2D {
     /// 应用冲量
     pub fn apply_impulse(&mut self, impulse: Vec2) {
         if self.body_type == RigidBodyType::Dynamic {
-            self.linear_velocity = self.linear_velocity + impulse * self.inverse_mass;
+            self.linear_velocity += impulse * self.inverse_mass;
         }
     }
 
     /// 应用冲量在某个点
     pub fn apply_impulse_at_point(&mut self, impulse: Vec2, point: Vec2) {
         if self.body_type == RigidBodyType::Dynamic {
-            self.linear_velocity = self.linear_velocity + impulse * self.inverse_mass;
+            self.linear_velocity += impulse * self.inverse_mass;
             let r = point - self.position;
             self.angular_velocity += r.cross(impulse) * self.inverse_inertia;
         }
@@ -315,25 +307,22 @@ impl RigidBody2D {
 
         // 线性速度更新
         let acceleration = self.force * self.inverse_mass;
-        self.linear_velocity = self.linear_velocity + acceleration * dt;
+        self.linear_velocity += acceleration * dt;
 
-        // 角速度更新
         let angular_acceleration = self.torque * self.inverse_inertia;
-        self.angular_velocity = self.angular_velocity + angular_acceleration * dt;
+        self.angular_velocity += angular_acceleration * dt;
 
-        // 应用阻尼
         self.linear_velocity = self.linear_velocity * (1.0 - self.linear_damping);
-        self.angular_velocity = self.angular_velocity * (1.0 - self.angular_damping);
+        self.angular_velocity *= 1.0 - self.angular_damping;
     }
 
-    /// 更新位置
     pub fn update_position(&mut self, dt: f32) {
         if self.body_type != RigidBodyType::Dynamic {
             return;
         }
 
-        self.position = self.position + self.linear_velocity * dt;
-        self.rotation = self.rotation + self.angular_velocity * dt;
+        self.position += self.linear_velocity * dt;
+        self.rotation += self.angular_velocity * dt;
         self.transform_dirty = true;
     }
 
@@ -530,10 +519,8 @@ mod tests {
 
     #[test]
     fn test_impulse() {
-        let mut body = RigidBody2DBuilder::dynamic()
-            .with_mass(1.0)
-            .build();
-        
+        let mut body = RigidBody2DBuilder::dynamic().with_mass(1.0).build();
+
         body.apply_impulse(Vec2::new(5.0, 0.0));
         assert_eq!(body.linear_velocity(), Vec2::new(5.0, 0.0));
     }

@@ -16,17 +16,16 @@ fn main() {
         window_height: 720,
         ..Default::default()
     };
-    
+
     let _engine = Engine::new(config);
 
     // Create a simple 64x64 texture with a gradient pattern
     let image_data = create_gradient_image(64, 64);
     let image = Image::from_rgba(64, 64, image_data);
     let _texture = Texture2D::from_image(&image);
-    
+
     // Create a sprite from the texture
-    let sprite = Sprite::from_texture(TextureHandle::null())
-        .with_color(Color::WHITE);
+    let sprite = Sprite::from_texture(TextureHandle::null()).with_color(Color::WHITE);
 
     println!("Created sprite with texture");
     println!("  Sprite color: {:?}", sprite.color());
@@ -45,12 +44,12 @@ fn main() {
     // 1. OpenGL context from winit window
     // 2. GLSL shaders for sprite rendering
     // 3. Vertex buffers for sprite geometry
-    
+
     // In a full implementation, the main loop would:
     // 1. Clear the screen with background color
     // 2. Set the camera transform
     // 3. Draw sprites using the renderer
-    
+
     println!("\nTo see actual rendering, run this example with a display.");
     println!("The sprite would be rendered at the center of the window.");
 }

@@ -2,8 +2,8 @@
 //!
 //! 提供 2D 物理刚体节点实现。
 
-use engine_math::Vec2;
 use super::{Node, Node2D, NodeHandle};
+use engine_math::Vec2;
 
 /// 刚体句柄
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default)]

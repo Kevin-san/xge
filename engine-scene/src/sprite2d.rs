@@ -2,8 +2,8 @@
 //!
 //! 提供 2D 精灵节点实现。
 
-use engine_math::Vec2;
 use super::{Node, Node2D, NodeHandle};
+use engine_math::Vec2;
 
 /// 精灵数据
 #[derive(Debug, Clone)]
@@ -58,7 +58,12 @@ impl Sprite {
     pub fn with_region(texture_id: u32, x: f32, y: f32, width: f32, height: f32) -> Self {
         Self {
             texture_id,
-            region: SpriteRegion { x, y, width, height },
+            region: SpriteRegion {
+                x,
+                y,
+                width,
+                height,
+            },
             ..Default::default()
         }
     }

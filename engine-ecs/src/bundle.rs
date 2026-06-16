@@ -22,7 +22,9 @@ impl<C: Component + Send + Sync + 'static> Bundle for C {
 }
 
 /// Bundle for 两个组件
-impl<C1: Component + Send + Sync + 'static, C2: Component + Send + Sync + 'static> Bundle for (C1, C2) {
+impl<C1: Component + Send + Sync + 'static, C2: Component + Send + Sync + 'static> Bundle
+    for (C1, C2)
+{
     fn insert(self, world: &mut World, entity: crate::Entity) {
         world.insert(entity, self.0);
         world.insert(entity, self.1);
@@ -30,7 +32,12 @@ impl<C1: Component + Send + Sync + 'static, C2: Component + Send + Sync + 'stati
 }
 
 /// Bundle for 三个组件
-impl<C1: Component + Send + Sync + 'static, C2: Component + Send + Sync + 'static, C3: Component + Send + Sync + 'static> Bundle for (C1, C2, C3) {
+impl<
+        C1: Component + Send + Sync + 'static,
+        C2: Component + Send + Sync + 'static,
+        C3: Component + Send + Sync + 'static,
+    > Bundle for (C1, C2, C3)
+{
     fn insert(self, world: &mut World, entity: crate::Entity) {
         world.insert(entity, self.0);
         world.insert(entity, self.1);
@@ -39,7 +46,13 @@ impl<C1: Component + Send + Sync + 'static, C2: Component + Send + Sync + 'stati
 }
 
 /// Bundle for 四个组件
-impl<C1: Component + Send + Sync + 'static, C2: Component + Send + Sync + 'static, C3: Component + Send + Sync + 'static, C4: Component + Send + Sync + 'static> Bundle for (C1, C2, C3, C4) {
+impl<
+        C1: Component + Send + Sync + 'static,
+        C2: Component + Send + Sync + 'static,
+        C3: Component + Send + Sync + 'static,
+        C4: Component + Send + Sync + 'static,
+    > Bundle for (C1, C2, C3, C4)
+{
     fn insert(self, world: &mut World, entity: crate::Entity) {
         world.insert(entity, self.0);
         world.insert(entity, self.1);
@@ -49,7 +62,14 @@ impl<C1: Component + Send + Sync + 'static, C2: Component + Send + Sync + 'stati
 }
 
 /// Bundle for 五个组件
-impl<C1: Component + Send + Sync + 'static, C2: Component + Send + Sync + 'static, C3: Component + Send + Sync + 'static, C4: Component + Send + Sync + 'static, C5: Component + Send + Sync + 'static> Bundle for (C1, C2, C3, C4, C5) {
+impl<
+        C1: Component + Send + Sync + 'static,
+        C2: Component + Send + Sync + 'static,
+        C3: Component + Send + Sync + 'static,
+        C4: Component + Send + Sync + 'static,
+        C5: Component + Send + Sync + 'static,
+    > Bundle for (C1, C2, C3, C4, C5)
+{
     fn insert(self, world: &mut World, entity: crate::Entity) {
         world.insert(entity, self.0);
         world.insert(entity, self.1);
@@ -62,8 +82,6 @@ impl<C1: Component + Send + Sync + 'static, C2: Component + Send + Sync + 'stati
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate as engine_ecs;
-    use crate::Entity;
 
     #[derive(Debug, Clone, PartialEq)]
     struct Position {

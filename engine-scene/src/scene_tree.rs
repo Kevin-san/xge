@@ -5,7 +5,7 @@
 use slab::Slab;
 use std::collections::HashMap;
 
-use super::{Node, NodeHandle, Node2D};
+use super::{Node, Node2D, NodeHandle};
 
 /// 节点存储条目
 struct NodeEntry {
@@ -70,7 +70,8 @@ impl SceneTree {
 
     /// 从父节点移除子节点
     pub fn remove_child(&mut self, parent: NodeHandle, child: NodeHandle) {
-        if parent.index() as usize >= self.nodes.len() || child.index() as usize >= self.nodes.len() {
+        if parent.index() as usize >= self.nodes.len() || child.index() as usize >= self.nodes.len()
+        {
             return;
         }
 
@@ -133,12 +134,16 @@ impl SceneTree {
 
     /// 获取节点引用
     pub fn get_node(&self, handle: NodeHandle) -> Option<&dyn Node> {
-        self.nodes.get(handle.index() as usize).map(|e| e.node.as_ref())
+        self.nodes
+            .get(handle.index() as usize)
+            .map(|e| e.node.as_ref())
     }
 
     /// 获取可变节点引用
     pub fn get_node_mut(&mut self, handle: NodeHandle) -> Option<&mut Box<dyn Node>> {
-        self.nodes.get_mut(handle.index() as usize).map(|e| &mut e.node)
+        self.nodes
+            .get_mut(handle.index() as usize)
+            .map(|e| &mut e.node)
     }
 
     /// 添加新的 2D 节点
@@ -151,7 +156,10 @@ impl SceneTree {
         let handle = NodeHandle::new(index as u32);
 
         // 更新名称索引
-        self.name_index.entry(name.clone()).or_default().push(handle);
+        self.name_index
+            .entry(name.clone())
+            .or_default()
+            .push(handle);
 
         // 设置父子关系
         self.add_child(parent, handle);
@@ -161,7 +169,9 @@ impl SceneTree {
 
     /// 按名称查找节点（返回最后一个添加的）
     pub fn find_by_name(&self, name: &str) -> Option<NodeHandle> {
-        self.name_index.get(name).and_then(|handles| handles.last().copied())
+        self.name_index
+            .get(name)
+            .and_then(|handles| handles.last().copied())
     }
 
     /// 按名称查找所有匹配节点
@@ -234,12 +244,18 @@ impl SceneTree {
 
     /// 获取根节点引用
     pub fn get_root_node(&self) -> &dyn Node {
-        self.nodes.get(self.root.index() as usize).map(|e| e.node.as_ref()).unwrap()
+        self.nodes
+            .get(self.root.index() as usize)
+            .map(|e| e.node.as_ref())
+            .unwrap()
     }
 
     /// 获取根节点可变引用
     pub fn get_root_node_mut(&mut self) -> &mut dyn Node {
-        self.nodes.get_mut(self.root.index() as usize).map(|e| e.node.as_mut()).unwrap()
+        self.nodes
+            .get_mut(self.root.index() as usize)
+            .map(|e| e.node.as_mut())
+            .unwrap()
     }
 }
 

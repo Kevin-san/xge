@@ -3,11 +3,9 @@
 //! 管理所有物理实体、碰撞检测和仿真步进。
 
 use std::collections::{HashMap, VecDeque};
-use std::sync::Arc;
-use parking_lot::RwLock;
 
+use crate::{Collider2D, CollisionEvent, Contact, Joint2D, Manifold, RigidBody2D, RigidBodyType};
 use engine_math::Vec2;
-use crate::{RigidBody2D, RigidBodyType, Collider2D, Joint2D, Contact, Manifold, CollisionEvent};
 
 /// 物理世界配置
 #[derive(Debug, Clone)]
@@ -289,9 +287,8 @@ impl PhysicsWorld2D {
         let _ = self;
     }
 
-    /// 解析单个接触点
+    #[allow(dead_code)]
     fn resolve_contact(&self, _contact: &Contact) {
-        // 简化的碰撞响应实现
     }
 
     /// 关节约束求解
@@ -311,7 +308,7 @@ impl PhysicsWorld2D {
         let slop = 0.005;
         let baumgarte = 0.2;
 
-        for (_, manifold) in &mut self.manifolds {
+        for manifold in self.manifolds.values_mut() {
             for contact in &mut manifold.contacts {
                 let correction = contact.normal * contact.penetration * baumgarte;
                 if correction.length() > slop {

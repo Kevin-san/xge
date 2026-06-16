@@ -4,7 +4,6 @@
 
 use std::any::Any;
 use std::collections::HashMap;
-use std::fmt::Debug;
 
 /// 组件 trait
 ///
@@ -44,19 +43,25 @@ impl ComponentStorage {
     /// 获取组件引用
     pub fn get<C: Component>(&self) -> Option<&C> {
         let type_id = TypeId::of::<C>();
-        self.components.get(&type_id).and_then(|c| c.downcast_ref::<C>())
+        self.components
+            .get(&type_id)
+            .and_then(|c| c.downcast_ref::<C>())
     }
 
     /// 获取组件可变引用
     pub fn get_mut<C: Component>(&mut self) -> Option<&mut C> {
         let type_id = TypeId::of::<C>();
-        self.components.get_mut(&type_id).and_then(|c| c.downcast_mut::<C>())
+        self.components
+            .get_mut(&type_id)
+            .and_then(|c| c.downcast_mut::<C>())
     }
 
     /// 移除组件
     pub fn remove<C: Component>(&mut self) -> Option<C> {
         let type_id = TypeId::of::<C>();
-        self.components.remove(&type_id).and_then(|c| c.downcast::<C>().ok().map(|boxed| *boxed))
+        self.components
+            .remove(&type_id)
+            .and_then(|c| c.downcast::<C>().ok().map(|boxed| *boxed))
     }
 
     /// 清空所有组件

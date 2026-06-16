@@ -25,7 +25,10 @@ impl Entity {
 
     /// 创建空实体（无效）
     pub fn null() -> Self {
-        Self { id: u32::MAX, generation: 0 }
+        Self {
+            id: u32::MAX,
+            generation: 0,
+        }
     }
 
     /// 获取实体索引
@@ -99,6 +102,11 @@ impl<'a> EntityMut<'a> {
     /// 移除组件
     pub fn remove<C: Component>(&mut self) -> Option<C> {
         self.world.remove::<C>(self.entity)
+    }
+
+    /// 获取组件可变引用
+    pub fn get_component_mut<C: Component>(&mut self) -> Option<&mut C> {
+        self.world.get_component_mut::<C>(self.entity)
     }
 }
 

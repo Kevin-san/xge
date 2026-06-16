@@ -2,8 +2,8 @@
 //!
 //! 提供 2D 节点实现，包含变换属性。
 
-use engine_math::Vec2;
 use super::{Node, NodeHandle};
+use engine_math::Vec2;
 
 /// 2D 节点
 ///
@@ -62,7 +62,7 @@ impl Node2D {
 
     /// 移动位置
     pub fn translate(&mut self, delta: Vec2) {
-        self.position = self.position + delta;
+        self.position += delta;
         self.transform_dirty = true;
     }
 

@@ -2,8 +2,8 @@
 //!
 //! 提供 2D 检测区域节点实现。
 
-use engine_math::Vec2;
 use super::{Node, Node2D, NodeHandle};
+use engine_math::Vec2;
 
 /// 刚体句柄
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default)]
@@ -35,9 +35,17 @@ impl BodyHandle {
 #[derive(Debug, Clone)]
 pub enum ColliderShape {
     /// 圆形
-    Circle { radius: f32 },
+    Circle {
+        /// 半径
+        radius: f32,
+    },
     /// 矩形
-    Rectangle { width: f32, height: f32 },
+    Rectangle {
+        /// 宽度
+        width: f32,
+        /// 高度
+        height: f32,
+    },
 }
 
 /// 2D 检测区域
@@ -58,7 +66,10 @@ impl Area2D {
     /// 创建新的区域
     pub fn new(_name: impl Into<String>) -> Self {
         Self {
-            shape: ColliderShape::Rectangle { width: 64.0, height: 64.0 },
+            shape: ColliderShape::Rectangle {
+                width: 64.0,
+                height: 64.0,
+            },
             position_offset: Vec2::ZERO,
             is_sensor: true,
             entered_bodies: Vec::new(),

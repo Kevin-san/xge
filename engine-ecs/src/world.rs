@@ -6,8 +6,8 @@ use slab::Slab;
 use std::any::{Any, TypeId};
 use std::collections::HashMap;
 
-use super::{Component, Entity, Resource, Resources, Event, EventWriter, EventReader};
 use super::bundle::Bundle;
+use super::{Component, Entity, Event, EventReader, Resource, Resources};
 
 /// 实体表
 struct EntityTable {
@@ -22,13 +22,10 @@ struct EntityTable {
 /// 实体数据
 #[derive(Clone)]
 struct EntityData {
-    /// 实体 ID
+    #[allow(dead_code)]
     id: u32,
-    /// 代际
     generation: u32,
-    /// 是否存活
     alive: bool,
-    /// 组件类型 ID 列表
     component_types: Vec<TypeId>,
 }
 
@@ -102,14 +99,19 @@ impl EntityTable {
         self.entities.is_empty()
     }
 
+    #[allow(dead_code)]
     fn get(&self, entity: Entity) -> Option<&EntityData> {
         let id = entity.id() as usize;
-        self.entities.get(id).filter(|d| d.alive && d.generation == entity.generation())
+        self.entities
+            .get(id)
+            .filter(|d| d.alive && d.generation == entity.generation())
     }
 
     fn get_mut(&mut self, entity: Entity) -> Option<&mut EntityData> {
         let id = entity.id() as usize;
-        self.entities.get_mut(id).filter(|d| d.alive && d.generation == entity.generation())
+        self.entities
+            .get_mut(id)
+            .filter(|d| d.alive && d.generation == entity.generation())
     }
 
     fn clear(&mut self) {
@@ -133,9 +135,10 @@ impl ComponentStorages {
 
     fn insert<C: Component>(&mut self, entity: Entity, component: C) -> Option<C> {
         let type_id = TypeId::of::<C>();
-        let storage = self.storages.entry(type_id).or_insert_with(|| {
-            Box::new(DenseStorage::<C>::new()) as Box<dyn Any + Send + Sync>
-        });
+        let storage = self
+            .storages
+            .entry(type_id)
+            .or_insert_with(|| Box::new(DenseStorage::<C>::new()) as Box<dyn Any + Send + Sync>);
 
         if let Some(storage) = storage.downcast_mut::<DenseStorage<C>>() {
             storage.insert(entity.id(), component)
@@ -147,24 +150,31 @@ impl ComponentStorages {
     fn remove<C: Component>(&mut self, entity: Entity) -> Option<C> {
         let type_id = TypeId::of::<C>();
         self.storages.get_mut(&type_id).and_then(|storage| {
-            storage.downcast_mut::<DenseStorage<C>>().and_then(|s| s.remove(entity.id()))
+            storage
+                .downcast_mut::<DenseStorage<C>>()
+                .and_then(|s| s.remove(entity.id()))
         })
     }
 
     fn get<C: Component>(&self, entity: Entity) -> Option<&C> {
         let type_id = TypeId::of::<C>();
         self.storages.get(&type_id).and_then(|storage| {
-            storage.downcast_ref::<DenseStorage<C>>().and_then(|s| s.get(entity.id()))
+            storage
+                .downcast_ref::<DenseStorage<C>>()
+                .and_then(|s| s.get(entity.id()))
         })
     }
 
     fn get_mut<C: Component>(&mut self, entity: Entity) -> Option<&mut C> {
         let type_id = TypeId::of::<C>();
         self.storages.get_mut(&type_id).and_then(|storage| {
-            storage.downcast_mut::<DenseStorage<C>>().and_then(|s| s.get_mut(entity.id()))
+            storage
+                .downcast_mut::<DenseStorage<C>>()
+                .and_then(|s| s.get_mut(entity.id()))
         })
     }
 
+    #[allow(dead_code)]
     fn contains<C: Component>(&self, entity: Entity) -> bool {
         self.get::<C>(entity).is_some()
     }
@@ -190,9 +200,7 @@ impl<C: Component> DenseStorage<C> {
 
     fn insert(&mut self, entity_id: u32, component: C) -> Option<C> {
         if let Some(&dense_index) = self.sparse.get(&entity_id) {
-            // 替换现有组件
-            let old = self.data[dense_index].replace(component);
-            old
+            self.data[dense_index].replace(component)
         } else {
             // 插入新组件
             let dense_index = self.data.len();
@@ -283,13 +291,19 @@ impl World {
     }
 
     /// 获取实体引用
-    pub fn entity(&self, entity: Entity) -> super::EntityRef {
-        super::EntityRef { world: self, entity }
+    pub fn entity(&self, entity: Entity) -> super::EntityRef<'_> {
+        super::EntityRef {
+            world: self,
+            entity,
+        }
     }
 
     /// 获取实体可变引用
-    pub fn entity_mut(&mut self, entity: Entity) -> super::EntityMut {
-        super::EntityMut { world: self, entity }
+    pub fn entity_mut(&mut self, entity: Entity) -> super::EntityMut<'_> {
+        super::EntityMut {
+            world: self,
+            entity,
+        }
     }
 
     /// 检查实体是否存活
@@ -356,9 +370,10 @@ impl World {
     /// 发送事件
     pub fn send_event<E: Event>(&mut self, event: E) {
         let type_id = TypeId::of::<E>();
-        let events = self.events.entry(type_id).or_insert_with(|| {
-            Box::new(Vec::<E>::new()) as Box<dyn Any + Send + Sync>
-        });
+        let events = self
+            .events
+            .entry(type_id)
+            .or_insert_with(|| Box::new(Vec::<E>::new()) as Box<dyn Any + Send + Sync>);
         if let Some(events) = events.downcast_mut::<Vec<E>>() {
             events.push(event);
         }
@@ -383,11 +398,6 @@ impl World {
     /// 检查是否为空
     pub fn is_empty(&self) -> bool {
         self.entities.is_empty()
-    }
-
-    /// 获取 Entities 引用
-    pub fn entities(&self) -> &EntityTable {
-        &self.entities
     }
 
     /// 运行系统

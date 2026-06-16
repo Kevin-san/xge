@@ -7,7 +7,7 @@ use std::collections::HashMap;
 
 pub use winit::dpi::{LogicalPosition, LogicalSize, PhysicalPosition, PhysicalSize, Position};
 pub use winit::event::{DeviceEvent, Event, WindowEvent};
-pub use winit::event::{ElementState, MouseButton, MouseScrollDelta, Touch, TouchPhase, Modifiers};
+pub use winit::event::{ElementState, Modifiers, MouseButton, MouseScrollDelta, Touch, TouchPhase};
 pub use winit::event_loop::{ControlFlow, EventLoop, EventLoopBuilder, EventLoopProxy};
 pub use winit::keyboard::{KeyCode, ModifiersState, NamedKey};
 pub use winit::monitor::{MonitorHandle, VideoMode};
@@ -124,7 +124,7 @@ impl WindowBuilder {
         self.builder = builder;
         self
     }
-    
+
     #[cfg(not(target_os = "macos"))]
     pub fn with_cursor_hittest(self, _hittest: bool) -> Self {
         self
@@ -229,7 +229,8 @@ impl Input {
         self.previous_keys.clear();
         self.previous_keys.extend(self.pressed_keys.iter().copied());
         self.previous_buttons.clear();
-        self.previous_buttons.extend(self.pressed_buttons.iter().copied());
+        self.previous_buttons
+            .extend(self.pressed_buttons.iter().copied());
         self.mouse_delta = Vec2::ZERO;
         self.wheel_delta = Vec2::ZERO;
         self.text_input.clear();
@@ -359,12 +360,15 @@ impl Input {
                 self.touches.remove(&id);
             }
             _ => {
-                self.touches.insert(id, TouchPoint {
+                self.touches.insert(
                     id,
-                    position,
-                    force,
-                    phase,
-                });
+                    TouchPoint {
+                        id,
+                        position,
+                        force,
+                        phase,
+                    },
+                );
             }
         }
     }
@@ -404,28 +408,23 @@ impl InputModule {
                 WindowEvent::CursorMoved { position, .. } => {
                     self.input.update_mouse_position(position.x, position.y);
                 }
-                WindowEvent::MouseWheel { delta, .. } => {
-                    match delta {
-                        MouseScrollDelta::LineDelta(x, y) => {
-                            self.input.update_wheel(Vec2::new(*x, *y));
-                        }
-                        MouseScrollDelta::PixelDelta(pos) => {
-                            self.input.update_wheel(Vec2::new(pos.x as f32, pos.y as f32));
-                        }
+                WindowEvent::MouseWheel { delta, .. } => match delta {
+                    MouseScrollDelta::LineDelta(x, y) => {
+                        self.input.update_wheel(Vec2::new(*x, *y));
                     }
-                }
+                    MouseScrollDelta::PixelDelta(pos) => {
+                        self.input
+                            .update_wheel(Vec2::new(pos.x as f32, pos.y as f32));
+                    }
+                },
                 WindowEvent::Touch(touch) => {
                     let position = Vec2::new(touch.location.x as f32, touch.location.y as f32);
                     let force = match touch.force {
                         Some(winit::event::Force::Normalized(f)) => f as f32,
                         _ => 0.0,
                     };
-                    self.input.update_touch(
-                        touch.id,
-                        position,
-                        force,
-                        touch.phase,
-                    );
+                    self.input
+                        .update_touch(touch.id, position, force, touch.phase);
                 }
                 _ => {}
             }
@@ -454,10 +453,8 @@ impl Default for InputModule {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use winit::keyboard::NamedKey;
     use winit::event::{ElementState, MouseButton};
-
-    
+    use winit::keyboard::NamedKey;
 
     #[test]
     fn test_input_new() {
@@ -523,7 +520,7 @@ mod tests {
         input.update_mouse_position(100.0, 200.0);
         assert_eq!(input.mouse_position(), Vec2::new(100.0, 200.0));
         assert_eq!(input.mouse_delta(), Vec2::new(100.0, 200.0));
-        
+
         input.update_mouse_position(150.0, 250.0);
         assert_eq!(input.mouse_position(), Vec2::new(150.0, 250.0));
         assert_eq!(input.mouse_delta(), Vec2::new(50.0, 50.0));
@@ -536,9 +533,9 @@ mod tests {
         input.update_key(space_key, ElementState::Pressed);
         input.update_button(MouseButton::Left, ElementState::Pressed);
         input.update_mouse_position(100.0, 200.0);
-        
+
         input.clear();
-        
+
         assert!(input.key_pressed(&space_key));
         assert!(input.mouse_button_pressed(MouseButton::Left));
         assert_eq!(input.mouse_delta, Vec2::ZERO);
@@ -551,9 +548,9 @@ mod tests {
         input.update_key(space_key, ElementState::Pressed);
         input.update_button(MouseButton::Left, ElementState::Pressed);
         input.update_mouse_position(100.0, 200.0);
-        
+
         input.reset();
-        
+
         assert!(!input.key_pressed(&space_key));
         assert!(!input.mouse_button_pressed(MouseButton::Left));
         assert_eq!(input.mouse_position, Vec2::ZERO);
@@ -565,10 +562,10 @@ mod tests {
         let mut input = Input::new();
         input.update_wheel(Vec2::new(1.0, 2.0));
         assert_eq!(input.wheel_delta(), Vec2::new(1.0, 2.0));
-        
+
         input.update_wheel(Vec2::new(0.5, 0.5));
         assert_eq!(input.wheel_delta(), Vec2::new(1.5, 2.5));
-        
+
         input.clear();
         assert_eq!(input.wheel_delta(), Vec2::ZERO);
     }
@@ -586,10 +583,10 @@ mod tests {
         let mut input = Input::new();
         input.add_text("Hello");
         assert_eq!(input.text(), "Hello");
-        
+
         input.add_text(" World");
         assert_eq!(input.text(), "Hello World");
-        
+
         input.clear();
         assert_eq!(input.text(), "");
     }

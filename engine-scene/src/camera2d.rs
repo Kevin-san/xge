@@ -2,8 +2,8 @@
 //!
 //! 提供 2D 相机节点实现。
 
-use engine_math::{Vec2, Rect};
 use super::{Node, Node2D, NodeHandle};
+use engine_math::{Rect, Vec2};
 
 /// 2D 相机
 #[derive(Debug, Clone)]
@@ -98,7 +98,7 @@ impl Camera2D {
     }
 
     /// 应用变换到相机
-    pub fn apply_transform(&self, node: &Node2D) {
+    pub fn apply_transform(&self, _node: &Node2D) {
         // 根据节点位置和相机设置计算视图矩阵
         // 实际实现会在渲染器中完成
     }

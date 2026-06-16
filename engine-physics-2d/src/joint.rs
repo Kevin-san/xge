@@ -2,8 +2,8 @@
 //!
 //! 提供 2D 物理关节实现，包括距离关节、旋转关节、滑块关节等。
 
-use engine_math::Vec2;
 use crate::world::PhysicsWorld2D;
+use engine_math::Vec2;
 
 /// 关节类型
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -108,19 +108,16 @@ impl Joint2D {
         self.collide_connected = collide;
     }
 
-    /// 预求解（游戏邦定）
+    #[allow(dead_code)]
     fn pre_solve(&mut self, _world: &PhysicsWorld2D, _dt: f32) {
-        // 预求解实现
     }
 
-    /// 求解
+    #[allow(dead_code)]
     fn solve(&mut self, _world: &PhysicsWorld2D) {
-        // 求解实现
     }
 
-    /// 后求解
+    #[allow(dead_code)]
     fn post_solve(&mut self) {
-        // 后求解实现
     }
 }
 
@@ -247,7 +244,7 @@ pub struct RevoluteJoint {
 
 impl RevoluteJoint {
     /// 创建新的旋转关节
-    pub fn new(body_a: usize, body_b: usize, anchor: Vec2) -> Self {
+    pub fn new(body_a: usize, body_b: usize, _anchor: Vec2) -> Self {
         Self {
             base: Joint2D::new(JointType::Revolute, body_a, body_b),
             angle: 0.0,
@@ -314,23 +311,19 @@ impl RevoluteJoint {
 /// 两个刚体沿指定轴相对滑动。
 #[derive(Debug, Clone)]
 pub struct PrismaticJoint {
-    /// 基类
     base: Joint2D,
-    /// 滑动轴
     axis: Vec2,
-    /// 最小距离
     min_distance: Option<f32>,
-    /// 最大距离
     max_distance: Option<f32>,
-    /// 电机刚度
+    #[allow(dead_code)]
     motor_stiffness: f32,
-    /// 电机阻尼
+    #[allow(dead_code)]
     motor_damping: f32,
 }
 
 impl PrismaticJoint {
     /// 创建新的滑块关节
-    pub fn new(body_a: usize, body_b: usize, anchor: Vec2, axis: Vec2) -> Self {
+    pub fn new(body_a: usize, body_b: usize, _anchor: Vec2, axis: Vec2) -> Self {
         Self {
             base: Joint2D::new(JointType::Prismatic, body_a, body_b),
             axis: axis.normalize(),
@@ -374,12 +367,7 @@ mod tests {
 
     #[test]
     fn test_distance_joint() {
-        let joint = DistanceJoint::new(
-            0,
-            1,
-            Vec2::new(0.0, 0.0),
-            Vec2::new(10.0, 0.0),
-        );
+        let joint = DistanceJoint::new(0, 1, Vec2::new(0.0, 0.0), Vec2::new(10.0, 0.0));
 
         assert_eq!(joint.length(), 10.0);
         assert_eq!(joint.min_length(), 10.0);
@@ -388,12 +376,7 @@ mod tests {
 
     #[test]
     fn test_distance_joint_length() {
-        let mut joint = DistanceJoint::new(
-            0,
-            1,
-            Vec2::new(0.0, 0.0),
-            Vec2::new(10.0, 0.0),
-        );
+        let mut joint = DistanceJoint::new(0, 1, Vec2::new(0.0, 0.0), Vec2::new(10.0, 0.0));
 
         joint.set_length(20.0);
         assert_eq!(joint.length(), 20.0);
@@ -420,24 +403,14 @@ mod tests {
 
     #[test]
     fn test_prismatic_joint() {
-        let joint = PrismaticJoint::new(
-            0,
-            1,
-            Vec2::new(0.0, 0.0),
-            Vec2::new(1.0, 0.0),
-        );
+        let joint = PrismaticJoint::new(0, 1, Vec2::new(0.0, 0.0), Vec2::new(1.0, 0.0));
 
         assert_eq!(joint.axis(), Vec2::new(1.0, 0.0));
     }
 
     #[test]
     fn test_joint_enabled() {
-        let mut joint = DistanceJoint::new(
-            0,
-            1,
-            Vec2::new(0.0, 0.0),
-            Vec2::new(10.0, 0.0),
-        );
+        let mut joint = DistanceJoint::new(0, 1, Vec2::new(0.0, 0.0), Vec2::new(10.0, 0.0));
 
         assert!(joint.base().is_enabled());
         joint.base_mut().set_enabled(false);

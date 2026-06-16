@@ -104,7 +104,9 @@ pub struct Events<E: Event> {
 impl<E: Event> Events<E> {
     /// 创建新的事件系统
     pub fn new() -> Self {
-        Self { writers: Vec::new() }
+        Self {
+            writers: Vec::new(),
+        }
     }
 
     /// 添加写入器
@@ -115,7 +117,10 @@ impl<E: Event> Events<E> {
 
     /// 获取所有事件
     pub fn get_events(&self) -> Vec<E> {
-        self.writers.iter().flat_map(|w| w.events.iter().cloned()).collect()
+        self.writers
+            .iter()
+            .flat_map(|w| w.events.iter().cloned())
+            .collect()
     }
 
     /// 清空所有事件
@@ -164,7 +169,11 @@ mod tests {
 
     #[test]
     fn test_event_reader_read_all() {
-        let events = vec![TestEvent { value: 1 }, TestEvent { value: 2 }, TestEvent { value: 3 }];
+        let events = vec![
+            TestEvent { value: 1 },
+            TestEvent { value: 2 },
+            TestEvent { value: 3 },
+        ];
         let mut reader = EventReader::new(events);
 
         let remaining = reader.read_all();

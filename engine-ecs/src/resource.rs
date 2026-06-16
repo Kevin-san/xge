@@ -33,19 +33,25 @@ impl Resources {
     /// 获取资源引用
     pub fn get<R: Resource>(&self) -> Option<&R> {
         let type_id = std::any::TypeId::of::<R>();
-        self.resources.get(&type_id).and_then(|r| r.downcast_ref::<R>())
+        self.resources
+            .get(&type_id)
+            .and_then(|r| r.downcast_ref::<R>())
     }
 
     /// 获取资源可变引用
     pub fn get_mut<R: Resource>(&mut self) -> Option<&mut R> {
         let type_id = std::any::TypeId::of::<R>();
-        self.resources.get_mut(&type_id).and_then(|r| r.downcast_mut::<R>())
+        self.resources
+            .get_mut(&type_id)
+            .and_then(|r| r.downcast_mut::<R>())
     }
 
     /// 移除资源
     pub fn remove<R: Resource>(&mut self) -> Option<R> {
         let type_id = std::any::TypeId::of::<R>();
-        self.resources.remove(&type_id).and_then(|r| r.downcast::<R>().ok().map(|boxed| *boxed))
+        self.resources
+            .remove(&type_id)
+            .and_then(|r| r.downcast::<R>().ok().map(|boxed| *boxed))
     }
 
     /// 检查资源是否存在

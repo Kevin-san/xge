@@ -2,7 +2,7 @@
 //!
 //! 提供 2D 碰撞体实现，包括圆形、矩形、多边形等形状。
 
-use engine_math::{Vec2, Rect};
+use engine_math::{Rect, Vec2};
 
 /// 碰撞体形状
 #[derive(Debug, Clone, PartialEq)]
@@ -66,26 +66,26 @@ impl ColliderShape {
     /// 计算 AABB
     pub fn compute_aabb(&self, position: Vec2, rotation: f32) -> Rect {
         match self {
-            Self::Circle { radius } => {
-                Rect::new(
-                    position.x - radius,
-                    position.y - radius,
-                    radius * 2.0,
-                    radius * 2.0,
-                )
-            }
-            Self::Aabb { half_extents } | Self::Rectangle { half_extents } => {
-                Rect::new(
-                    position.x - half_extents.x,
-                    position.y - half_extents.y,
-                    half_extents.x * 2.0,
-                    half_extents.y * 2.0,
-                )
-            }
+            Self::Circle { radius } => Rect::new(
+                position.x - radius,
+                position.y - radius,
+                radius * 2.0,
+                radius * 2.0,
+            ),
+            Self::Aabb { half_extents } | Self::Rectangle { half_extents } => Rect::new(
+                position.x - half_extents.x,
+                position.y - half_extents.y,
+                half_extents.x * 2.0,
+                half_extents.y * 2.0,
+            ),
             Self::Polygon { vertices } => {
                 Self::compute_aabb_from_vertices(vertices, position, rotation)
             }
-            Self::Capsule { top, bottom, radius } => {
+            Self::Capsule {
+                top,
+                bottom,
+                radius,
+            } => {
                 let min_x = (top.x.min(bottom.x) - radius).min(top.x);
                 let max_x = (top.x.max(bottom.x) + radius).max(top.x);
                 let min_y = (top.y.min(bottom.y) - radius).min(top.y);
@@ -124,16 +124,16 @@ impl ColliderShape {
     /// 计算质量
     pub fn compute_mass(&self, density: f32) -> f32 {
         match self {
-            Self::Circle { radius } => {
-                std::f32::consts::PI * radius * radius * density
-            }
+            Self::Circle { radius } => std::f32::consts::PI * radius * radius * density,
             Self::Aabb { half_extents } | Self::Rectangle { half_extents } => {
                 4.0 * half_extents.x * half_extents.y * density
             }
-            Self::Polygon { vertices } => {
-                Self::compute_polygon_area(vertices) * density
-            }
-            Self::Capsule { top, bottom, radius } => {
+            Self::Polygon { vertices } => Self::compute_polygon_area(vertices) * density,
+            Self::Capsule {
+                top,
+                bottom,
+                radius,
+            } => {
                 let length = (*top - *bottom).length();
                 let cylinder_area = 2.0 * radius * length;
                 let caps_area = std::f32::consts::PI * radius * radius;
@@ -145,16 +145,16 @@ impl ColliderShape {
     /// 计算转动惯量
     pub fn compute_inertia(&self, mass: f32) -> f32 {
         match self {
-            Self::Circle { radius } => {
-                0.5 * mass * radius * radius
-            }
+            Self::Circle { radius } => 0.5 * mass * radius * radius,
             Self::Aabb { half_extents } | Self::Rectangle { half_extents } => {
                 mass * (half_extents.x * half_extents.x + half_extents.y * half_extents.y) / 3.0
             }
-            Self::Polygon { vertices } => {
-                Self::compute_polygon_inertia(vertices, mass)
-            }
-            Self::Capsule { top, bottom, radius } => {
+            Self::Polygon { vertices } => Self::compute_polygon_inertia(vertices, mass),
+            Self::Capsule {
+                top,
+                bottom,
+                radius,
+            } => {
                 let length = (*top - *bottom).length();
                 let cylinder_inertia = mass * (0.25 * radius * radius + length * length / 12.0);
                 let cap_inertia = 0.5 * mass * radius * radius;
@@ -192,8 +192,13 @@ impl ColliderShape {
             let j = (i + 1) % vertices.len();
             let cross = vertices[i].x * vertices[j].y - vertices[j].x * vertices[i].y;
             signed_area += cross;
-            inertia += cross * (vertices[i].x * vertices[i].x + vertices[i].x * vertices[j].x + vertices[j].x * vertices[j].x
-                + vertices[i].y * vertices[i].y + vertices[i].y * vertices[j].y + vertices[j].y * vertices[j].y);
+            inertia += cross
+                * (vertices[i].x * vertices[i].x
+                    + vertices[i].x * vertices[j].x
+                    + vertices[j].x * vertices[j].x
+                    + vertices[i].y * vertices[i].y
+                    + vertices[i].y * vertices[j].y
+                    + vertices[j].y * vertices[j].y);
         }
 
         signed_area /= 2.0;
@@ -488,9 +493,7 @@ mod tests {
 
     #[test]
     fn test_collider_mass() {
-        let collider = Collider2DBuilder::circle(1.0)
-            .with_density(2.0)
-            .build();
+        let collider = Collider2DBuilder::circle(1.0).with_density(2.0).build();
         let expected_mass = std::f32::consts::PI * 1.0 * 1.0 * 2.0;
         assert!((collider.mass() - expected_mass).abs() < 0.001);
     }

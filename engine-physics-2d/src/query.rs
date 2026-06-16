@@ -2,8 +2,8 @@
 //!
 //! 提供射线投射、形状查询、点查询等空间查询功能。
 
-use engine_math::{Vec2, Rect};
 use crate::ColliderShape;
+use engine_math::{Rect, Vec2};
 
 /// 变换（位置 + 旋转）
 pub type Transform2D = (Vec2, f32);
@@ -97,7 +97,12 @@ pub struct ShapeCast2D {
 
 impl ShapeCast2D {
     /// 创建新的形状投射
-    pub fn new(shape: ColliderShape, transform: Transform2D, translation: Vec2, max_distance: f32) -> Self {
+    pub fn new(
+        shape: ColliderShape,
+        transform: Transform2D,
+        translation: Vec2,
+        max_distance: f32,
+    ) -> Self {
         Self {
             shape,
             transform,
@@ -202,7 +207,7 @@ impl AabbQuery {
     }
 }
 
-/// 碰撞形状与射线交互的辅助函数
+#[allow(dead_code)]
 pub(crate) fn ray_intersects_shape(
     ray: &RayCast2D,
     position: Vec2,
@@ -210,25 +215,24 @@ pub(crate) fn ray_intersects_shape(
     shape: &ColliderShape,
 ) -> Option<RayCastHit2D> {
     match shape {
-        ColliderShape::Circle { radius } => {
-            ray_intersects_circle(ray, position, *radius)
-        }
-        ColliderShape::Aabb { half_extents } => {
-            ray_intersects_aabb(ray, position, *half_extents)
-        }
+        ColliderShape::Circle { radius } => ray_intersects_circle(ray, position, *radius),
+        ColliderShape::Aabb { half_extents } => ray_intersects_aabb(ray, position, *half_extents),
         ColliderShape::Rectangle { half_extents } => {
             ray_intersects_rectangle(ray, position, rotation, *half_extents)
         }
         ColliderShape::Polygon { vertices } => {
             ray_intersects_polygon(ray, position, rotation, vertices)
         }
-        ColliderShape::Capsule { top, bottom, radius } => {
-            ray_intersects_capsule(ray, position, rotation, top, bottom, *radius)
-        }
+        ColliderShape::Capsule {
+            top,
+            bottom,
+            radius,
+        } => ray_intersects_capsule(ray, position, rotation, top, bottom, *radius),
     }
 }
 
 /// 射线与圆形求交
+#[allow(dead_code)]
 fn ray_intersects_circle(ray: &RayCast2D, center: Vec2, radius: f32) -> Option<RayCastHit2D> {
     let oc = ray.origin - center;
     let a = ray.direction.dot(ray.direction);
@@ -264,12 +268,8 @@ fn ray_intersects_circle(ray: &RayCast2D, center: Vec2, radius: f32) -> Option<R
     })
 }
 
-/// 射线与 AABB 求交
-fn ray_intersects_aabb(
-    ray: &RayCast2D,
-    center: Vec2,
-    half_extents: Vec2,
-) -> Option<RayCastHit2D> {
+#[allow(dead_code)]
+fn ray_intersects_aabb(ray: &RayCast2D, center: Vec2, half_extents: Vec2) -> Option<RayCastHit2D> {
     let min = center - half_extents;
     let max = center + half_extents;
 
@@ -333,7 +333,7 @@ fn ray_intersects_aabb(
     })
 }
 
-/// 射线与矩形求交
+#[allow(dead_code)]
 fn ray_intersects_rectangle(
     ray: &RayCast2D,
     position: Vec2,
@@ -370,7 +370,7 @@ fn ray_intersects_rectangle(
     })
 }
 
-/// 射线与多边形求交
+#[allow(dead_code)]
 fn ray_intersects_polygon(
     ray: &RayCast2D,
     position: Vec2,
@@ -446,7 +446,7 @@ fn ray_intersects_polygon(
     })
 }
 
-/// 射线与胶囊求交
+#[allow(dead_code)]
 fn ray_intersects_capsule(
     ray: &RayCast2D,
     position: Vec2,
@@ -491,7 +491,7 @@ fn ray_intersects_capsule(
     // 胶囊柱体部分
     let oc = ray.origin - (world_top + world_bottom) / 2.0;
     let line_dir = normalized;
-    let line_half_length = length / 2.0;
+    let _line_half_length = length / 2.0;
 
     let a = ray.direction.dot(ray.direction) - ray.direction.dot(line_dir).powi(2);
     let b = 2.0 * (oc.dot(ray.direction) - oc.dot(line_dir) * ray.direction.dot(line_dir));
@@ -543,9 +543,7 @@ pub fn point_in_shape_with_pos_rot(
     transform_rotation: f32,
 ) -> bool {
     match shape {
-        ColliderShape::Circle { radius } => {
-            (position - transform_position).length() <= *radius
-        }
+        ColliderShape::Circle { radius } => (position - transform_position).length() <= *radius,
         ColliderShape::Aabb { half_extents } => {
             let local = position - transform_position;
             local.x.abs() <= half_extents.x && local.y.abs() <= half_extents.y
@@ -554,8 +552,10 @@ pub fn point_in_shape_with_pos_rot(
             let cos = transform_rotation.cos();
             let sin = transform_rotation.sin();
             let local = Vec2::new(
-                (position.x - transform_position.x) * cos + (position.y - transform_position.y) * sin,
-                -(position.x - transform_position.x) * sin + (position.y - transform_position.y) * cos,
+                (position.x - transform_position.x) * cos
+                    + (position.y - transform_position.y) * sin,
+                -(position.x - transform_position.x) * sin
+                    + (position.y - transform_position.y) * cos,
             );
             local.x.abs() <= half_extents.x && local.y.abs() <= half_extents.y
         }
@@ -566,8 +566,10 @@ pub fn point_in_shape_with_pos_rot(
             let cos = transform_rotation.cos();
             let sin = transform_rotation.sin();
             let local = Vec2::new(
-                (position.x - transform_position.x) * cos + (position.y - transform_position.y) * sin,
-                -(position.x - transform_position.x) * sin + (position.y - transform_position.y) * cos,
+                (position.x - transform_position.x) * cos
+                    + (position.y - transform_position.y) * sin,
+                -(position.x - transform_position.x) * sin
+                    + (position.y - transform_position.y) * cos,
             );
             for i in 0..vertices.len() {
                 let j = (i + 1) % vertices.len();
@@ -579,7 +581,11 @@ pub fn point_in_shape_with_pos_rot(
             }
             true
         }
-        ColliderShape::Capsule { top, bottom, radius } => {
+        ColliderShape::Capsule {
+            top,
+            bottom,
+            radius,
+        } => {
             let cos = transform_rotation.cos();
             let sin = transform_rotation.sin();
             let world_top = Vec2::new(
@@ -720,7 +726,8 @@ mod tests {
 
     #[test]
     fn test_transform2d() {
-        let transform: Transform2D = Transform2DExt::new(Vec2::new(1.0, 2.0), std::f32::consts::FRAC_PI_2);
+        let transform: Transform2D =
+            Transform2DExt::new(Vec2::new(1.0, 2.0), std::f32::consts::FRAC_PI_2);
         let point = Vec2::new(0.0, 1.0);
         let transformed = Transform2DExt::transform_point(&transform, point);
         // 绕 (1, 2) 旋转 90 度

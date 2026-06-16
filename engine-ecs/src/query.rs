@@ -22,6 +22,8 @@ impl Default for Query {
 
 #[cfg(test)]
 mod tests {
+    use crate::Query;
+
     #[test]
     fn test_query_creation() {
         let query = Query::new();
