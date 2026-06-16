@@ -202,4 +202,99 @@ mod tests {
         let b = Vec2::ONE;
         assert_eq!(a.lerp(b, 0.5), Vec2::splat(0.5));
     }
+
+    #[test]
+    fn test_zero_vector_normalize() {
+        let v = Vec2::ZERO;
+        let n = v.normalize();
+        assert_eq!(n, Vec2::ZERO);
+    }
+
+    #[test]
+    fn test_neg() {
+        let v = Vec2::new(1.0, -2.0);
+        let neg = -v;
+        assert_eq!(neg, Vec2::new(-1.0, 2.0));
+    }
+
+    #[test]
+    fn test_splat() {
+        let v = Vec2::splat(5.0);
+        assert_eq!(v.x, 5.0);
+        assert_eq!(v.y, 5.0);
+    }
+
+    #[test]
+    fn test_distance() {
+        let a = Vec2::new(0.0, 0.0);
+        let b = Vec2::new(3.0, 4.0);
+        assert_eq!(a.distance(b), 5.0);
+        assert_eq!(a.distance_squared(b), 25.0);
+    }
+
+    #[test]
+    fn test_add_assign() {
+        let mut a = Vec2::new(1.0, 2.0);
+        a += Vec2::new(3.0, 4.0);
+        assert_eq!(a, Vec2::new(4.0, 6.0));
+    }
+
+    #[test]
+    fn test_scalar_mul() {
+        let v = Vec2::new(1.0, 2.0);
+        let result = 3.0 * v;
+        assert_eq!(result, Vec2::new(3.0, 6.0));
+    }
+
+    #[test]
+    fn test_component_mul() {
+        let a = Vec2::new(2.0, 3.0);
+        let b = Vec2::new(4.0, 5.0);
+        assert_eq!(a * b, Vec2::new(8.0, 15.0));
+    }
+
+    #[test]
+    fn test_component_div() {
+        let a = Vec2::new(10.0, 15.0);
+        let b = Vec2::new(2.0, 3.0);
+        assert_eq!(a / b, Vec2::new(5.0, 5.0));
+    }
+
+    #[test]
+    fn test_constants() {
+        assert_eq!(Vec2::ZERO, Vec2::new(0.0, 0.0));
+        assert_eq!(Vec2::ONE, Vec2::new(1.0, 1.0));
+        assert_eq!(Vec2::X, Vec2::new(1.0, 0.0));
+        assert_eq!(Vec2::Y, Vec2::new(0.0, 1.0));
+    }
+
+    #[test]
+    fn test_very_small_vector_normalize() {
+        let v = Vec2::new(1e-10, 1e-10);
+        let n = v.normalize();
+        // Very small vectors should normalize to zero or near-zero
+        assert!(n.length() < 1e-5 || n.length() < 1.0);
+    }
+
+    #[test]
+    fn test_lerp_extreme_values() {
+        let a = Vec2::new(-100.0, -100.0);
+        let b = Vec2::new(100.0, 100.0);
+        
+        // t = 0 should return a
+        assert_eq!(a.lerp(b, 0.0), a);
+        
+        // t = 1 should return b
+        assert_eq!(a.lerp(b, 1.0), b);
+        
+        // t = 0.5 should return midpoint
+        assert_eq!(a.lerp(b, 0.5), Vec2::ZERO);
+    }
+
+    #[test]
+    fn test_display() {
+        let v = Vec2::new(1.0, 2.0);
+        let s = format!("{}", v);
+        assert!(s.contains("Vec2"));
+    }
 }

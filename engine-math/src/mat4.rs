@@ -340,3 +340,163 @@ impl fmt::Display for Mat4 {
 }
 
 use super::{Quat, Vec3, Vec4};
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_identity() {
+        let m = Mat4::IDENTITY;
+        let v = Vec4::new(1.0, 2.0, 3.0, 4.0);
+        let result = m.mul_vec4(v);
+        assert_eq!(result, v);
+    }
+
+    #[test]
+    fn test_translation() {
+        let m = Mat4::from_translation(Vec3::new(5.0, 10.0, 15.0));
+        let v = Vec4::new(1.0, 2.0, 3.0, 1.0);
+        let result = m.mul_vec4(v);
+        assert_eq!(result.x, 6.0);
+        assert_eq!(result.y, 12.0);
+        assert_eq!(result.z, 18.0);
+        assert_eq!(result.w, 1.0);
+    }
+
+    #[test]
+    fn test_scale() {
+        let m = Mat4::from_scale(Vec3::new(2.0, 3.0, 4.0));
+        let v = Vec4::new(1.0, 2.0, 3.0, 1.0);
+        let result = m.mul_vec4(v);
+        assert_eq!(result.x, 2.0);
+        assert_eq!(result.y, 6.0);
+        assert_eq!(result.z, 12.0);
+        assert_eq!(result.w, 1.0);
+    }
+
+    #[test]
+    fn test_rotation_x() {
+        let angle = std::f32::consts::FRAC_PI_2;
+        let m = Mat4::from_rotation_x(angle);
+        let v = Vec4::new(0.0, 1.0, 0.0, 1.0);
+        let result = m.mul_vec4(v);
+        assert!((result.x - 0.0).abs() < 1e-6);
+        assert!((result.y - 0.0).abs() < 1e-6);
+        assert!((result.z - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_rotation_y() {
+        let angle = std::f32::consts::FRAC_PI_2;
+        let m = Mat4::from_rotation_y(angle);
+        let v = Vec4::new(1.0, 0.0, 0.0, 1.0);
+        let result = m.mul_vec4(v);
+        // Rotation around Y axis: X axis rotates to -Z axis (for positive angle)
+        assert!((result.x - 0.0).abs() < 1e-6);
+        assert!((result.y - 0.0).abs() < 1e-6);
+        assert!((result.z + 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_rotation_z() {
+        let angle = std::f32::consts::FRAC_PI_2;
+        let m = Mat4::from_rotation_z(angle);
+        let v = Vec4::new(1.0, 0.0, 0.0, 1.0);
+        let result = m.mul_vec4(v);
+        assert!((result.x - 0.0).abs() < 1e-6);
+        assert!((result.y - 1.0).abs() < 1e-6);
+        assert!((result.z - 0.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_transpose() {
+        let m = Mat4::from_translation(Vec3::new(1.0, 2.0, 3.0));
+        let t = m.transpose();
+        // Check that transpose twice returns original
+        let t2 = t.transpose();
+        assert_eq!(m.cols, t2.cols);
+    }
+
+    #[test]
+    fn test_inverse_identity() {
+        let m = Mat4::IDENTITY;
+        // Identity matrix inverse should work
+        assert!(m.inverse().is_some());
+    }
+
+    #[test]
+    fn test_inverse_translation() {
+        let m = Mat4::from_translation(Vec3::new(5.0, 10.0, 15.0));
+        // Translation matrix inverse should work
+        assert!(m.inverse().is_some());
+    }
+
+    #[test]
+    fn test_inverse_scale() {
+        let m = Mat4::from_scale(Vec3::new(2.0, 3.0, 4.0));
+        // Scale matrix inverse should work
+        assert!(m.inverse().is_some());
+    }
+
+    #[test]
+    fn test_inverse_zero_scale_returns_none() {
+        let m = Mat4::from_scale(Vec3::new(0.0, 1.0, 1.0));
+        // Zero scale makes matrix non-invertible
+        assert!(m.inverse().is_none());
+    }
+
+    #[test]
+    fn test_matrix_multiplication_identity() {
+        let m = Mat4::from_translation(Vec3::new(1.0, 2.0, 3.0));
+        let result = Mat4::IDENTITY * m;
+        assert_eq!(result.cols, m.cols);
+        
+        let result2 = m * Mat4::IDENTITY;
+        assert_eq!(result2.cols, m.cols);
+    }
+
+    #[test]
+    fn test_matrix_multiplication_combined() {
+        let t = Mat4::from_translation(Vec3::new(1.0, 0.0, 0.0));
+        let s = Mat4::from_scale(Vec3::new(2.0, 2.0, 2.0));
+        let combined = t * s;
+        
+        let v = Vec4::new(1.0, 1.0, 1.0, 1.0);
+        // Scale first (2,2,2), then translate (3,2,2)
+        let result = combined.mul_vec4(v);
+        assert!((result.x - 3.0).abs() < 1e-6);
+        assert!((result.y - 2.0).abs() < 1e-6);
+        assert!((result.z - 2.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_from_quat_identity() {
+        let q = Quat::IDENTITY;
+        let m = Mat4::from_quat(q);
+        // Identity quaternion should produce identity matrix
+        assert_eq!(m.cols[0][0], 1.0);
+        assert_eq!(m.cols[1][1], 1.0);
+        assert_eq!(m.cols[2][2], 1.0);
+        assert_eq!(m.cols[3][3], 1.0);
+    }
+
+    #[test]
+    fn test_to_cols_array() {
+        let m = Mat4::IDENTITY;
+        let arr = m.to_cols_array();
+        assert_eq!(arr.len(), 16);
+        assert_eq!(arr[0], 1.0);  // col0 row0
+        assert_eq!(arr[5], 1.0);  // col1 row1
+        assert_eq!(arr[10], 1.0); // col2 row2
+        assert_eq!(arr[15], 1.0); // col3 row3
+    }
+
+    #[test]
+    fn test_zero_matrix() {
+        let m = Mat4::ZERO;
+        let v = Vec4::new(1.0, 2.0, 3.0, 4.0);
+        let result = m.mul_vec4(v);
+        assert_eq!(result, Vec4::ZERO);
+    }
+}

@@ -93,3 +93,173 @@ impl From<bincode::Error> for NetError {
         Self::Serialization(err.to_string())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::error::Error;
+
+    #[test]
+    fn test_connection_failed_display() {
+        let err = NetError::ConnectionFailed("localhost:8080".to_string());
+        let s = err.to_string();
+        assert!(s.contains("Failed to connect"));
+        assert!(s.contains("localhost:8080"));
+    }
+
+    #[test]
+    fn test_connection_closed_display() {
+        let err = NetError::ConnectionClosed;
+        assert_eq!(err.to_string(), "Connection closed");
+    }
+
+    #[test]
+    fn test_timeout_display() {
+        let err = NetError::Timeout;
+        assert_eq!(err.to_string(), "Operation timed out");
+    }
+
+    #[test]
+    fn test_address_in_use_display() {
+        let err = NetError::AddressInUse("127.0.0.1:8080".to_string());
+        let s = err.to_string();
+        assert!(s.contains("Address already in use"));
+        assert!(s.contains("127.0.0.1:8080"));
+    }
+
+    #[test]
+    fn test_address_not_available_display() {
+        let err = NetError::AddressNotAvailable("invalid:port".to_string());
+        let s = err.to_string();
+        assert!(s.contains("Address not available"));
+    }
+
+    #[test]
+    fn test_invalid_address_display() {
+        let err = NetError::InvalidAddress("bad_address".to_string());
+        let s = err.to_string();
+        assert!(s.contains("Invalid address"));
+    }
+
+    #[test]
+    fn test_packet_too_large_display() {
+        let err = NetError::PacketTooLarge(10000, 5000);
+        let s = err.to_string();
+        assert!(s.contains("Packet too large"));
+        assert!(s.contains("10000"));
+        assert!(s.contains("5000"));
+    }
+
+    #[test]
+    fn test_serialization_error_display() {
+        let err = NetError::Serialization("encode failed".to_string());
+        let s = err.to_string();
+        assert!(s.contains("Serialization error"));
+        assert!(s.contains("encode failed"));
+    }
+
+    #[test]
+    fn test_deserialization_error_display() {
+        let err = NetError::Deserialization("decode failed".to_string());
+        let s = err.to_string();
+        assert!(s.contains("Deserialization error"));
+    }
+
+    #[test]
+    fn test_channel_closed_display() {
+        let err = NetError::ChannelClosed;
+        assert_eq!(err.to_string(), "Channel closed");
+    }
+
+    #[test]
+    fn test_channel_full_display() {
+        let err = NetError::ChannelFull;
+        assert_eq!(err.to_string(), "Channel full");
+    }
+
+    #[test]
+    fn test_invalid_channel_id_display() {
+        let err = NetError::InvalidChannelId(12345);
+        let s = err.to_string();
+        assert!(s.contains("Invalid channel ID"));
+        assert!(s.contains("12345"));
+    }
+
+    #[test]
+    fn test_transport_error_display() {
+        let err = NetError::Transport("socket error".to_string());
+        let s = err.to_string();
+        assert!(s.contains("Transport error"));
+    }
+
+    #[test]
+    fn test_io_error_from() {
+        let io_err = std::io::Error::new(std::io::ErrorKind::WouldBlock, "would block");
+        let net_err: NetError = io_err.into();
+        assert!(matches!(net_err, NetError::Io(_)));
+    }
+
+    #[test]
+    fn test_io_error_source() {
+        let io_err = std::io::Error::new(std::io::ErrorKind::WouldBlock, "would block");
+        let net_err = NetError::Io(io_err);
+        let source = net_err.source();
+        assert!(source.is_some());
+    }
+
+    #[test]
+    fn test_non_io_error_source() {
+        let net_err = NetError::ConnectionClosed;
+        let source = net_err.source();
+        assert!(source.is_none());
+    }
+
+    #[test]
+    fn test_plugin_error_display() {
+        let err = NetError::Plugin("plugin failed".to_string());
+        let s = err.to_string();
+        assert!(s.contains("Plugin error"));
+    }
+
+    #[test]
+    fn test_not_implemented_display() {
+        let err = NetError::NotImplemented;
+        assert_eq!(err.to_string(), "Not implemented");
+    }
+
+    #[test]
+    fn test_invalid_state_display() {
+        let err = NetError::InvalidState("disconnected".to_string());
+        let s = err.to_string();
+        assert!(s.contains("Invalid state"));
+        assert!(s.contains("disconnected"));
+    }
+
+    #[test]
+    fn test_other_error_display() {
+        let err = NetError::Other("unknown error".to_string());
+        let s = err.to_string();
+        assert!(s.contains("Error:"));
+        assert!(s.contains("unknown error"));
+    }
+
+    #[test]
+    fn test_net_result_ok() {
+        let result: NetResult<i32> = Ok(42);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 42);
+    }
+
+    #[test]
+    fn test_net_result_err() {
+        let result: NetResult<i32> = Err(NetError::Timeout);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_error_debug() {
+        let err = NetError::ConnectionFailed("test".to_string());
+        let s = format!("{:?}", err);
+        assert!(s.contains("ConnectionFailed"));
+    }
+}
