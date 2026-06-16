@@ -249,4 +249,163 @@ mod tests {
         let b = Vec3::ONE;
         assert_eq!(a.lerp(b, 0.5), Vec3::splat(0.5));
     }
+
+    #[test]
+    fn test_zero_vector_normalize() {
+        let v = Vec3::ZERO;
+        let n = v.normalize();
+        assert_eq!(n, Vec3::ZERO);
+    }
+
+    #[test]
+    fn test_neg() {
+        let v = Vec3::new(1.0, -2.0, 3.0);
+        let neg = -v;
+        assert_eq!(neg, Vec3::new(-1.0, 2.0, -3.0));
+    }
+
+    #[test]
+    fn test_splat() {
+        let v = Vec3::splat(5.0);
+        assert_eq!(v.x, 5.0);
+        assert_eq!(v.y, 5.0);
+        assert_eq!(v.z, 5.0);
+    }
+
+    #[test]
+    fn test_distance() {
+        let a = Vec3::new(0.0, 0.0, 0.0);
+        let b = Vec3::new(1.0, 2.0, 2.0);
+        assert!((a.distance(b) - 3.0).abs() < 1e-6);
+        assert!((a.distance_squared(b) - 9.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_add_assign() {
+        let mut a = Vec3::new(1.0, 2.0, 3.0);
+        a += Vec3::new(4.0, 5.0, 6.0);
+        assert_eq!(a, Vec3::new(5.0, 7.0, 9.0));
+    }
+
+    #[test]
+    fn test_sub_assign() {
+        let mut a = Vec3::new(10.0, 10.0, 10.0);
+        a -= Vec3::new(1.0, 2.0, 3.0);
+        assert_eq!(a, Vec3::new(9.0, 8.0, 7.0));
+    }
+
+    #[test]
+    fn test_mul_assign() {
+        let mut a = Vec3::new(1.0, 2.0, 3.0);
+        a *= 2.0;
+        assert_eq!(a, Vec3::new(2.0, 4.0, 6.0));
+    }
+
+    #[test]
+    fn test_scalar_mul() {
+        let v = Vec3::new(1.0, 2.0, 3.0);
+        let result = 3.0 * v;
+        assert_eq!(result, Vec3::new(3.0, 6.0, 9.0));
+    }
+
+    #[test]
+    fn test_component_mul() {
+        let a = Vec3::new(2.0, 3.0, 4.0);
+        let b = Vec3::new(5.0, 6.0, 7.0);
+        assert_eq!(a * b, Vec3::new(10.0, 18.0, 28.0));
+    }
+
+    #[test]
+    fn test_component_div() {
+        let a = Vec3::new(10.0, 12.0, 14.0);
+        let b = Vec3::new(2.0, 3.0, 7.0);
+        assert_eq!(a / b, Vec3::new(5.0, 4.0, 2.0));
+    }
+
+    #[test]
+    fn test_scalar_div() {
+        let v = Vec3::new(10.0, 20.0, 30.0);
+        assert_eq!(v / 10.0, Vec3::new(1.0, 2.0, 3.0));
+    }
+
+    #[test]
+    fn test_abs() {
+        let v = Vec3::new(-1.0, -2.0, 3.0);
+        assert_eq!(v.abs(), Vec3::new(1.0, 2.0, 3.0));
+    }
+
+    #[test]
+    fn test_constants() {
+        assert_eq!(Vec3::ZERO, Vec3::new(0.0, 0.0, 0.0));
+        assert_eq!(Vec3::ONE, Vec3::new(1.0, 1.0, 1.0));
+        assert_eq!(Vec3::X, Vec3::new(1.0, 0.0, 0.0));
+        assert_eq!(Vec3::Y, Vec3::new(0.0, 1.0, 0.0));
+        assert_eq!(Vec3::Z, Vec3::new(0.0, 0.0, 1.0));
+    }
+
+    #[test]
+    fn test_cross_orthogonal() {
+        let x = Vec3::X;
+        let y = Vec3::Y;
+        let z = Vec3::Z;
+        
+        assert_eq!(x.cross(y), z);
+        assert_eq!(y.cross(z), x);
+        assert_eq!(z.cross(x), y);
+        
+        // Anti-commutative
+        assert_eq!(y.cross(x), -z);
+        assert_eq!(z.cross(y), -x);
+        assert_eq!(x.cross(z), -y);
+    }
+
+    #[test]
+    fn test_cross_self() {
+        let v = Vec3::new(1.0, 2.0, 3.0);
+        assert_eq!(v.cross(v), Vec3::ZERO);
+    }
+
+    #[test]
+    fn test_dot_perpendicular() {
+        let x = Vec3::X;
+        let y = Vec3::Y;
+        let z = Vec3::Z;
+        
+        assert_eq!(x.dot(y), 0.0);
+        assert_eq!(y.dot(z), 0.0);
+        assert_eq!(x.dot(z), 0.0);
+    }
+
+    #[test]
+    fn test_very_small_vector_normalize() {
+        let v = Vec3::new(1e-10, 1e-10, 1e-10);
+        let n = v.normalize();
+        assert!(n.length() < 1e-5 || n.length() < 1.0);
+    }
+
+    #[test]
+    fn test_lerp_extreme_values() {
+        let a = Vec3::new(-100.0, -100.0, -100.0);
+        let b = Vec3::new(100.0, 100.0, 100.0);
+        
+        assert_eq!(a.lerp(b, 0.0), a);
+        assert_eq!(a.lerp(b, 1.0), b);
+        assert_eq!(a.lerp(b, 0.5), Vec3::ZERO);
+    }
+
+    #[test]
+    fn test_display() {
+        let v = Vec3::new(1.0, 2.0, 3.0);
+        let s = format!("{}", v);
+        assert!(s.contains("Vec3"));
+    }
+
+    #[test]
+    fn test_normalize_or_zero() {
+        let v = Vec3::ZERO;
+        assert_eq!(v.normalize_or_zero(), Vec3::ZERO);
+        
+        let v2 = Vec3::new(1.0, 0.0, 0.0);
+        assert!((v2.normalize_or_zero().length() - 1.0).abs() < 1e-6);
+    }
 }
