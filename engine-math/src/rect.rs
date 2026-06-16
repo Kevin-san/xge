@@ -1,5 +1,5 @@
-use core::fmt;
 use crate::Vec2;
+use core::fmt;
 
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
 pub struct Rect {
@@ -41,8 +41,10 @@ impl Rect {
     }
 
     pub fn contains(&self, point: Vec2) -> bool {
-        point.x >= self.x && point.x <= self.x + self.w
-            && point.y >= self.y && point.y <= self.y + self.h
+        point.x >= self.x
+            && point.x <= self.x + self.w
+            && point.y >= self.y
+            && point.y <= self.y + self.h
     }
 
     pub fn intersects(&self, other: &Self) -> bool {
@@ -64,18 +66,25 @@ impl Rect {
         if !self.intersects(other) {
             return None;
         }
-        
+
         let min_x = self.x.max(other.x);
         let min_y = self.y.max(other.y);
         let max_x = (self.x + self.w).min(other.x + other.w);
         let max_y = (self.y + self.h).min(other.y + other.h);
-        Some(Self::from_min_max(Vec2::new(min_x, min_y), Vec2::new(max_x, max_y)))
+        Some(Self::from_min_max(
+            Vec2::new(min_x, min_y),
+            Vec2::new(max_x, max_y),
+        ))
     }
 }
 
 impl fmt::Display for Rect {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Rect(x: {:.2}, y: {:.2}, w: {:.2}, h: {:.2})", self.x, self.y, self.w, self.h)
+        write!(
+            f,
+            "Rect(x: {:.2}, y: {:.2}, w: {:.2}, h: {:.2})",
+            self.x, self.y, self.w, self.h
+        )
     }
 }
 
@@ -95,7 +104,7 @@ mod tests {
         let a = Rect::new(0.0, 0.0, 10.0, 10.0);
         let b = Rect::new(5.0, 5.0, 10.0, 10.0);
         let c = Rect::new(20.0, 20.0, 10.0, 10.0);
-        
+
         assert!(a.intersects(&b));
         assert!(!a.intersects(&c));
     }
@@ -105,7 +114,7 @@ mod tests {
         let a = Rect::new(0.0, 0.0, 10.0, 10.0);
         let b = Rect::new(5.0, 5.0, 10.0, 10.0);
         let u = a.union(&b);
-        
+
         assert_eq!(u.x, 0.0);
         assert_eq!(u.y, 0.0);
         assert_eq!(u.w, 15.0);
@@ -117,7 +126,7 @@ mod tests {
         let a = Rect::new(0.0, 0.0, 10.0, 10.0);
         let b = Rect::new(5.0, 5.0, 10.0, 10.0);
         let i = a.intersection(&b);
-        
+
         assert!(i.is_some());
         let i = i.unwrap();
         assert_eq!(i.x, 5.0);

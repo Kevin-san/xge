@@ -1,0 +1,16 @@
+[package]
+name = "engine-ui"
+version = "0.1.0"
+edition = "2021"
+authors = ["Game Engine Team"]
+description = "UI system for game development"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+engine-ecs = { path = "../engine-ecs" }
+engine-render = { path = "../engine-render" }
+engine-math = { path = "../engine-math" }
+engine-window = { path = "../engine-window" }
+anyhow = "1.0"
+thiserror = "1.0"
+unicode-segmentation = "1.10"

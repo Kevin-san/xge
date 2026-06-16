@@ -1,5 +1,5 @@
 use core::fmt;
-use core::ops::{Add, Div, Mul, Neg, Sub};
+use core::ops::{Add, AddAssign, Div, Mul, Neg, Sub};
 
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
 #[repr(C)]
@@ -85,6 +85,14 @@ impl Add for Vec2 {
     #[inline]
     fn add(self, other: Self) -> Self {
         Self::new(self.x + other.x, self.y + other.y)
+    }
+}
+
+impl AddAssign for Vec2 {
+    #[inline]
+    fn add_assign(&mut self, other: Self) {
+        self.x += other.x;
+        self.y += other.y;
     }
 }
 

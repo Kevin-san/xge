@@ -14,3 +14,5 @@ pub use event::EventBus;
 pub use module::{Module, ModuleRegistry};
 pub use schedule::Schedule;
 pub use time::Time;
+
+pub use engine_window as window;

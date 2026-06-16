@@ -280,6 +280,20 @@ name = "bytemuck"
 version = "1.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c8efb64bd706a16a1bdde310ae86b351e4d21550d98d056f22f8a7f7a2183fec"
+dependencies = [
+ "bytemuck_derive",
+]
+
+[[package]]
+name = "bytemuck_derive"
+version = "1.10.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f9abbd1bc6865053c427f7198e6af43bfdedc55ab791faed4fbd361d789575ff"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
 
 [[package]]
 name = "byteorder-lite"
@@ -600,11 +614,51 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "chrono",
+ "engine-window",
+]
+
+[[package]]
+name = "engine-ecs"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "criterion",
+ "engine-utils",
+ "parking_lot",
+ "slab",
+ "thiserror 1.0.69",
+]
+
+[[package]]
+name = "engine-examples"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "engine-core",
+ "engine-ecs",
+ "engine-math",
+ "engine-render",
+ "engine-ui",
+ "engine-window",
+ "env_logger",
+ "log",
 ]
 
 [[package]]
 name = "engine-math"
 version = "0.1.0"
+
+[[package]]
+name = "engine-physics-2d"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "criterion",
+ "engine-math",
+ "engine-utils",
+ "parking_lot",
+ "thiserror 1.0.69",
+]
 
 [[package]]
 name = "engine-platform"
@@ -615,15 +669,42 @@ name = "engine-render"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bytemuck",
  "criterion",
  "engine-core",
  "engine-math",
  "engine-utils",
- "engine-window",
  "glow",
  "image",
  "parking_lot",
  "thiserror 1.0.69",
+]
+
+[[package]]
+name = "engine-scene"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "criterion",
+ "engine-math",
+ "engine-render",
+ "engine-utils",
+ "parking_lot",
+ "slab",
+ "thiserror 1.0.69",
+]
+
+[[package]]
+name = "engine-ui"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "engine-ecs",
+ "engine-math",
+ "engine-render",
+ "engine-window",
+ "thiserror 1.0.69",
+ "unicode-segmentation",
 ]
 
 [[package]]
@@ -638,6 +719,19 @@ dependencies = [
  "engine-math",
  "raw-window-handle 0.5.2",
  "winit",
+]
+
+[[package]]
+name = "env_logger"
+version = "0.10.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4cd405aab171cb85d6735e5c8d9db038c17d3ca007a4d2c25f337935c3d90580"
+dependencies = [
+ "humantime",
+ "is-terminal",
+ "log",
+ "regex",
+ "termcolor",
 ]
 
 [[package]]
@@ -839,6 +933,12 @@ name = "hermit-abi"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc0fef456e4baa96da950455cd02c081ca953b141298e41db3fc7e36b1da849c"
+
+[[package]]
+name = "humantime"
+version = "2.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "135b12329e5e3ce057a9f972339ea52bc954fe1e9358ef27f95e89716fbc5424"
 
 [[package]]
 name = "iana-time-zone"
@@ -1930,6 +2030,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
+]
+
+[[package]]
+name = "termcolor"
+version = "1.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "06794f8f6c5c898b3275aebefa6b8a1cb24cd2c6c79397ab15774837a0bc5755"
+dependencies = [
+ "winapi-util",
 ]
 
 [[package]]

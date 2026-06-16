@@ -245,7 +245,7 @@ impl OrthographicCamera {
 
     /// 移动相机
     pub fn move_by(&mut self, delta: Vec2) {
-        self.position = self.position + delta;
+        self.position += delta;
         self.recalculate();
     }
 }
@@ -455,7 +455,7 @@ impl Camera2D {
 
             if self.smoothing > 0.0 {
                 let t = 1.0 - (-dt / self.smoothing).exp();
-                self.position = self.position + diff * t;
+                self.position += diff * t;
             } else {
                 self.position = target;
             }

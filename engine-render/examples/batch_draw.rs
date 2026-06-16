@@ -13,7 +13,7 @@ fn main() {
 
     // Create a single white texture for batching
     let white_image = create_color_image(32, 32, Color::WHITE);
-    let texture = Texture2D::from_image(&white_image);
+    let _texture = Texture2D::from_image(&white_image);
 
     // Create a single sprite batch
     let mut batch = SpriteBatch::with_capacity(TextureHandle::null(), 10000);
@@ -31,7 +31,8 @@ fn main() {
         let y = rng.next_f32() * 720.0;
         let color = Color::from_rgb(rng.next_f32(), rng.next_f32(), rng.next_f32());
 
-        let colored_sprite = sprite.clone().with_color(color);
+        let mut colored_sprite = sprite.clone();
+        colored_sprite.set_color(color);
         batch.add(&colored_sprite, Vec2::new(x, y));
 
         if (i + 1) % 1000 == 0 {

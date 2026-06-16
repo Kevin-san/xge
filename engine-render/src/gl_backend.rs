@@ -68,7 +68,7 @@ impl GlRenderer {
 
 #[cfg(feature = "gl")]
 impl Renderer for GlRenderer {
-    fn init(_window: &engine_window::Window) -> anyhow::Result<Self> {
+    fn init(_window: &crate::RenderContext) -> anyhow::Result<Self> {
         // This would create actual GL context from window
         // For now, return a placeholder
         Err(anyhow::anyhow!("GL renderer requires OpenGL context"))

@@ -8,6 +8,7 @@ rust-version = "1.70"
 
 [dependencies]
 anyhow.workspace = true
+engine-window = { path = "../engine-window" }
 
 [build-dependencies]
 chrono.workspace = true

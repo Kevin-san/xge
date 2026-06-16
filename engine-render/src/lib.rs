@@ -58,3 +58,7 @@ mod texture_atlas;
 // Optional OpenGL backend
 #[cfg(feature = "gl")]
 mod gl_backend;
+
+// Full OpenGL implementation
+#[cfg(feature = "gl")]
+pub mod opengl;

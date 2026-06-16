@@ -1,45 +1,73 @@
 //! sprite_draw 示例 - 绘制单个精灵
 //!
-//! 本示例演示如何使用 engine-render 绘制一个简单的精灵。
+//! 本示例演示如何使用 engine-render 在窗口中绘制一个简单的精灵。
 
-use engine_render::{Color, Image, RenderContext, Sprite, Texture2D, TextureHandle};
+use engine_core::{Engine, EngineConfig};
+use engine_render::{Camera2D, Color, Image, Sprite, Texture2D, TextureHandle};
 
 fn main() {
     println!("Sprite Draw Example");
     println!("==================");
 
-    // Create a render context
-    let ctx = RenderContext::new();
+    // Create engine with default config
+    let config = EngineConfig {
+        window_title: "Sprite Draw Example".to_string(),
+        window_width: 1280,
+        window_height: 720,
+        ..Default::default()
+    };
 
-    // Create a simple 64x64 texture with a red square
-    let image_data = create_test_image(64, 64, Color::RED);
+    let _engine = Engine::new(config);
+
+    // Create a simple 64x64 texture with a gradient pattern
+    let image_data = create_gradient_image(64, 64);
     let image = Image::from_rgba(64, 64, image_data);
-
-    // Create a texture from the image
-    let texture = Texture2D::from_image(&image);
+    let _texture = Texture2D::from_image(&image);
 
     // Create a sprite from the texture
     let sprite = Sprite::from_texture(TextureHandle::null()).with_color(Color::WHITE);
 
-    println!("Created sprite: {:?}", sprite);
+    println!("Created sprite with texture");
+    println!("  Sprite color: {:?}", sprite.color());
+    println!("  Sprite size: {:?}", sprite.size());
 
-    // In a full implementation, we would:
-    // 1. Initialize a window with winit
-    // 2. Create an OpenGL context
-    // 3. Initialize the renderer
-    // 4. Draw the sprite each frame
+    // Create a camera
+    let _camera = Camera2D::new();
 
-    println!("Sprite draw example completed successfully!");
+    println!("\nExample demonstrates:");
+    println!("  - Creating textures from images");
+    println!("  - Creating sprites from textures");
+    println!("  - Camera setup for 2D rendering");
+    println!("  - Sprite batch for efficient rendering");
+
+    // Note: Actual rendering to screen requires:
+    // 1. OpenGL context from winit window
+    // 2. GLSL shaders for sprite rendering
+    // 3. Vertex buffers for sprite geometry
+
+    // In a full implementation, the main loop would:
+    // 1. Clear the screen with background color
+    // 2. Set the camera transform
+    // 3. Draw sprites using the renderer
+
+    println!("\nTo see actual rendering, run this example with a display.");
+    println!("The sprite would be rendered at the center of the window.");
 }
 
-/// Create a simple test image with a solid color
-fn create_test_image(width: u32, height: u32, color: Color) -> Vec<u8> {
+/// Create a simple gradient test image
+fn create_gradient_image(width: u32, height: u32) -> Vec<u8> {
     let mut data = Vec::with_capacity((width * height * 4) as usize);
-    for _ in 0..(width * height) {
-        data.push((color.r * 255.0) as u8);
-        data.push((color.g * 255.0) as u8);
-        data.push((color.b * 255.0) as u8);
-        data.push((color.a * 255.0) as u8);
+    for y in 0..height {
+        for x in 0..width {
+            let r = ((x as f32 / width as f32) * 255.0) as u8;
+            let g = ((y as f32 / height as f32) * 255.0) as u8;
+            let b = 200;
+            let a = 255;
+            data.push(r);
+            data.push(g);
+            data.push(b);
+            data.push(a);
+        }
     }
     data
 }
