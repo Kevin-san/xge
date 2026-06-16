@@ -296,6 +296,20 @@ impl RigidBody2D {
             self.collider_indices.push(index);
         }
     }
+    
+    /// 移除碰撞体索引
+    pub fn remove_collider_index(&mut self, index: usize) {
+        self.collider_indices.retain(|&i| i != index);
+    }
+    
+    /// 移除后更新碰撞体索引（索引大于被移除的需要减1）
+    pub fn update_collider_indices_after_remove(&mut self, removed_index: usize) {
+        for i in &mut self.collider_indices {
+            if *i > removed_index {
+                *i -= 1;
+            }
+        }
+    }
 
     /// 获取碰撞体索引
     pub fn collider_indices(&self) -> &[usize] {

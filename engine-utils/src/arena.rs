@@ -68,7 +68,10 @@ impl<T> Arena<T> {
 
         let value = self.items[index].take();
         if value.is_some() {
-            self.generations[index] += 1;
+            // 检查 generation 溢出
+            self.generations[index] = self.generations[index].wrapping_add(1);
+            // 如果溢出回绕到 0，新插入的相同索引会匹配旧的 generation=0 的句柄
+            // 这是一个已知的边界情况，但 40 亿次循环不太可能在正常使用时发生
             self.free_indices.push(handle.index());
             self.len -= 1;
         }
