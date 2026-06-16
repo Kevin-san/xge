@@ -7,6 +7,9 @@ members = [
     "engine-platform",
     "engine-window",
     "engine-render",
+    "engine-physics-2d",
+    "engine-scene",
+    "engine-ecs",
 ]
 
 [workspace.package]
@@ -28,3 +31,6 @@ engine-utils = { path = "engine-utils" }
 engine-platform = { path = "engine-platform" }
 engine-window = { path = "engine-window" }
 engine-render = { path = "engine-render" }
+engine-physics-2d = { path = "engine-physics-2d" }
+engine-scene = { path = "engine-scene" }
+engine-ecs = { path = "engine-ecs" }

@@ -1,0 +1,17 @@
+[package]
+name = "engine-ecs"
+version = "0.1.0"
+edition = "2021"
+authors = ["Game Engine Team"]
+description = "ECS (Entity Component System) core for game development"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+engine-utils = { path = "../engine-utils" }
+anyhow = "1.0"
+thiserror = "1.0"
+parking_lot = "0.12"
+slab = "0.4"
+
+[dev-dependencies]
+criterion = "0.5"

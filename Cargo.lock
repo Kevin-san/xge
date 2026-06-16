@@ -618,8 +618,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "engine-ecs"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "criterion",
+ "engine-utils",
+ "parking_lot",
+ "slab",
+ "thiserror 1.0.69",
+]
+
+[[package]]
 name = "engine-math"
 version = "0.1.0"
+
+[[package]]
+name = "engine-physics-2d"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "criterion",
+ "engine-math",
+ "engine-utils",
+ "parking_lot",
+ "thiserror 1.0.69",
+]
 
 [[package]]
 name = "engine-platform"
@@ -638,6 +662,20 @@ dependencies = [
  "glow",
  "image",
  "parking_lot",
+ "thiserror 1.0.69",
+]
+
+[[package]]
+name = "engine-scene"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "criterion",
+ "engine-math",
+ "engine-render",
+ "engine-utils",
+ "parking_lot",
+ "slab",
  "thiserror 1.0.69",
 ]
 
