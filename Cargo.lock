@@ -620,7 +620,6 @@ dependencies = [
  "engine-core",
  "engine-math",
  "engine-utils",
- "engine-window",
  "glow",
  "image",
  "parking_lot",

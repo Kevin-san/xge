@@ -13,7 +13,7 @@ fn main() {
 
     // Create a single white texture for batching
     let white_image = create_color_image(32, 32, Color::WHITE);
-    let texture = Texture2D::from_image(&white_image);
+    let _texture = Texture2D::from_image(&white_image);
 
     // Create a single sprite batch
     let mut batch = SpriteBatch::with_capacity(TextureHandle::null(), 10000);

@@ -23,7 +23,6 @@ thiserror = "1.0"
 engine-core = { path = "../engine-core" }
 engine-math = { path = "../engine-math" }
 engine-utils = { path = "../engine-utils" }
-engine-window = { path = "../engine-window" }
 
 [dev-dependencies]
 criterion = "0.5"

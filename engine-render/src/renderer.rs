@@ -16,7 +16,7 @@ use crate::sprite::Rect;
 /// 定义渲染器的统一接口。
 pub trait Renderer {
     /// 初始化渲染器
-    fn init(window: &engine_window::Window) -> anyhow::Result<Self>
+    fn init(window: &crate::RenderContext) -> anyhow::Result<Self>
     where
         Self: Sized;
 

@@ -67,6 +67,36 @@ impl RenderStats {
     pub fn add_texture_switch(&mut self) {
         self.texture_switches += 1;
     }
+
+    /// 设置绘制调用
+    #[inline]
+    pub fn set_draw_calls(&mut self, count: u32) {
+        self.draw_calls = count;
+    }
+
+    /// 设置顶点数量
+    #[inline]
+    pub fn set_vertices(&mut self, count: u32) {
+        self.vertices = count;
+    }
+
+    /// 设置索引数量
+    #[inline]
+    pub fn set_indices(&mut self, count: u32) {
+        self.indices = count;
+    }
+
+    /// 设置批次数量
+    #[inline]
+    pub fn set_batches(&mut self, count: u32) {
+        self.batches = count;
+    }
+
+    /// 设置纹理切换次数
+    #[inline]
+    pub fn set_texture_switches(&mut self, count: u32) {
+        self.texture_switches = count;
+    }
 }
 
 /// 线程安全的渲染统计（用于全局统计）
