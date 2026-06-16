@@ -8,8 +8,11 @@ use engine_math::Vec2;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum RigidBodyType {
     #[default]
+    /// 动态刚体 - 受物理力影响
     Dynamic,
+    /// 静态刚体 - 不受物理力影响，位置固定
     Static,
+    /// 运动刚体 - 位置由代码控制，但可以影响其他物体
     Kinematic,
 }
 
@@ -316,6 +319,7 @@ impl RigidBody2D {
         self.angular_velocity *= 1.0 - self.angular_damping;
     }
 
+    /// 更新位置
     pub fn update_position(&mut self, dt: f32) {
         if self.body_type != RigidBodyType::Dynamic {
             return;
