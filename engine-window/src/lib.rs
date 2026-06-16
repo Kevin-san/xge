@@ -86,7 +86,7 @@ impl WindowBuilder {
         self
     }
 
-    pub fn with_always_on_top(mut self, _always_on_top: bool) -> Self {
+    pub fn with_always_on_top(self, _always_on_top: bool) -> Self {
         self
     }
 
@@ -95,7 +95,7 @@ impl WindowBuilder {
         self
     }
 
-    pub fn with_minimized(mut self, _minimized: bool) -> Self {
+    pub fn with_minimized(self, _minimized: bool) -> Self {
         self
     }
 
@@ -388,11 +388,11 @@ impl InputModule {
     }
 
     pub fn process_event(&mut self, event: &Event<()>) {
-        match event {
-            Event::WindowEvent { event, .. } => match event {
+        if let Event::WindowEvent { event, .. } = event {
+            match event {
                 WindowEvent::KeyboardInput { event, .. } => {
                     if let winit::keyboard::Key::Named(keycode) = event.logical_key.as_ref() {
-                        self.input.update_key(keycode.clone(), event.state);
+                        self.input.update_key(keycode, event.state);
                     }
                 }
                 WindowEvent::ModifiersChanged(modifiers) => {
@@ -407,7 +407,7 @@ impl InputModule {
                 WindowEvent::MouseWheel { delta, .. } => {
                     match delta {
                         MouseScrollDelta::LineDelta(x, y) => {
-                            self.input.update_wheel(Vec2::new(*x as f32, *y as f32));
+                            self.input.update_wheel(Vec2::new(*x, *y));
                         }
                         MouseScrollDelta::PixelDelta(pos) => {
                             self.input.update_wheel(Vec2::new(pos.x as f32, pos.y as f32));
@@ -428,8 +428,7 @@ impl InputModule {
                     );
                 }
                 _ => {}
-            },
-            _ => {}
+            }
         }
     }
 
