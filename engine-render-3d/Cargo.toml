@@ -10,6 +10,7 @@ description = "Game engine 3D render core - Mesh, Camera, Lighting, Transform"
 [features]
 default = ["gl"]
 gl = ["glow"]
+gltf-loader = ["gltf", "base64"]
 
 [dependencies]
 # External crates
@@ -19,6 +20,8 @@ anyhow = "1.0"
 parking_lot = "0.12"
 thiserror = "1.0"
 bytemuck = { version = "1.14", features = ["derive"] }
+gltf = { version = "1.1", optional = true }
+base64 = { version = "0.22", optional = true }
 
 # Internal crates
 engine-math = { path = "../engine-math" }
@@ -31,7 +34,7 @@ criterion = "0.5"
 [[example]]
 name = "mesh_viewer"
 path = "examples/mesh_viewer.rs"
-required-features = ["gl"]
+required-features = ["gl", "gltf-loader"]
 
 [[example]]
 name = "primitives_demo"

@@ -219,40 +219,31 @@ impl Camera3D {
 
     /// 屏幕坐标转世界射线
     pub fn screen_to_world_ray(&self, screen_pos: engine_math::Vec2, screen_size: engine_math::Vec2) -> Ray3 {
+        // 简化实现：使用相机的方向和位置直接计算
         // 将屏幕坐标归一化到 [-1, 1]
-        let ndc = engine_math::Vec2::new(
-            2.0 * screen_pos.x / screen_size.x - 1.0,
-            2.0 * screen_pos.y / screen_size.y - 1.0,
-        );
+        let ndc_x = 2.0 * screen_pos.x / screen_size.x - 1.0;
+        let ndc_y = 2.0 * screen_pos.y / screen_size.y - 1.0;
 
-        let inv_proj = match self.inverse_projection() {
-            Some(m) => m,
-            None => return Ray3::new(Vec3::ZERO, Vec3::new(0.0, 0.0, -1.0)),
-        };
+        // 计算 FOV 缩放
+        let fov_rad = self.fov * std::f32::consts::PI / 180.0;
+        let tan_half_fov = (fov_rad * 0.5).tan();
+        let aspect = self.aspect;
 
-        let inv_view = match self.inverse_view() {
-            Some(m) => m,
-            None => return Ray3::new(Vec3::ZERO, Vec3::new(0.0, 0.0, -1.0)),
-        };
+        // 在相机空间中构造射线方向
+        let local_x = ndc_x * tan_half_fov * aspect;
+        let local_y = ndc_y * tan_half_fov;
 
-        // 近平面点
-        let near_point = inv_proj.mul_vec4(engine_math::Vec4::new(ndc.x, ndc.y, -1.0, 1.0));
-        let near_point = Vec3::new(near_point.x, near_point.y, near_point.z) / near_point.w;
+        // 相机空间的射线方向 (-Z 为前)
+        let local_dir = Vec3::new(local_x, local_y, -1.0).normalize();
 
-        // 远平面点
-        let far_point = inv_proj.mul_vec4(engine_math::Vec4::new(ndc.x, ndc.y, 1.0, 1.0));
-        let far_point = Vec3::new(far_point.x, far_point.y, far_point.z) / far_point.w;
+        // 转换到世界空间（使用 forward/right/up）
+        let right = self.right();
+        let up = self.up();
+        let forward = self.forward();
 
-        // 转换到世界空间
-        let near_world = inv_view.mul_vec4(engine_math::Vec4::new(near_point.x, near_point.y, near_point.z, 1.0));
-        let far_world = inv_view.mul_vec4(engine_math::Vec4::new(far_point.x, far_point.y, far_point.z, 1.0));
+        let world_dir = (right * local_dir.x + up * local_dir.y + forward * (-local_dir.z)).normalize();
 
-        let near_world = Vec3::new(near_world.x, near_world.y, near_world.z);
-        let far_world = Vec3::new(far_world.x, far_world.y, far_world.z);
-
-        let direction = (far_world - near_world).normalize();
-
-        Ray3::new(near_world, direction)
+        Ray3::new(self.position, world_dir)
     }
 
     /// 世界坐标转屏幕坐标

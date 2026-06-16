@@ -129,6 +129,11 @@ impl Mesh3D {
         &self.primitives
     }
 
+    /// 替换子网格列表
+    pub fn set_primitives(&mut self, primitives: Vec<Primitive>) {
+        self.primitives = primitives;
+    }
+
     /// 获取本地包围盒
     pub fn aabb(&self) -> AABB {
         self.aabb
@@ -607,6 +612,125 @@ impl Mesh3D {
         }
 
         mesh.build()
+    }
+
+    /// 创建圆锥网格
+    pub fn cone(radius: f32, height: f32, segments: u32) -> Self {
+        let half_height = height / 2.0;
+        let mut vertices = Vec::new();
+        let mut indices = Vec::new();
+
+        // 侧面
+        for i in 0..=segments {
+            let theta = 2.0 * std::f32::consts::PI * i as f32 / segments as f32;
+            let x = radius * theta.cos();
+            let z = radius * theta.sin();
+
+            // 计算侧面法线（指向侧面外）
+            let slope = radius / height;
+            let ny_norm = 1.0 / (1.0 + slope * slope).sqrt();
+            let nr_norm = slope * ny_norm;
+
+            let n = Vec3::new(nr_norm * theta.cos(), ny_norm, nr_norm * theta.sin());
+
+            vertices.push(Vertex3D::new(
+                Vec3::new(x, -half_height, z),
+                n,
+                Vec2::new(i as f32 / segments as f32, 0.0),
+            ));
+        }
+
+        // 顶点
+        let apex_idx = vertices.len() as u32;
+        vertices.push(Vertex3D::new(
+            Vec3::new(0.0, half_height, 0.0),
+            Vec3::new(0.0, 1.0, 0.0),
+            Vec2::new(0.5, 1.0),
+        ));
+
+        for i in 0..segments {
+            let base = i;
+            indices.push(base as u32);
+            indices.push((base as u32 + 1) % (segments + 1));
+            indices.push(apex_idx);
+        }
+
+        // 底面
+        let bottom_center_idx = vertices.len() as u32;
+        vertices.push(Vertex3D::new(
+            Vec3::new(0.0, -half_height, 0.0),
+            Vec3::new(0.0, -1.0, 0.0),
+            Vec2::new(0.5, 0.5),
+        ));
+
+        for i in 0..=segments {
+            let theta = 2.0 * std::f32::consts::PI * i as f32 / segments as f32;
+            vertices.push(Vertex3D::new(
+                Vec3::new(radius * theta.cos(), -half_height, radius * theta.sin()),
+                Vec3::new(0.0, -1.0, 0.0),
+                Vec2::new(0.5 + 0.5 * theta.cos(), 0.5 + 0.5 * theta.sin()),
+            ));
+        }
+
+        for i in 0..segments {
+            indices.push(bottom_center_idx);
+            indices.push(bottom_center_idx + i as u32 + 1);
+            indices.push(bottom_center_idx + i as u32 + 2);
+        }
+
+        Self::from_vertices(vertices, indices)
+    }
+
+    /// 创建圆环网格
+    pub fn torus(major_r: f32, minor_r: f32, major_seg: u32, minor_seg: u32) -> Self {
+        let mut vertices = Vec::new();
+        let mut indices = Vec::new();
+
+        for i in 0..=major_seg {
+            let u = i as f32 / major_seg as f32;
+            let phi = u * 2.0 * std::f32::consts::PI;
+            let cos_phi = phi.cos();
+            let sin_phi = phi.sin();
+
+            for j in 0..=minor_seg {
+                let v = j as f32 / minor_seg as f32;
+                let theta = v * 2.0 * std::f32::consts::PI;
+                let cos_theta = theta.cos();
+                let sin_theta = theta.sin();
+
+                let x = (major_r + minor_r * cos_theta) * cos_phi;
+                let y = minor_r * sin_theta;
+                let z = (major_r + minor_r * cos_theta) * sin_phi;
+
+                // 法线
+                let nx = cos_theta * cos_phi;
+                let ny = sin_theta;
+                let nz = cos_theta * sin_phi;
+
+                vertices.push(Vertex3D::new(
+                    Vec3::new(x, y, z),
+                    Vec3::new(nx, ny, nz),
+                    Vec2::new(u, v),
+                ));
+            }
+        }
+
+        for i in 0..major_seg {
+            for j in 0..minor_seg {
+                let first = (i * (minor_seg + 1) + j) as u32;
+                let second = first + (minor_seg + 1) as u32;
+
+                indices.push(first);
+                indices.push(second);
+                indices.push(first + 1);
+
+                indices.push(second);
+                indices.push(second + 1);
+                indices.push(first + 1);
+            }
+        }
+
+        Self::from_vertices(vertices, indices)
     }
 }
 

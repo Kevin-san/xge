@@ -414,7 +414,7 @@ mod tests {
         let mut scene = Scene3D::new();
         let node = Node3D::with_name("test");
         let handle = scene.add_node(node);
-        scene.remove_node(handle);
+        scene.remove_node(handle.clone());
         assert!(scene.node(&handle).is_none());
     }
 
