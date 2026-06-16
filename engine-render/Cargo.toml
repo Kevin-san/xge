@@ -19,11 +19,13 @@ anyhow = "1.0"
 parking_lot = "0.12"
 thiserror = "1.0"
 bytemuck = { version = "1.14", features = ["derive"] }
+winit = { version = "0.30", optional = true }
 
 # Internal crates
 engine-core = { path = "../engine-core" }
 engine-math = { path = "../engine-math" }
 engine-utils = { path = "../engine-utils" }
+engine-window = { path = "../engine-window" }
 
 [dev-dependencies]
 criterion = "0.5"
@@ -51,3 +53,8 @@ path = "examples/camera_follow.rs"
 [[example]]
 name = "shape_draw"
 path = "examples/shape_draw.rs"
+
+[[example]]
+name = "advanced_rendering"
+path = "examples/advanced_rendering.rs"
+required-features = ["gl"]
