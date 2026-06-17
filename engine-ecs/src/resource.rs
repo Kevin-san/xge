@@ -5,6 +5,8 @@
 use std::any::Any;
 use std::collections::HashMap;
 
+use crate::SystemParam;
+
 /// 资源 trait
 ///
 /// 资源是不属于实体的全局数据。
@@ -74,6 +76,10 @@ impl Default for Resources {
 
 // 为所有满足条件的类型实现 Resource
 impl<R: Any + Send + Sync + 'static> Resource for R {}
+
+impl SystemParam for Resources {
+    type Item<'a> = &'a Resources;
+}
 
 #[cfg(test)]
 mod tests {

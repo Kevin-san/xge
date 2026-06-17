@@ -18,6 +18,12 @@ pub trait Component: Any + Send + Sync + 'static {
     }
 }
 
+// 为基本类型实现 Component（允许它们作为组件使用）
+impl Component for i32 {}
+impl Component for u32 {}
+impl Component for f32 {}
+impl Component for String {}
+
 /// 组件存储
 ///
 /// 存储所有组件类型的组件数据。

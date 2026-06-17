@@ -13,9 +13,15 @@ pub trait System: Send + Sync + 'static {
 }
 
 /// System 参数
-pub trait SystemParam {}
+pub trait SystemParam {
+    type Item<'a>
+    where
+        Self: 'a;
+}
 
-impl SystemParam for World {}
+impl SystemParam for World {
+    type Item<'a> = &'a World;
+}
 
 /// IntoSystem trait
 ///

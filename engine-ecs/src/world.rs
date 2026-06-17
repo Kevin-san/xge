@@ -10,7 +10,7 @@ use super::bundle::Bundle;
 use super::{Component, Entity, Event, EventReader, Resource, Resources};
 
 /// 实体表
-struct EntityTable {
+pub(crate) struct EntityTable {
     /// 实体数据
     entities: Slab<EntityData>,
     /// 空闲实体索引
@@ -21,12 +21,12 @@ struct EntityTable {
 
 /// 实体数据
 #[derive(Clone)]
-struct EntityData {
+pub(crate) struct EntityData {
     #[allow(dead_code)]
-    id: u32,
-    generation: u32,
-    alive: bool,
-    component_types: Vec<TypeId>,
+    pub id: u32,
+    pub generation: u32,
+    pub alive: bool,
+    pub(crate) component_types: Vec<TypeId>,
 }
 
 impl EntityTable {
@@ -91,10 +91,6 @@ impl EntityTable {
         data.alive && data.generation == entity.generation()
     }
 
-    fn len(&self) -> usize {
-        self.entities.len()
-    }
-
     fn is_empty(&self) -> bool {
         self.entities.is_empty()
     }
@@ -119,10 +115,32 @@ impl EntityTable {
         self.free_list.clear();
         self.next_index = 0;
     }
+
+    /// 迭代所有存活实体
+    pub(crate) fn iter_alive(&self) -> impl Iterator<Item = Entity> + '_ {
+        self.entities.iter().filter_map(|(_, data)| {
+            if data.alive {
+                Some(Entity::new(data.id, data.generation))
+            } else {
+                None
+            }
+        })
+    }
+
+    /// 根据索引获取实体数据
+    #[allow(dead_code)]
+    pub(crate) fn get_by_index(&self, index: usize) -> Option<&EntityData> {
+        self.entities.get(index)
+    }
+
+    /// 获取实体总数
+    pub(crate) fn len(&self) -> usize {
+        self.entities.len()
+    }
 }
 
-/// 组件存储
-struct ComponentStorages {
+/// 组件存储（公开给 crate 内部使用）
+pub(crate) struct ComponentStorages {
     storages: HashMap<TypeId, Box<dyn Any + Send + Sync>>,
 }
 
@@ -249,9 +267,9 @@ impl<C: Component> DenseStorage<C> {
 /// ECS World
 pub struct World {
     /// 实体表
-    entities: EntityTable,
+    pub(crate) entities: EntityTable,
     /// 组件存储
-    components: ComponentStorages,
+    pub(crate) components: ComponentStorages,
     /// 资源存储
     resources: Resources,
     /// 事件
@@ -396,6 +414,16 @@ impl World {
         self.resources.contains::<R>()
     }
 
+    /// 检查实体是否存活
+    pub fn is_alive(&self, entity: Entity) -> bool {
+        self.entities.contains(entity)
+    }
+
+    /// 获取所有存活实体的迭代器
+    pub fn entities_iter(&self) -> impl Iterator<Item = Entity> + '_ {
+        self.entities.iter_alive()
+    }
+
     /// 发送事件
     pub fn send_event<E: Event>(&mut self, event: E) {
         let type_id = TypeId::of::<E>();
@@ -409,7 +437,7 @@ impl World {
     }
 
     /// 获取事件读取器
-    pub fn events<E: Event>(&self) -> EventReader<E> {
+    pub fn events<E: Event>(&self) -> EventReader<'_, E> {
         let type_id = TypeId::of::<E>();
         if let Some(events) = self.events.get(&type_id) {
             if let Some(events) = events.downcast_ref::<Vec<E>>() {
@@ -419,9 +447,37 @@ impl World {
         EventReader::new(Vec::new())
     }
 
+    /// 销毁实体并返回是否成功
+    pub fn despawn_with_bundle(&mut self, entity: Entity) -> bool {
+        self.despawn(entity)
+    }
+
+    /// 尝试获取实体（返回 None 如果已销毁）
+    pub fn get_entity(&self, id: u32) -> Option<Entity> {
+        let entity = Entity::new(id, 0);
+        if self.contains(entity) {
+            Some(entity)
+        } else {
+            None
+        }
+    }
+
     /// 获取实体数量
     pub fn entity_count(&self) -> usize {
         self.entities.len()
+    }
+
+    /// 清空世界（删除所有实体和组件）
+    pub fn clear(&mut self) {
+        self.entities.clear();
+        self.components.clear();
+        self.resources.clear();
+        self.events.clear();
+    }
+
+    /// 检查实体是否包含指定组件
+    pub fn contains_component<C: Component>(&self, entity: Entity) -> bool {
+        self.components.contains::<C>(entity)
     }
 
     /// 检查是否为空
@@ -432,6 +488,14 @@ impl World {
     /// 运行系统
     pub fn run_system<F: FnOnce(&mut Self)>(&mut self, system_fn: F) {
         system_fn(self);
+    }
+
+    /// 迭代所有存活的实体
+    ///
+    /// 返回一个迭代器，遍历所有 is_alive 为 true 的实体。
+    /// 注意：这需要遍历内部的 entity slab，可能较慢。
+    pub fn iter_entities(&self) -> impl Iterator<Item = Entity> + '_ {
+        self.entities.iter_alive()
     }
 }
 

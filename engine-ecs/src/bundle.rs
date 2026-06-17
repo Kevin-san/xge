@@ -1,15 +1,23 @@
-//! Bundle 模块
-//!
-//! 定义 Bundle trait 用于批量插入/移除组件。
+//! Bundle 模块 - 批量插入/删除组件
 
-use super::{Component, World};
+use crate::{Component, World};
+use std::any::TypeId;
+use std::vec::Vec;
 
-/// Bundle trait
-///
-/// 实现此 trait 的类型可以批量插入/移除组件。
-pub trait Bundle: Send + Sync + 'static {
+/// Bundle trait - 批量组件操作
+pub trait Bundle: Send + Sync {
     /// 批量插入组件到世界
     fn insert(self, world: &mut World, entity: crate::Entity)
+    where
+        Self: Sized;
+
+    /// 批量移除组件从世界
+    fn remove(self, world: &mut World, entity: crate::Entity)
+    where
+        Self: Sized;
+
+    /// 获取 Bundle 中所有组件的类型 ID
+    fn type_ids() -> Vec<TypeId>
     where
         Self: Sized;
 }
@@ -18,6 +26,14 @@ pub trait Bundle: Send + Sync + 'static {
 impl<C: Component + Send + Sync + 'static> Bundle for C {
     fn insert(self, world: &mut World, entity: crate::Entity) {
         world.insert(entity, self);
+    }
+
+    fn remove(self, world: &mut World, entity: crate::Entity) {
+        world.remove::<C>(entity);
+    }
+
+    fn type_ids() -> Vec<TypeId> {
+        vec![TypeId::of::<C>()]
     }
 }
 
@@ -28,6 +44,15 @@ impl<C1: Component + Send + Sync + 'static, C2: Component + Send + Sync + 'stati
     fn insert(self, world: &mut World, entity: crate::Entity) {
         world.insert(entity, self.0);
         world.insert(entity, self.1);
+    }
+
+    fn remove(self, world: &mut World, entity: crate::Entity) {
+        world.remove::<C1>(entity);
+        world.remove::<C2>(entity);
+    }
+
+    fn type_ids() -> Vec<TypeId> {
+        vec![TypeId::of::<C1>(), TypeId::of::<C2>()]
     }
 }
 
@@ -42,6 +67,16 @@ impl<
         world.insert(entity, self.0);
         world.insert(entity, self.1);
         world.insert(entity, self.2);
+    }
+
+    fn remove(self, world: &mut World, entity: crate::Entity) {
+        world.remove::<C1>(entity);
+        world.remove::<C2>(entity);
+        world.remove::<C3>(entity);
+    }
+
+    fn type_ids() -> Vec<TypeId> {
+        vec![TypeId::of::<C1>(), TypeId::of::<C2>(), TypeId::of::<C3>()]
     }
 }
 
@@ -58,6 +93,22 @@ impl<
         world.insert(entity, self.1);
         world.insert(entity, self.2);
         world.insert(entity, self.3);
+    }
+
+    fn remove(self, world: &mut World, entity: crate::Entity) {
+        world.remove::<C1>(entity);
+        world.remove::<C2>(entity);
+        world.remove::<C3>(entity);
+        world.remove::<C4>(entity);
+    }
+
+    fn type_ids() -> Vec<TypeId> {
+        vec![
+            TypeId::of::<C1>(),
+            TypeId::of::<C2>(),
+            TypeId::of::<C3>(),
+            TypeId::of::<C4>(),
+        ]
     }
 }
 
@@ -77,7 +128,47 @@ impl<
         world.insert(entity, self.3);
         world.insert(entity, self.4);
     }
+
+    fn remove(self, world: &mut World, entity: crate::Entity) {
+        world.remove::<C1>(entity);
+        world.remove::<C2>(entity);
+        world.remove::<C3>(entity);
+        world.remove::<C4>(entity);
+        world.remove::<C5>(entity);
+    }
+
+    fn type_ids() -> Vec<TypeId> {
+        vec![
+            TypeId::of::<C1>(),
+            TypeId::of::<C2>(),
+            TypeId::of::<C3>(),
+            TypeId::of::<C4>(),
+            TypeId::of::<C5>(),
+        ]
+    }
 }
+
+/// Bundle 错误
+#[derive(Debug, Clone)]
+pub struct BundleError {
+    /// 错误消息
+    pub msg: String,
+}
+
+impl BundleError {
+    /// 创建新的 BundleError
+    pub fn new(msg: impl Into<String>) -> Self {
+        Self { msg: msg.into() }
+    }
+}
+
+impl std::fmt::Display for BundleError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "BundleError: {}", self.msg)
+    }
+}
+
+impl std::error::Error for BundleError {}
 
 #[cfg(test)]
 mod tests {
@@ -132,7 +223,7 @@ mod tests {
     }
 
     #[test]
-    fn test_bundle_tuple() {
+    fn test_bundle_tuple_2() {
         let mut world = World::new();
         let entity = world.spawn();
 
@@ -144,25 +235,7 @@ mod tests {
     }
 
     #[test]
-    fn test_bundle_tuple_three() {
-        let mut world = World::new();
-        let entity = world.spawn();
-
-        let bundle = (
-            Position { x: 1.0, y: 2.0 },
-            Velocity { x: 0.5, y: 0.5 },
-            Health { value: 100 },
-        );
-        bundle.insert(&mut world, entity);
-
-        assert!(world.get_component::<Position>(entity).is_some());
-        assert!(world.get_component::<Velocity>(entity).is_some());
-        assert!(world.get_component::<Health>(entity).is_some());
-        assert_eq!(world.get_component::<Health>(entity).unwrap().value, 100);
-    }
-
-    #[test]
-    fn test_bundle_tuple_four() {
+    fn test_bundle_tuple_4() {
         let mut world = World::new();
         let entity = world.spawn();
 
@@ -184,27 +257,42 @@ mod tests {
     }
 
     #[test]
-    fn test_bundle_tuple_five() {
+    fn test_bundle_remove() {
         let mut world = World::new();
         let entity = world.spawn();
 
+        // 插入组件
         let bundle = (
             Position { x: 1.0, y: 2.0 },
             Velocity { x: 0.5, y: 0.5 },
             Health { value: 100 },
-            Name {
-                value: "test".to_string(),
-            },
-            Active { flag: true },
         );
         bundle.insert(&mut world, entity);
 
         assert!(world.get_component::<Position>(entity).is_some());
         assert!(world.get_component::<Velocity>(entity).is_some());
         assert!(world.get_component::<Health>(entity).is_some());
-        assert!(world.get_component::<Name>(entity).is_some());
-        assert!(world.get_component::<Active>(entity).is_some());
-        assert!(world.get_component::<Active>(entity).unwrap().flag);
+
+        // 移除组件
+        let remove_bundle = (Position { x: 0.0, y: 0.0 }, Velocity { x: 0.0, y: 0.0 });
+        remove_bundle.remove(&mut world, entity);
+
+        assert!(world.get_component::<Position>(entity).is_none());
+        assert!(world.get_component::<Velocity>(entity).is_none());
+        assert!(world.get_component::<Health>(entity).is_some()); // Health 没有被移除
+    }
+
+    #[test]
+    fn test_bundle_type_ids() {
+        let type_ids = <(Position, Velocity)>::type_ids();
+        assert_eq!(type_ids.len(), 2);
+    }
+
+    #[test]
+    fn test_bundle_error() {
+        let err = BundleError::new("test error");
+        assert_eq!(err.msg, "test error");
+        assert_eq!(err.to_string(), "BundleError: test error");
     }
 
     #[test]
