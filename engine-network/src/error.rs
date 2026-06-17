@@ -34,6 +34,8 @@ pub enum NetError {
     InvalidChannelId(u64),
     /// Transport error
     Transport(String),
+    /// TLS error
+    Tls(String),
     /// IO error
     Io(std::io::Error),
     /// Plugin error
@@ -64,6 +66,7 @@ impl fmt::Display for NetError {
             Self::ChannelFull => write!(f, "Channel full"),
             Self::InvalidChannelId(id) => write!(f, "Invalid channel ID: {}", id),
             Self::Transport(msg) => write!(f, "Transport error: {}", msg),
+            Self::Tls(msg) => write!(f, "TLS error: {}", msg),
             Self::Io(err) => write!(f, "IO error: {}", err),
             Self::Plugin(msg) => write!(f, "Plugin error: {}", msg),
             Self::NotImplemented => write!(f, "Not implemented"),
@@ -85,6 +88,12 @@ impl std::error::Error for NetError {
 impl From<std::io::Error> for NetError {
     fn from(err: std::io::Error) -> Self {
         Self::Io(err)
+    }
+}
+
+impl From<rustls::Error> for NetError {
+    fn from(err: rustls::Error) -> Self {
+        Self::Tls(err.to_string())
     }
 }
 

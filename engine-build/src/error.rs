@@ -21,6 +21,10 @@ pub enum BuildError {
     #[error("Crypto error: {0}")]
     Crypto(String),
 
+    /// Signature verification error
+    #[error("Signature error: {0}")]
+    Signature(String),
+
     /// Unsupported platform
     #[error("Unsupported platform: {0}")]
     UnsupportedPlatform(String),
@@ -96,6 +100,11 @@ impl BuildError {
         BuildError::Crypto(msg)
     }
 
+    /// Create signature error
+    pub fn signature_error(msg: String) -> Self {
+        BuildError::Signature(msg)
+    }
+
     /// Create unsupported platform error
     pub fn unsupported_platform(platform: crate::PlatformTarget) -> Self {
         BuildError::UnsupportedPlatform(format!("{:?}", platform))
@@ -136,6 +145,7 @@ impl BuildError {
             BuildError::Io(_) => "IO_001",
             BuildError::Parse(_) => "PARSE_001",
             BuildError::Crypto(_) => "CRYPTO_001",
+            BuildError::Signature(_) => "SIG_001",
             BuildError::UnsupportedPlatform(_) => "PLATFORM_001",
             BuildError::AssetNotFound(_) => "ASSET_001",
             BuildError::BuildFailed { .. } => "BUILD_001",
