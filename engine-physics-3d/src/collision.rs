@@ -92,7 +92,10 @@ impl ContactPair {
 
     /// 获取最大穿透深度
     pub fn max_penetration(&self) -> f32 {
-        self.points.iter().map(|p| p.penetration).fold(0.0, |a, b| a.max(b))
+        self.points
+            .iter()
+            .map(|p| p.penetration)
+            .fold(0.0, |a, b| a.max(b))
     }
 }
 
@@ -412,14 +415,16 @@ mod tests {
 
     #[test]
     fn test_intersection_event() {
-        let event = IntersectionEvent::Stopped(ColliderHandle::new(0, 0), ColliderHandle::new(1, 0));
+        let event =
+            IntersectionEvent::Stopped(ColliderHandle::new(0, 0), ColliderHandle::new(1, 0));
         assert_eq!(event.collider_a(), ColliderHandle::new(0, 0));
         assert_eq!(event.collider_b(), ColliderHandle::new(1, 0));
     }
 
     #[test]
     fn test_contact_force_event() {
-        let mut event = ContactForceEvent::new(ColliderHandle::new(0, 0), ColliderHandle::new(1, 0));
+        let mut event =
+            ContactForceEvent::new(ColliderHandle::new(0, 0), ColliderHandle::new(1, 0));
         event.set_total_force(Vec3::new(10.0, 0.0, 0.0));
         assert_eq!(event.total_force(), Vec3::new(10.0, 0.0, 0.0));
         assert!((event.total_magnitude() - 10.0).abs() < 0.001);

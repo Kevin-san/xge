@@ -182,9 +182,9 @@ impl ComponentStorages {
     fn clear(&mut self) {
         self.storages.clear();
     }
-    
+
     /// 移除实体的所有组件（用于实体销毁时的清理）
-    /// 
+    ///
     /// 注意：由于组件存储使用类型擦除，此方法无法正常工作。
     /// 无法在运行时通过 TypeId 调用泛型 remove<C> 方法。
     /// 这是一个已知的架构限制。组件会残留在存储中直到 clear_entities。
@@ -294,17 +294,17 @@ impl World {
         // 无法在运行时获取泛型类型信息，因此无法正确移除该实体的组件。
         // 已死亡实体的组件会残留在存储中直到 clear_entities 被调用。
         // 这是一个架构设计限制，真正的解决方案是重新设计组件存储以支持按 entity_id 移除。
-        
+
         // 标记实体为死亡
         let result = self.entities.despawn(entity);
-        
+
         // 注意：组件并未从 self.components 中移除，这是一个内存泄漏问题
         // 组件数据会保留在 DenseStorage 中直到实体被重新创建（generation 增加）
         // 或者直到 clear_entities 被调用
-        
+
         result
     }
-    
+
     /// 通过实体ID移除组件（内部辅助方法）
     #[allow(dead_code)]
     fn remove_components_by_entity(&mut self, entity_id: u32) {
@@ -539,7 +539,7 @@ mod tests {
         assert!(world.contains(e1));
         assert!(world.contains(e2));
     }
-    
+
     #[test]
     fn test_world_despawn_entity_not_accessible() {
         let mut world = World::new();
@@ -549,11 +549,11 @@ mod tests {
         // 实体被销毁后，contains 返回 false
         assert!(world.despawn(entity));
         assert!(!world.contains(entity));
-        
+
         // 注意：组件仍然残留在存储中（已知限制）
         // 这是一个架构设计问题，需要重新设计组件存储来解决
     }
-    
+
     #[test]
     fn test_world_despawn_clears_component_tracking() {
         let mut world = World::new();
@@ -562,10 +562,10 @@ mod tests {
         world.insert(entity, Velocity { x: 0.0, y: 0.0 });
 
         assert!(world.despawn(entity));
-        
+
         // 实体不再存在
         assert!(!world.contains(entity));
-        
+
         // 注意：由于类型擦除限制，无法在运行时移除组件
         // 这是已知的架构限制
     }

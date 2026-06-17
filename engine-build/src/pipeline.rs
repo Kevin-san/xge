@@ -3,8 +3,8 @@
 //! Provides the main build pipeline and artifact management.
 
 use crate::{
-    asset::AssetManifest, BuildCache, BuildConfig, BuildError, BuildLogger,
-    BuildReport, BuildResult, PlatformTarget,
+    asset::AssetManifest, BuildCache, BuildConfig, BuildError, BuildLogger, BuildReport,
+    BuildResult, PlatformTarget,
 };
 use std::collections::HashMap;
 use std::fs::{self, File};
@@ -27,7 +27,11 @@ impl BuildPipeline {
     pub fn new(config: BuildConfig) -> BuildResult<Self> {
         let logger = BuildLogger::new(false);
         let cache = BuildCache::new(config.temp_dir.join("cache"))?;
-        Ok(Self { config, logger, cache })
+        Ok(Self {
+            config,
+            logger,
+            cache,
+        })
     }
 
     /// Get build config
@@ -52,7 +56,8 @@ impl BuildPipeline {
 
         self.logger.info(&format!(
             "Starting build for {} ({})",
-            self.config.app_name, self.config.platform_target.target_triple()
+            self.config.app_name,
+            self.config.platform_target.target_triple()
         ));
 
         // Stage 1: Initialize
@@ -266,11 +271,16 @@ impl Package {
 
     /// Add a file to the package
     pub fn add_file(&mut self, pkg_path: impl AsRef<Path>, bytes: impl Into<Vec<u8>>) {
-        self.files.insert(pkg_path.as_ref().to_path_buf(), bytes.into());
+        self.files
+            .insert(pkg_path.as_ref().to_path_buf(), bytes.into());
     }
 
     /// Add a directory to the package
-    pub fn add_directory(&mut self, prefix: impl AsRef<Path>, dir: impl AsRef<Path>) -> BuildResult<()> {
+    pub fn add_directory(
+        &mut self,
+        prefix: impl AsRef<Path>,
+        dir: impl AsRef<Path>,
+    ) -> BuildResult<()> {
         let prefix = prefix.as_ref();
         for entry in WalkDir::new(dir.as_ref()) {
             let entry = entry?;

@@ -39,7 +39,10 @@ impl JointHandle {
     }
 
     /// 无效句柄
-    pub const INVALID: Self = Self { index: u32::MAX, generation: u32::MAX };
+    pub const INVALID: Self = Self {
+        index: u32::MAX,
+        generation: u32::MAX,
+    };
 
     /// 检查是否有效
     pub fn is_valid(&self) -> bool {
@@ -247,7 +250,11 @@ impl FixedJointBuilder {
 
     /// 构建关节
     pub fn build(self) -> Joint3D {
-        Joint3D::new(JointType3D::Fixed, self.joint.base.body_a, self.joint.base.body_b)
+        Joint3D::new(
+            JointType3D::Fixed,
+            self.joint.base.body_a,
+            self.joint.base.body_b,
+        )
     }
 }
 
@@ -429,7 +436,11 @@ impl RevoluteJointBuilder {
 
     /// 构建关节
     pub fn build(self) -> Joint3D {
-        Joint3D::new(JointType3D::Revolute, self.joint.base.body_a, self.joint.base.body_b)
+        Joint3D::new(
+            JointType3D::Revolute,
+            self.joint.base.body_a,
+            self.joint.base.body_b,
+        )
     }
 }
 
@@ -525,7 +536,11 @@ impl PrismaticJointBuilder {
 
     /// 构建关节
     pub fn build(self) -> Joint3D {
-        Joint3D::new(JointType3D::Prismatic, self.joint.base.body_a, self.joint.base.body_b)
+        Joint3D::new(
+            JointType3D::Prismatic,
+            self.joint.base.body_a,
+            self.joint.base.body_b,
+        )
     }
 }
 
@@ -614,7 +629,11 @@ impl BallJointBuilder {
 
     /// 构建关节
     pub fn build(self) -> Joint3D {
-        Joint3D::new(JointType3D::Ball, self.joint.base.body_a, self.joint.base.body_b)
+        Joint3D::new(
+            JointType3D::Ball,
+            self.joint.base.body_a,
+            self.joint.base.body_b,
+        )
     }
 }
 
@@ -694,7 +713,11 @@ impl DistanceJointBuilder {
 
     /// 构建关节
     pub fn build(self) -> Joint3D {
-        Joint3D::new(JointType3D::Distance, self.joint.base.body_a, self.joint.base.body_b)
+        Joint3D::new(
+            JointType3D::Distance,
+            self.joint.base.body_a,
+            self.joint.base.body_b,
+        )
     }
 }
 
@@ -715,7 +738,13 @@ pub struct RopeJoint {
 
 impl RopeJoint {
     /// 创建新的绳索关节
-    pub fn new(body_a: usize, body_b: usize, anchor1: Vec3, anchor2: Vec3, max_length: f32) -> Self {
+    pub fn new(
+        body_a: usize,
+        body_b: usize,
+        anchor1: Vec3,
+        anchor2: Vec3,
+        max_length: f32,
+    ) -> Self {
         Self {
             base: Joint3D::new(JointType3D::Rope, body_a, body_b),
             local_anchor1: anchor1,
@@ -767,7 +796,11 @@ impl RopeJointBuilder {
 
     /// 构建关节
     pub fn build(self) -> Joint3D {
-        Joint3D::new(JointType3D::Rope, self.joint.base.body_a, self.joint.base.body_b)
+        Joint3D::new(
+            JointType3D::Rope,
+            self.joint.base.body_a,
+            self.joint.base.body_b,
+        )
     }
 }
 
@@ -843,7 +876,11 @@ impl SphericalJointBuilder {
 
     /// 构建关节
     pub fn build(self) -> Joint3D {
-        Joint3D::new(JointType3D::Spherical, self.joint.base.body_a, self.joint.base.body_b)
+        Joint3D::new(
+            JointType3D::Spherical,
+            self.joint.base.body_a,
+            self.joint.base.body_b,
+        )
     }
 }
 

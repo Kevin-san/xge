@@ -1,7 +1,7 @@
 //! Frustum for view culling
 
+use crate::geometry::{Plane, Sphere, AABB};
 use engine_math::Mat4;
-use crate::geometry::{AABB, Plane, Sphere};
 
 /// Frustum planes indices
 #[repr(u8)]
@@ -28,63 +28,45 @@ impl Frustum {
 
         // Left plane
         let left = Plane::new(
-            Vec3::new(
-                m[3][0] + m[0][0],
-                m[3][1] + m[0][1],
-                m[3][2] + m[0][2],
-            ),
+            Vec3::new(m[3][0] + m[0][0], m[3][1] + m[0][1], m[3][2] + m[0][2]),
             m[3][3] + m[0][3],
-        ).normalize();
+        )
+        .normalize();
 
         // Right plane
         let right = Plane::new(
-            Vec3::new(
-                m[3][0] - m[0][0],
-                m[3][1] - m[0][1],
-                m[3][2] - m[0][2],
-            ),
+            Vec3::new(m[3][0] - m[0][0], m[3][1] - m[0][1], m[3][2] - m[0][2]),
             m[3][3] - m[0][3],
-        ).normalize();
+        )
+        .normalize();
 
         // Bottom plane
         let bottom = Plane::new(
-            Vec3::new(
-                m[3][0] + m[1][0],
-                m[3][1] + m[1][1],
-                m[3][2] + m[1][2],
-            ),
+            Vec3::new(m[3][0] + m[1][0], m[3][1] + m[1][1], m[3][2] + m[1][2]),
             m[3][3] + m[1][3],
-        ).normalize();
+        )
+        .normalize();
 
         // Top plane
         let top = Plane::new(
-            Vec3::new(
-                m[3][0] - m[1][0],
-                m[3][1] - m[1][1],
-                m[3][2] - m[1][2],
-            ),
+            Vec3::new(m[3][0] - m[1][0], m[3][1] - m[1][1], m[3][2] - m[1][2]),
             m[3][3] - m[1][3],
-        ).normalize();
+        )
+        .normalize();
 
         // Near plane
         let near = Plane::new(
-            Vec3::new(
-                m[3][0] + m[2][0],
-                m[3][1] + m[2][1],
-                m[3][2] + m[2][2],
-            ),
+            Vec3::new(m[3][0] + m[2][0], m[3][1] + m[2][1], m[3][2] + m[2][2]),
             m[3][3] + m[2][3],
-        ).normalize();
+        )
+        .normalize();
 
         // Far plane
         let far = Plane::new(
-            Vec3::new(
-                m[3][0] - m[2][0],
-                m[3][1] - m[2][1],
-                m[3][2] - m[2][2],
-            ),
+            Vec3::new(m[3][0] - m[2][0], m[3][1] - m[2][1], m[3][2] - m[2][2]),
             m[3][3] - m[2][3],
-        ).normalize();
+        )
+        .normalize();
 
         Self {
             planes: [left, right, bottom, top, near, far],

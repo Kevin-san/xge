@@ -4,8 +4,8 @@
 
 use engine_math::Vec3;
 
-use crate::{Collider3D, CollisionGroups, QueryFilter, RigidBody3D};
 use crate::constants::DEFAULT_FRICTION;
+use crate::{Collider3D, CollisionGroups, QueryFilter, RigidBody3D};
 
 /// 角色移动结果
 #[derive(Debug, Clone)]
@@ -133,7 +133,7 @@ impl Default for CharacterControllerConfig {
             offset: Vec3::ZERO,
             up_dir: Vec3::Y,
             max_slope_climb_angle: 45.0 * std::f32::consts::PI / 180.0, // 45度
-            max_slide_angle: 45.0 * std::f32::consts::PI / 180.0,      // 45度
+            max_slide_angle: 45.0 * std::f32::consts::PI / 180.0,       // 45度
             apply_impulse_to_dynamic_bodies: true,
             max_distance_to_ground: 0.1,
             auto_step_height: 0.3,
@@ -310,7 +310,8 @@ impl CharacterController3D {
 
         // 简化的地面检测
         // 实际实现需要使用射线投射
-        let is_grounded = self.check_ground_simple(ground_ray_start, ground_ray_dir, ground_check_distance);
+        let is_grounded =
+            self.check_ground_simple(ground_ray_start, ground_ray_dir, ground_check_distance);
 
         movement.set_grounded(is_grounded);
 
@@ -336,7 +337,8 @@ impl CharacterController3D {
 
             if slope_angle > self.config.max_slope_climb_angle {
                 // 无法爬上坡度，滑行
-                let slide_dir = wall_normal - wall_normal.dot(self.config.up_dir) * self.config.up_dir;
+                let slide_dir =
+                    wall_normal - wall_normal.dot(self.config.up_dir) * self.config.up_dir;
                 movement.set_translation(slide_dir.normalize() * actual_translation.length());
             } else {
                 movement.set_translation(actual_translation);
@@ -530,12 +532,7 @@ mod tests {
 
     #[test]
     fn test_config() {
-        let controller = CharacterController3D::new(
-            Vec3::ZERO,
-            Vec3::Y,
-            30.0,
-            45.0,
-        );
+        let controller = CharacterController3D::new(Vec3::ZERO, Vec3::Y, 30.0, 45.0);
         assert_eq!(controller.max_slope_climb_angle(), 30.0);
         assert_eq!(controller.max_slide_angle(), 45.0);
     }

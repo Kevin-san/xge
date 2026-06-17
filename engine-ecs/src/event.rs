@@ -185,7 +185,7 @@ mod tests {
     fn test_event_reader_is_empty() {
         let events = vec![TestEvent { value: 1 }];
         let mut reader = EventReader::new(events);
-        
+
         assert!(!reader.is_empty());
         reader.read();
         assert!(reader.is_empty());
@@ -195,7 +195,7 @@ mod tests {
     fn test_event_reader_len() {
         let events = vec![TestEvent { value: 1 }, TestEvent { value: 2 }];
         let mut reader = EventReader::new(events);
-        
+
         assert_eq!(reader.len(), 2);
         reader.read();
         assert_eq!(reader.len(), 1);
@@ -207,7 +207,7 @@ mod tests {
     fn test_event_reader_empty() {
         let events: Vec<TestEvent> = vec![];
         let mut reader = EventReader::new(events);
-        
+
         assert!(reader.is_empty());
         assert!(reader.read().is_none());
         assert_eq!(reader.len(), 0);
@@ -217,7 +217,7 @@ mod tests {
     fn test_event_writer_is_empty() {
         let mut writer = EventWriter::new();
         assert!(writer.is_empty());
-        
+
         writer.send(TestEvent { value: 1 });
         assert!(!writer.is_empty());
     }
@@ -227,7 +227,7 @@ mod tests {
         let mut writer = EventWriter::new();
         writer.send(TestEvent { value: 1 });
         writer.send(TestEvent { value: 2 });
-        
+
         let drained = writer.drain();
         assert_eq!(drained.len(), 2);
         assert!(writer.is_empty());
@@ -256,7 +256,7 @@ mod tests {
         let mut events = Events::<TestEvent>::new();
         let writer = events.add_writer();
         writer.send(TestEvent { value: 1 });
-        
+
         let all_events = events.get_events();
         assert_eq!(all_events.len(), 1);
     }
@@ -264,14 +264,14 @@ mod tests {
     #[test]
     fn test_events_multiple_writers() {
         let mut events = Events::<TestEvent>::new();
-        
+
         let writer1 = events.add_writer();
         writer1.send(TestEvent { value: 1 });
         writer1.send(TestEvent { value: 2 });
-        
+
         let writer2 = events.add_writer();
         writer2.send(TestEvent { value: 3 });
-        
+
         let all_events = events.get_events();
         assert_eq!(all_events.len(), 3);
     }
@@ -282,7 +282,7 @@ mod tests {
         let writer = events.add_writer();
         writer.send(TestEvent { value: 1 });
         writer.send(TestEvent { value: 2 });
-        
+
         events.clear();
         assert!(events.get_events().is_empty());
     }
@@ -301,11 +301,11 @@ mod tests {
             TestEvent { value: 4 },
         ];
         let mut reader = EventReader::new(events);
-        
+
         // Read first two
         reader.read();
         reader.read();
-        
+
         // Read remaining
         let remaining = reader.read_all();
         assert_eq!(remaining.len(), 2);
@@ -316,16 +316,16 @@ mod tests {
     #[test]
     fn test_writer_multiple_drains() {
         let mut writer = EventWriter::new();
-        
+
         writer.send(TestEvent { value: 1 });
         let first_drain = writer.drain();
         assert_eq!(first_drain.len(), 1);
-        
+
         writer.send(TestEvent { value: 2 });
         writer.send(TestEvent { value: 3 });
         let second_drain = writer.drain();
         assert_eq!(second_drain.len(), 2);
-        
+
         assert!(writer.is_empty());
     }
 
@@ -333,11 +333,11 @@ mod tests {
     fn test_events_order_preserved() {
         let mut events = Events::<TestEvent>::new();
         let writer = events.add_writer();
-        
+
         writer.send(TestEvent { value: 1 });
         writer.send(TestEvent { value: 2 });
         writer.send(TestEvent { value: 3 });
-        
+
         let all_events = events.get_events();
         assert_eq!(all_events[0].value, 1);
         assert_eq!(all_events[1].value, 2);

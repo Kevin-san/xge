@@ -57,7 +57,12 @@ pub trait Plugin: Send + Sync {
     }
 
     /// Handle incoming message
-    fn on_message(&self, context: &PluginContext, message_type: u32, data: &[u8]) -> NetResult<Option<Vec<u8>>> {
+    fn on_message(
+        &self,
+        context: &PluginContext,
+        message_type: u32,
+        data: &[u8],
+    ) -> NetResult<Option<Vec<u8>>> {
         Ok(None)
     }
 
@@ -162,7 +167,11 @@ impl PluginManager {
     }
 
     /// Register a plugin
-    pub fn register(&self, plugin: Arc<dyn Plugin>, metadata: PluginMetadata) -> NetResult<PluginId> {
+    pub fn register(
+        &self,
+        plugin: Arc<dyn Plugin>,
+        metadata: PluginMetadata,
+    ) -> NetResult<PluginId> {
         let mut next_id = self.next_plugin_id.lock();
         let id = *next_id;
         *next_id += 1;
@@ -202,7 +211,9 @@ impl PluginManager {
     /// Load a plugin
     pub fn load(&self, id: PluginId) -> NetResult<()> {
         let plugins = self.plugins.lock();
-        let plugin = plugins.get(&id).ok_or(NetError::Plugin("Plugin not found".to_string()))?;
+        let plugin = plugins
+            .get(&id)
+            .ok_or(NetError::Plugin("Plugin not found".to_string()))?;
 
         let context = PluginContext::new(Arc::new(Self::new()));
 
@@ -225,7 +236,9 @@ impl PluginManager {
     /// Unload a plugin
     pub fn unload(&self, id: PluginId) -> NetResult<()> {
         let plugins = self.plugins.lock();
-        let plugin = plugins.get(&id).ok_or(NetError::Plugin("Plugin not found".to_string()))?;
+        let plugin = plugins
+            .get(&id)
+            .ok_or(NetError::Plugin("Plugin not found".to_string()))?;
 
         let context = PluginContext::new(Arc::new(Self::new()));
 
@@ -251,7 +264,9 @@ impl PluginManager {
         }
 
         let plugins = self.plugins.lock();
-        let plugin = plugins.get(&id).ok_or(NetError::Plugin("Plugin not found".to_string()))?;
+        let plugin = plugins
+            .get(&id)
+            .ok_or(NetError::Plugin("Plugin not found".to_string()))?;
 
         let context = PluginContext::new(Arc::new(Self::new()));
         plugin.on_deactivate(&context)?;
@@ -271,7 +286,9 @@ impl PluginManager {
         }
 
         let plugins = self.plugins.lock();
-        let plugin = plugins.get(&id).ok_or(NetError::Plugin("Plugin not found".to_string()))?;
+        let plugin = plugins
+            .get(&id)
+            .ok_or(NetError::Plugin("Plugin not found".to_string()))?;
 
         let context = PluginContext::new(Arc::new(Self::new()));
         plugin.on_activate(&context)?;
@@ -571,7 +588,10 @@ mod tests {
     #[test]
     fn test_plugin_registration() {
         let manager = PluginManager::new();
-        let plugin = Arc::new(ExamplePlugin::new("test-plugin".to_string(), "1.0.0".to_string()));
+        let plugin = Arc::new(ExamplePlugin::new(
+            "test-plugin".to_string(),
+            "1.0.0".to_string(),
+        ));
 
         let metadata = PluginMetadata {
             name: "test-plugin".to_string(),
@@ -590,7 +610,10 @@ mod tests {
     #[test]
     fn test_plugin_load_unload() {
         let manager = PluginManager::new();
-        let plugin = Arc::new(ExamplePlugin::new("test-plugin".to_string(), "1.0.0".to_string()));
+        let plugin = Arc::new(ExamplePlugin::new(
+            "test-plugin".to_string(),
+            "1.0.0".to_string(),
+        ));
 
         let metadata = PluginMetadata::default();
         let id = manager.register(plugin, metadata).unwrap();
@@ -605,7 +628,10 @@ mod tests {
     #[test]
     fn test_plugin_pause_resume() {
         let manager = PluginManager::new();
-        let plugin = Arc::new(ExamplePlugin::new("test-plugin".to_string(), "1.0.0".to_string()));
+        let plugin = Arc::new(ExamplePlugin::new(
+            "test-plugin".to_string(),
+            "1.0.0".to_string(),
+        ));
 
         let metadata = PluginMetadata::default();
         let id = manager.register(plugin, metadata).unwrap();
@@ -623,7 +649,10 @@ mod tests {
     #[test]
     fn test_plugin_manager_start_stop() {
         let manager = PluginManager::new();
-        let plugin = Arc::new(ExamplePlugin::new("test-plugin".to_string(), "1.0.0".to_string()));
+        let plugin = Arc::new(ExamplePlugin::new(
+            "test-plugin".to_string(),
+            "1.0.0".to_string(),
+        ));
 
         let metadata = PluginMetadata::default();
         manager.register(plugin, metadata).unwrap();

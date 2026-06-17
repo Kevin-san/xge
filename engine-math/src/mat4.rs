@@ -451,7 +451,7 @@ mod tests {
         let m = Mat4::from_translation(Vec3::new(1.0, 2.0, 3.0));
         let result = Mat4::IDENTITY * m;
         assert_eq!(result.cols, m.cols);
-        
+
         let result2 = m * Mat4::IDENTITY;
         assert_eq!(result2.cols, m.cols);
     }
@@ -461,7 +461,7 @@ mod tests {
         let t = Mat4::from_translation(Vec3::new(1.0, 0.0, 0.0));
         let s = Mat4::from_scale(Vec3::new(2.0, 2.0, 2.0));
         let combined = t * s;
-        
+
         let v = Vec4::new(1.0, 1.0, 1.0, 1.0);
         // Scale first (2,2,2), then translate (3,2,2)
         let result = combined.mul_vec4(v);
@@ -486,8 +486,8 @@ mod tests {
         let m = Mat4::IDENTITY;
         let arr = m.to_cols_array();
         assert_eq!(arr.len(), 16);
-        assert_eq!(arr[0], 1.0);  // col0 row0
-        assert_eq!(arr[5], 1.0);  // col1 row1
+        assert_eq!(arr[0], 1.0); // col0 row0
+        assert_eq!(arr[5], 1.0); // col1 row1
         assert_eq!(arr[10], 1.0); // col2 row2
         assert_eq!(arr[15], 1.0); // col3 row3
     }

@@ -1,7 +1,7 @@
 //! GPU buffer types
 
-use alloc::vec::Vec;
 use crate::vertex::Vertex;
+use alloc::vec::Vec;
 
 /// Index format for index buffers
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -54,10 +54,7 @@ impl VertexBuffer {
     /// Get raw bytes for GPU upload
     pub fn as_bytes(&self) -> &[u8] {
         unsafe {
-            core::slice::from_raw_parts(
-                self.vertices.as_ptr() as *const u8,
-                self.size_bytes(),
-            )
+            core::slice::from_raw_parts(self.vertices.as_ptr() as *const u8, self.size_bytes())
         }
     }
 }
@@ -107,16 +104,12 @@ impl IndexBuffer {
     /// Get raw bytes for GPU upload
     pub fn as_bytes(&self) -> Vec<u8> {
         match self.format {
-            IndexFormat::U16 => {
-                self.indices.iter()
-                    .flat_map(|i| (*i as u16).to_ne_bytes())
-                    .collect()
-            }
-            IndexFormat::U32 => {
-                self.indices.iter()
-                    .flat_map(|i| i.to_ne_bytes())
-                    .collect()
-            }
+            IndexFormat::U16 => self
+                .indices
+                .iter()
+                .flat_map(|i| (*i as u16).to_ne_bytes())
+                .collect(),
+            IndexFormat::U32 => self.indices.iter().flat_map(|i| i.to_ne_bytes()).collect(),
         }
     }
 }

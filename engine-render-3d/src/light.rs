@@ -13,11 +13,36 @@ pub struct Color {
 }
 
 impl Color {
-    pub const WHITE: Self = Self { r: 1.0, g: 1.0, b: 1.0, a: 1.0 };
-    pub const BLACK: Self = Self { r: 0.0, g: 0.0, b: 0.0, a: 1.0 };
-    pub const RED: Self = Self { r: 1.0, g: 0.0, b: 0.0, a: 1.0 };
-    pub const GREEN: Self = Self { r: 0.0, g: 1.0, b: 0.0, a: 1.0 };
-    pub const BLUE: Self = Self { r: 0.0, g: 0.0, b: 1.0, a: 1.0 };
+    pub const WHITE: Self = Self {
+        r: 1.0,
+        g: 1.0,
+        b: 1.0,
+        a: 1.0,
+    };
+    pub const BLACK: Self = Self {
+        r: 0.0,
+        g: 0.0,
+        b: 0.0,
+        a: 1.0,
+    };
+    pub const RED: Self = Self {
+        r: 1.0,
+        g: 0.0,
+        b: 0.0,
+        a: 1.0,
+    };
+    pub const GREEN: Self = Self {
+        r: 0.0,
+        g: 1.0,
+        b: 0.0,
+        a: 1.0,
+    };
+    pub const BLUE: Self = Self {
+        r: 0.0,
+        g: 0.0,
+        b: 1.0,
+        a: 1.0,
+    };
 
     #[inline]
     pub fn new(r: f32, g: f32, b: f32, a: f32) -> Self {
@@ -447,15 +472,15 @@ mod tests {
         let light = SpotLight::new(
             Vec3::ZERO,
             Vec3::Z,
-            0.5,  // inner cone angle (radians)
-            1.0,  // outer cone angle (radians)
+            0.5, // inner cone angle (radians)
+            1.0, // outer cone angle (radians)
             Color::WHITE,
             1.0,
         );
         // Point directly along the direction axis (within inner cone)
         let atten_center = light.cone_attenuation(Vec3::new(0.0, 0.0, 10.0));
         assert!(atten_center > 0.9); // Should be fully bright at center
-        
+
         // Point at edge of cone
         let atten_edge = light.cone_attenuation(Vec3::new(0.5, 0.0, 1.0));
         // Should have some attenuation but not zero

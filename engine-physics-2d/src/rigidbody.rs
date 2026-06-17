@@ -296,12 +296,12 @@ impl RigidBody2D {
             self.collider_indices.push(index);
         }
     }
-    
+
     /// 移除碰撞体索引
     pub fn remove_collider_index(&mut self, index: usize) {
         self.collider_indices.retain(|&i| i != index);
     }
-    
+
     /// 移除后更新碰撞体索引（索引大于被移除的需要减1）
     pub fn update_collider_indices_after_remove(&mut self, removed_index: usize) {
         for i in &mut self.collider_indices {
@@ -541,5 +541,81 @@ mod tests {
 
         body.apply_impulse(Vec2::new(5.0, 0.0));
         assert_eq!(body.linear_velocity(), Vec2::new(5.0, 0.0));
+    }
+
+    #[test]
+    fn test_kinematic_body() {
+        let body = RigidBody2D::new(RigidBodyType::Kinematic);
+        assert!(body.is_kinematic());
+        assert!(!body.is_static());
+        assert!(!body.is_dynamic());
+    }
+
+    #[test]
+    fn test_kinematic_body_velocity_not_affected_by_force() {
+        let mut body = RigidBody2D::new(RigidBodyType::Kinematic);
+        // 运动学物体受力不会改变速度（但这个测试可能需要调整实现）
+        body.apply_force(Vec2::new(100.0, 0.0));
+        // 运动学物体的质量是 0，所以逆质量是 0
+        // 但 apply_force 的实现是检查 body_type == Dynamic
+        assert_eq!(body.force(), Vec2::ZERO); // Kinematic 不会累加力
+    }
+
+    #[test]
+    fn test_gravity_scale() {
+        let mut body = RigidBody2D::new(RigidBodyType::Dynamic);
+        assert_eq!(body.gravity_scale(), 1.0); // 默认值
+
+        body.set_gravity_scale(2.0);
+        assert_eq!(body.gravity_scale(), 2.0);
+
+        body.set_gravity_scale(0.0);
+        assert_eq!(body.gravity_scale(), 0.0); // 零重力
+    }
+
+    #[test]
+    fn test_gravity_scale_builder() {
+        let body = RigidBody2DBuilder::dynamic()
+            .with_gravity_scale(0.5)
+            .build();
+
+        assert_eq!(body.gravity_scale(), 0.5);
+    }
+
+    #[test]
+    fn test_kinematic_builder() {
+        let body = RigidBody2DBuilder::kinematic()
+            .with_position(Vec2::new(5.0, 10.0))
+            .with_velocity(Vec2::new(1.0, 2.0))
+            .build();
+
+        assert!(body.is_kinematic());
+        assert_eq!(body.position(), Vec2::new(5.0, 10.0));
+        assert_eq!(body.linear_velocity(), Vec2::new(1.0, 2.0));
+    }
+
+    #[test]
+    fn test_body_enabled() {
+        let mut body = RigidBody2D::new(RigidBodyType::Dynamic);
+        assert!(body.is_enabled());
+
+        body.set_enabled(false);
+        assert!(!body.is_enabled());
+    }
+
+    #[test]
+    fn test_angular_velocity() {
+        let mut body = RigidBody2D::new(RigidBodyType::Dynamic);
+        assert_eq!(body.angular_velocity(), 0.0);
+
+        body.set_angular_velocity(std::f32::consts::PI);
+        assert_eq!(body.angular_velocity(), std::f32::consts::PI);
+    }
+
+    #[test]
+    fn test_set_rotation() {
+        let mut body = RigidBody2D::new(RigidBodyType::Dynamic);
+        body.set_rotation(std::f32::consts::FRAC_PI_2);
+        assert_eq!(body.rotation(), std::f32::consts::FRAC_PI_2);
     }
 }

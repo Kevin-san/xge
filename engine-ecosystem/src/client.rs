@@ -78,11 +78,17 @@ impl AssetStoreClient {
 
     /// 获取用户信息
     pub fn me(&self) -> Result<UserProfile, AssetStoreError> {
-        self.user_profile.clone().ok_or(AssetStoreError::Auth("Not logged in".to_string()))
+        self.user_profile
+            .clone()
+            .ok_or(AssetStoreError::Auth("Not logged in".to_string()))
     }
 
     /// 搜索资源
-    pub fn search(&self, keyword: &str, _filters: SearchFilters) -> Result<Vec<AssetSummary>, AssetStoreError> {
+    pub fn search(
+        &self,
+        keyword: &str,
+        _filters: SearchFilters,
+    ) -> Result<Vec<AssetSummary>, AssetStoreError> {
         // 简化实现，返回模拟数据
         Ok(vec![AssetSummary {
             id: AssetId::new(),
@@ -100,13 +106,23 @@ impl AssetStoreClient {
     }
 
     /// 浏览分类
-    pub fn browse(&self, _category: AssetCategory, _page: u32, _page_size: u32) -> Result<Vec<AssetSummary>, AssetStoreError> {
+    pub fn browse(
+        &self,
+        _category: AssetCategory,
+        _page: u32,
+        _page_size: u32,
+    ) -> Result<Vec<AssetSummary>, AssetStoreError> {
         // 简化实现
         Ok(Vec::new())
     }
 
     /// 分页搜索
-    pub fn search_with_pagination(&self, query: SearchQuery, page: u32, page_size: u32) -> Result<Paged<AssetSummary>, AssetStoreError> {
+    pub fn search_with_pagination(
+        &self,
+        query: SearchQuery,
+        page: u32,
+        page_size: u32,
+    ) -> Result<Paged<AssetSummary>, AssetStoreError> {
         let items = self.search(&query.keyword, SearchFilters::default())?;
         let total_items = items.len() as u64;
         Ok(Paged {
@@ -227,7 +243,11 @@ impl AssetStoreClient {
     }
 
     /// 安装资源
-    pub fn install(&mut self, _downloaded_path: &Path, target_dir: &Path) -> Result<InstalledAsset, AssetStoreError> {
+    pub fn install(
+        &mut self,
+        _downloaded_path: &Path,
+        target_dir: &Path,
+    ) -> Result<InstalledAsset, AssetStoreError> {
         let asset = InstalledAsset {
             id: AssetId::new(),
             name: "Mock Asset".to_string(),
@@ -275,7 +295,11 @@ impl AssetStoreClient {
     }
 
     /// 回滚到指定版本
-    pub fn rollback(&mut self, _id: &AssetId, _version: AssetVersion) -> Result<(), AssetStoreError> {
+    pub fn rollback(
+        &mut self,
+        _id: &AssetId,
+        _version: AssetVersion,
+    ) -> Result<(), AssetStoreError> {
         // 简化实现
         Ok(())
     }
@@ -340,7 +364,12 @@ impl AssetStoreClient {
     }
 
     /// 检查兼容性
-    pub fn is_compatible(&self, _asset: &AssetDetail, _engine_version: &str, _platform: PlatformFlag) -> bool {
+    pub fn is_compatible(
+        &self,
+        _asset: &AssetDetail,
+        _engine_version: &str,
+        _platform: PlatformFlag,
+    ) -> bool {
         true // 简化实现
     }
 
@@ -397,7 +426,6 @@ impl std::fmt::Display for AuthToken {
 }
 
 impl AuthToken {
-
     pub fn expired(&self) -> bool {
         self.expires_at < Utc::now()
     }
@@ -631,7 +659,10 @@ impl DeveloperCenter {
     }
 
     /// 发布资源
-    pub fn publish_asset(&mut self, draft: DeveloperDraft) -> Result<PublishedAsset, AssetStoreError> {
+    pub fn publish_asset(
+        &mut self,
+        draft: DeveloperDraft,
+    ) -> Result<PublishedAsset, AssetStoreError> {
         let id = AssetId::new();
         let published = PublishedAsset {
             id: id.clone(),
@@ -653,7 +684,11 @@ impl DeveloperCenter {
     }
 
     /// 设置价格
-    pub fn set_price(&mut self, _asset_id: &AssetId, _price: PriceModel) -> Result<(), AssetStoreError> {
+    pub fn set_price(
+        &mut self,
+        _asset_id: &AssetId,
+        _price: PriceModel,
+    ) -> Result<(), AssetStoreError> {
         Ok(())
     }
 
@@ -680,7 +715,8 @@ impl DeveloperCenter {
 
     /// 获取审核状态
     pub fn review_status(&self, asset_id: &AssetId) -> Result<ReviewStatus, AssetStoreError> {
-        self.published.get(asset_id)
+        self.published
+            .get(asset_id)
             .map(|a| a.status)
             .ok_or(AssetStoreError::NotFound)
     }

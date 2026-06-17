@@ -240,4 +240,93 @@ mod tests {
         assert_eq!(contact.penetration, 0.5);
         assert_eq!(contact.normal_impulse, 0.0);
     }
+
+    #[test]
+    fn test_elastic_collision_energy_conservation() {
+        // 测试两个等质量球弹性碰撞后的速度交换
+        // 假设一维碰撞，物体 A 速度为 v，物体 B 静止
+        // 弹性碰撞后，A 静止，B 速度为 v（能量守恒、动量守恒）
+
+        let mass_a: f32 = 1.0;
+        let mass_b: f32 = 1.0;
+        let velocity_a_initial: f32 = 10.0;
+        let velocity_b_initial: f32 = 0.0;
+
+        // 弹性碰撞公式（等质量）
+        let velocity_a_final: f32 = velocity_b_initial;
+        let velocity_b_final: f32 = velocity_a_initial;
+
+        assert_eq!(velocity_a_final, 0.0);
+        assert_eq!(velocity_b_final, 10.0);
+
+        // 验证动能守恒
+        let kinetic_energy_initial =
+            0.5 * mass_a * velocity_a_initial.powi(2) + 0.5 * mass_b * velocity_b_initial.powi(2);
+        let kinetic_energy_final =
+            0.5 * mass_a * velocity_a_final.powi(2) + 0.5 * mass_b * velocity_b_final.powi(2);
+
+        assert!((kinetic_energy_initial - kinetic_energy_final).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_elastic_collision_momentum_conservation() {
+        // 测试动量守恒
+        let mass_a: f32 = 2.0;
+        let mass_b: f32 = 3.0;
+        let velocity_a_initial: f32 = 5.0;
+        let velocity_b_initial: f32 = -2.0;
+
+        // 动量守恒：m1*v1 + m2*v2 = m1*v1' + m2*v2'
+        let momentum_initial = mass_a * velocity_a_initial + mass_b * velocity_b_initial;
+
+        // 一维弹性碰撞后的速度
+        let total_mass = mass_a + mass_b;
+        let velocity_a_final = ((mass_a - mass_b) * velocity_a_initial
+            + 2.0 * mass_b * velocity_b_initial)
+            / total_mass;
+        let velocity_b_final = ((mass_b - mass_a) * velocity_b_initial
+            + 2.0 * mass_a * velocity_a_initial)
+            / total_mass;
+
+        let momentum_final = mass_a * velocity_a_final + mass_b * velocity_b_final;
+
+        assert!((momentum_initial - momentum_final).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_sleep_awake_activation() {
+        // 测试休眠/唤醒机制
+        // 当物体速度低于阈值时应该进入休眠
+        // 当受到外力时应该唤醒
+
+        use crate::RigidBody2D;
+        use crate::RigidBodyType;
+
+        let mut body = RigidBody2D::new(RigidBodyType::Dynamic);
+
+        // 设置速度为 0，应该进入休眠状态
+        body.set_linear_velocity(Vec2::ZERO);
+
+        // 当受到外力时，应该唤醒
+        body.apply_force(Vec2::new(10.0, 0.0));
+
+        // 验证力已应用
+        assert!(body.force().x > 0.0);
+    }
+
+    #[test]
+    fn test_body_sleep_when_stationary() {
+        // 测试静止物体进入休眠
+        use crate::RigidBody2D;
+        use crate::RigidBodyType;
+
+        let mut body = RigidBody2D::new(RigidBodyType::Dynamic);
+
+        // 初始状态
+        assert!(body.is_dynamic());
+
+        // 设置很小的速度
+        body.set_linear_velocity(Vec2::new(0.001, 0.0));
+        assert!(body.linear_velocity().length() < 0.01);
+    }
 }

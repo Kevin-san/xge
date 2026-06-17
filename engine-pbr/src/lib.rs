@@ -11,7 +11,9 @@ mod tonemap;
 
 pub use color::ColorGrading;
 pub use flags::PbrMaterialFlags;
-pub use graph::{CycleError, EdgeId, NodeId, ShaderGraph, ShaderGraphNode, NodeKind, ShaderNodeType};
+pub use graph::{
+    CycleError, EdgeId, NodeId, NodeKind, ShaderGraph, ShaderGraphNode, ShaderNodeType,
+};
 pub use ibl::{CubeMap, EnvironmentMap, IBLBaker, Texture2D};
 pub use material::{AlphaMode, PbrMaterial};
 pub use tonemap::Tonemapper;

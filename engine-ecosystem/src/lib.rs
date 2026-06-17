@@ -10,16 +10,16 @@
 //! - `AssetStoreClient`: 商店客户端
 
 mod asset_store;
-mod profiler;
-mod telemetry;
 mod client;
 mod common;
+mod profiler;
+mod telemetry;
 
 pub use asset_store::*;
-pub use profiler::*;
-pub use telemetry::*;
 pub use client::*;
 pub use common::*;
+pub use profiler::*;
+pub use telemetry::*;
 
 // 常量定义
 const DEFAULT_SAMPLE_RATE_HZ: u32 = 100;
@@ -32,11 +32,11 @@ const ASSET_STORE_ENDPOINT: &str = "https://store.engine.example.com";
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::common::*;
     use crate::asset_store::*;
+    use crate::client::*;
+    use crate::common::*;
     use crate::profiler::*;
     use crate::telemetry::*;
-    use crate::client::*;
 
     /// 测试 AssetId
     #[test]
@@ -99,7 +99,14 @@ mod tests {
         let mut cart = Cart::new();
 
         cart.add(AssetId::new(), "Free Asset".to_string(), PriceModel::Free);
-        cart.add(AssetId::new(), "Paid Asset".to_string(), PriceModel::Paid { amount: 10.0, currency: "USD".to_string() });
+        cart.add(
+            AssetId::new(),
+            "Paid Asset".to_string(),
+            PriceModel::Paid {
+                amount: 10.0,
+                currency: "USD".to_string(),
+            },
+        );
 
         assert_eq!(cart.items().len(), 2);
         assert_eq!(cart.total(), 10.0);
@@ -143,7 +150,9 @@ mod tests {
         // 在 end_frame 之前检查样本
         let cpu_samples_before = profiler.cpu_samples();
         assert!(cpu_samples_before.len() > 0);
-        assert!(cpu_samples_before.iter().any(|s| s.scope_name == "test_scope"));
+        assert!(cpu_samples_before
+            .iter()
+            .any(|s| s.scope_name == "test_scope"));
 
         profiler.end_frame();
 
@@ -276,7 +285,14 @@ mod tests {
         let mut client = AssetStoreClient::default();
 
         client.add_to_cart(AssetId::new(), "Free Item".to_string(), PriceModel::Free);
-        client.add_to_cart(AssetId::new(), "Paid Item".to_string(), PriceModel::Paid { amount: 5.0, currency: "USD".to_string() });
+        client.add_to_cart(
+            AssetId::new(),
+            "Paid Item".to_string(),
+            PriceModel::Paid {
+                amount: 5.0,
+                currency: "USD".to_string(),
+            },
+        );
 
         assert_eq!(client.cart_items().len(), 2);
         assert_eq!(client.cart_total(), 5.0);
@@ -293,7 +309,9 @@ mod tests {
         let asset_id = AssetId::new();
         let path = client.download(&asset_id).unwrap();
 
-        let installed = client.install(&path, &std::path::PathBuf::from("/tmp")).unwrap();
+        let installed = client
+            .install(&path, &std::path::PathBuf::from("/tmp"))
+            .unwrap();
         assert!(!installed.name.is_empty());
 
         let installed_list = client.list_installed();

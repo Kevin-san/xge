@@ -170,7 +170,9 @@ mod tests {
             Position { x: 1.0, y: 2.0 },
             Velocity { x: 0.5, y: 0.5 },
             Health { value: 100 },
-            Name { value: "test".to_string() },
+            Name {
+                value: "test".to_string(),
+            },
         );
         bundle.insert(&mut world, entity);
 
@@ -190,7 +192,9 @@ mod tests {
             Position { x: 1.0, y: 2.0 },
             Velocity { x: 0.5, y: 0.5 },
             Health { value: 100 },
-            Name { value: "test".to_string() },
+            Name {
+                value: "test".to_string(),
+            },
             Active { flag: true },
         );
         bundle.insert(&mut world, entity);
@@ -216,10 +220,7 @@ mod tests {
     #[test]
     fn test_spawn_bundle_tuple() {
         let mut world = World::new();
-        let entity = world.spawn_bundle((
-            Position { x: 1.0, y: 2.0 },
-            Velocity { x: 0.5, y: 0.5 },
-        ));
+        let entity = world.spawn_bundle((Position { x: 1.0, y: 2.0 }, Velocity { x: 0.5, y: 0.5 }));
 
         assert!(world.contains(entity));
         assert!(world.get_component::<Position>(entity).is_some());
@@ -232,7 +233,7 @@ mod tests {
         let entity = world.spawn();
 
         world.insert(entity, Position { x: 1.0, y: 2.0 });
-        
+
         // Inserting same component type should replace
         let new_pos = Position { x: 10.0, y: 20.0 };
         new_pos.insert(&mut world, entity);
@@ -245,30 +246,30 @@ mod tests {
     #[test]
     fn test_spawn_batch() {
         let mut world = World::new();
-        
+
         let bundles = vec![
             Position { x: 1.0, y: 2.0 },
             Position { x: 3.0, y: 4.0 },
             Position { x: 5.0, y: 6.0 },
         ];
-        
+
         world.spawn_batch(bundles.into_iter());
-        
+
         assert_eq!(world.entity_count(), 3);
     }
 
     #[test]
     fn test_bundle_multiple_entities() {
         let mut world = World::new();
-        
+
         let e1 = world.spawn_bundle((Position { x: 1.0, y: 2.0 }, Velocity { x: 0.1, y: 0.2 }));
         let e2 = world.spawn_bundle((Position { x: 3.0, y: 4.0 }, Velocity { x: 0.3, y: 0.4 }));
-        
+
         assert_eq!(world.entity_count(), 2);
-        
+
         let pos1 = world.get_component::<Position>(e1).unwrap();
         let pos2 = world.get_component::<Position>(e2).unwrap();
-        
+
         assert_eq!(pos1.x, 1.0);
         assert_eq!(pos2.x, 3.0);
     }

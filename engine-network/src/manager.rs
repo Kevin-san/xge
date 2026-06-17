@@ -97,7 +97,10 @@ impl NetworkManager {
     /// Get a channel by ID
     pub fn get_channel(&self, id: ChannelId) -> NetResult<Arc<dyn NetChannel>> {
         let channels = self.channels.lock();
-        channels.get(&id).cloned().ok_or(NetError::InvalidChannelId(id))
+        channels
+            .get(&id)
+            .cloned()
+            .ok_or(NetError::InvalidChannelId(id))
     }
 
     /// Get all active channel IDs
@@ -370,12 +373,10 @@ impl NetworkServer {
     }
 
     /// Send message to a specific client
-    pub fn send_to_client<M: NetMessage>(
-        &self,
-        client_id: ClientId,
-        msg: &M,
-    ) -> NetResult<()> {
-        let client = self.get_client(client_id).ok_or(NetError::InvalidState("Client not found".to_string()))?;
+    pub fn send_to_client<M: NetMessage>(&self, client_id: ClientId, msg: &M) -> NetResult<()> {
+        let client = self
+            .get_client(client_id)
+            .ok_or(NetError::InvalidState("Client not found".to_string()))?;
         let message = Message::new(crate::message::generate_message_id(), msg)?;
         let data = message.encode()?;
         self.manager.send(client.channel_id, &data)
@@ -449,9 +450,9 @@ mod tests {
         {
             // Get data from send queue of channel_a
             let send_data = channel_a.recv().unwrap(); // This reads from recv_queue, but we need to access send_queue
-            // Actually, MemoryChannel's recv() reads from recv_queue, not send_queue
-            // So we need to use transfer_to method, but that requires MemoryChannel type
-            // Let's just directly test the send functionality
+                                                       // Actually, MemoryChannel's recv() reads from recv_queue, not send_queue
+                                                       // So we need to use transfer_to method, but that requires MemoryChannel type
+                                                       // Let's just directly test the send functionality
         }
 
         // Simplified test: just verify send works
@@ -487,15 +488,17 @@ mod tests {
 
         // Accept a client
         let client_addr = "127.0.0.1:12345".parse().unwrap();
-        let channel_id = server.manager().add_channel(Arc::new(
-            MemoryChannel::new(1, ChannelConfig::default()),
-        ));
+        let channel_id = server
+            .manager()
+            .add_channel(Arc::new(MemoryChannel::new(1, ChannelConfig::default())));
         let client_id = server.accept_client(client_addr, channel_id).unwrap();
 
         assert_eq!(server.client_count(), 1);
         assert!(server.get_client(client_id).is_some());
 
-        server.disconnect_client(client_id, "Test disconnect".to_string()).unwrap();
+        server
+            .disconnect_client(client_id, "Test disconnect".to_string())
+            .unwrap();
         assert_eq!(server.client_count(), 0);
     }
 

@@ -74,12 +74,42 @@ pub struct Rgba {
 }
 
 impl Rgba {
-    pub const WHITE: Self = Self { r: 1.0, g: 1.0, b: 1.0, a: 1.0 };
-    pub const BLACK: Self = Self { r: 0.0, g: 0.0, b: 0.0, a: 1.0 };
-    pub const TRANSPARENT: Self = Self { r: 0.0, g: 0.0, b: 0.0, a: 0.0 };
-    pub const RED: Self = Self { r: 1.0, g: 0.0, b: 0.0, a: 1.0 };
-    pub const GREEN: Self = Self { r: 0.0, g: 1.0, b: 0.0, a: 1.0 };
-    pub const BLUE: Self = Self { r: 0.0, g: 0.0, b: 1.0, a: 1.0 };
+    pub const WHITE: Self = Self {
+        r: 1.0,
+        g: 1.0,
+        b: 1.0,
+        a: 1.0,
+    };
+    pub const BLACK: Self = Self {
+        r: 0.0,
+        g: 0.0,
+        b: 0.0,
+        a: 1.0,
+    };
+    pub const TRANSPARENT: Self = Self {
+        r: 0.0,
+        g: 0.0,
+        b: 0.0,
+        a: 0.0,
+    };
+    pub const RED: Self = Self {
+        r: 1.0,
+        g: 0.0,
+        b: 0.0,
+        a: 1.0,
+    };
+    pub const GREEN: Self = Self {
+        r: 0.0,
+        g: 1.0,
+        b: 0.0,
+        a: 1.0,
+    };
+    pub const BLUE: Self = Self {
+        r: 0.0,
+        g: 0.0,
+        b: 1.0,
+        a: 1.0,
+    };
 
     #[inline]
     pub const fn new(r: f32, g: f32, b: f32, a: f32) -> Self {
@@ -619,7 +649,10 @@ pub struct InitialVelocityModule {
 
 impl InitialVelocityModule {
     pub fn new(min: f32, max: f32) -> Self {
-        Self { min_speed: min, max_speed: max }
+        Self {
+            min_speed: min,
+            max_speed: max,
+        }
     }
 
     pub fn speed(&self) -> (f32, f32) {
@@ -628,7 +661,9 @@ impl InitialVelocityModule {
 }
 
 impl ParticleModule for InitialVelocityModule {
-    fn priority(&self) -> i32 { -100 }
+    fn priority(&self) -> i32 {
+        -100
+    }
     fn apply(&self, particle: &mut Particle, _dt: f32, ctx: &mut ModuleContext) {
         let speed = ctx.rng.range(self.min_speed, self.max_speed);
         particle.velocity = particle.velocity.normalize() * speed;
@@ -667,7 +702,9 @@ impl VelocityOverLifeModule {
 }
 
 impl ParticleModule for VelocityOverLifeModule {
-    fn priority(&self) -> i32 { 10 }
+    fn priority(&self) -> i32 {
+        10
+    }
     fn apply(&self, particle: &mut Particle, _dt: f32, _ctx: &mut ModuleContext) {
         let t = particle.normalized_age();
         let multiplier = self.sample(t);
@@ -702,12 +739,18 @@ impl ColorOverLifeModule {
                 return c0.lerp(c1, blend);
             }
         }
-        self.gradient.last().map(|(_, c)| c).copied().unwrap_or(Rgba::WHITE)
+        self.gradient
+            .last()
+            .map(|(_, c)| c)
+            .copied()
+            .unwrap_or(Rgba::WHITE)
     }
 }
 
 impl ParticleModule for ColorOverLifeModule {
-    fn priority(&self) -> i32 { 20 }
+    fn priority(&self) -> i32 {
+        20
+    }
     fn apply(&self, particle: &mut Particle, _dt: f32, _ctx: &mut ModuleContext) {
         let t = particle.normalized_age();
         particle.color = self.sample(t);
@@ -746,7 +789,9 @@ impl SizeOverLifeModule {
 }
 
 impl ParticleModule for SizeOverLifeModule {
-    fn priority(&self) -> i32 { 30 }
+    fn priority(&self) -> i32 {
+        30
+    }
     fn apply(&self, particle: &mut Particle, _dt: f32, _ctx: &mut ModuleContext) {
         let t = particle.normalized_age();
         let scale = self.sample(t);
@@ -768,7 +813,9 @@ impl RotationOverLifeModule {
 }
 
 impl ParticleModule for RotationOverLifeModule {
-    fn priority(&self) -> i32 { 40 }
+    fn priority(&self) -> i32 {
+        40
+    }
     fn apply(&self, particle: &mut Particle, dt: f32, _ctx: &mut ModuleContext) {
         particle.rotation += self.rotation_speed * dt;
     }
@@ -791,7 +838,9 @@ impl ForceModule {
 }
 
 impl ParticleModule for ForceModule {
-    fn priority(&self) -> i32 { 50 }
+    fn priority(&self) -> i32 {
+        50
+    }
     fn apply(&self, particle: &mut Particle, dt: f32, _ctx: &mut ModuleContext) {
         particle.velocity = particle.velocity + self.force * dt;
     }
@@ -820,7 +869,9 @@ impl Default for GravityModule {
 }
 
 impl ParticleModule for GravityModule {
-    fn priority(&self) -> i32 { 51 }
+    fn priority(&self) -> i32 {
+        51
+    }
     fn apply(&self, particle: &mut Particle, dt: f32, _ctx: &mut ModuleContext) {
         particle.velocity.y += self.gravity * dt;
     }
@@ -843,7 +894,9 @@ impl DragModule {
 }
 
 impl ParticleModule for DragModule {
-    fn priority(&self) -> i32 { 60 }
+    fn priority(&self) -> i32 {
+        60
+    }
     fn apply(&self, particle: &mut Particle, dt: f32, _ctx: &mut ModuleContext) {
         let drag_factor = 1.0 - self.drag * dt;
         particle.velocity = particle.velocity * drag_factor.max(0.0);
@@ -859,12 +912,17 @@ pub struct TurbulenceModule {
 
 impl TurbulenceModule {
     pub fn new(intensity: f32, frequency: f32) -> Self {
-        Self { intensity, frequency }
+        Self {
+            intensity,
+            frequency,
+        }
     }
 }
 
 impl ParticleModule for TurbulenceModule {
-    fn priority(&self) -> i32 { 70 }
+    fn priority(&self) -> i32 {
+        70
+    }
     fn apply(&self, particle: &mut Particle, dt: f32, ctx: &mut ModuleContext) {
         let noise_x = ctx.rng.range(-1.0, 1.0) * self.intensity;
         let noise_y = ctx.rng.range(-1.0, 1.0) * self.intensity;
@@ -884,7 +942,11 @@ pub struct AttractorModule {
 
 impl AttractorModule {
     pub fn new(center: Vec3, strength: f32, falloff_radius: f32) -> Self {
-        Self { center, strength, falloff_radius }
+        Self {
+            center,
+            strength,
+            falloff_radius,
+        }
     }
 
     pub fn attract(&self, position: Vec3) -> Vec3 {
@@ -903,7 +965,9 @@ impl AttractorModule {
 }
 
 impl ParticleModule for AttractorModule {
-    fn priority(&self) -> i32 { 80 }
+    fn priority(&self) -> i32 {
+        80
+    }
     fn apply(&self, particle: &mut Particle, dt: f32, _ctx: &mut ModuleContext) {
         let force = self.attract(particle.position);
         particle.velocity = particle.velocity + force * dt;
@@ -913,9 +977,9 @@ impl ParticleModule for AttractorModule {
 /// 碰撞器类型
 #[derive(Clone, Debug)]
 pub enum ParticleCollider {
-    Plane(Vec3, f32), // normal, offset
+    Plane(Vec3, f32),  // normal, offset
     Sphere(Vec3, f32), // center, radius
-    Box(Vec3, Vec3), // center, half_size
+    Box(Vec3, Vec3),   // center, half_size
 }
 
 /// 碰撞模块
@@ -975,7 +1039,9 @@ impl CollisionModule {
 }
 
 impl ParticleModule for CollisionModule {
-    fn priority(&self) -> i32 { 90 }
+    fn priority(&self) -> i32 {
+        90
+    }
     fn apply(&self, particle: &mut Particle, _dt: f32, _ctx: &mut ModuleContext) {
         for collider in &self.colliders {
             match collider {
@@ -996,10 +1062,15 @@ impl ParticleModule for CollisionModule {
                             (Vec3::Y, half_size.y - rel_pos.y.abs()),
                             (Vec3::Z, half_size.z - rel_pos.z.abs()),
                         ];
-                        let (normal, _) = axes.iter()
+                        let (normal, _) = axes
+                            .iter()
                             .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
                             .unwrap();
-                        let sign = if rel_pos.dot(*normal) > 0.0 { 1.0 } else { -1.0 };
+                        let sign = if rel_pos.dot(*normal) > 0.0 {
+                            1.0
+                        } else {
+                            -1.0
+                        };
                         let collision_normal = *normal * sign;
                         let dot = particle.velocity.dot(collision_normal);
                         if dot < 0.0 {
@@ -1029,36 +1100,43 @@ pub struct KillModule {
 
 impl KillModule {
     pub fn by_outside_aabb(min: Vec3, max: Vec3) -> Self {
-        Self { condition: KillCondition::OutsideAabb(min, max) }
+        Self {
+            condition: KillCondition::OutsideAabb(min, max),
+        }
     }
 
     pub fn by_min_speed(v: f32) -> Self {
-        Self { condition: KillCondition::MinSpeed(v) }
+        Self {
+            condition: KillCondition::MinSpeed(v),
+        }
     }
 
     pub fn by_max_distance(origin: Vec3, d: f32) -> Self {
-        Self { condition: KillCondition::MaxDistance(origin, d) }
+        Self {
+            condition: KillCondition::MaxDistance(origin, d),
+        }
     }
 
     fn should_kill(&self, particle: &Particle) -> bool {
         match &self.condition {
             KillCondition::OutsideAabb(min, max) => {
-                particle.position.x < min.x || particle.position.x > max.x
-                    || particle.position.y < min.y || particle.position.y > max.y
-                    || particle.position.z < min.z || particle.position.z > max.z
+                particle.position.x < min.x
+                    || particle.position.x > max.x
+                    || particle.position.y < min.y
+                    || particle.position.y > max.y
+                    || particle.position.z < min.z
+                    || particle.position.z > max.z
             }
-            KillCondition::MinSpeed(v) => {
-                particle.velocity.length() < *v
-            }
-            KillCondition::MaxDistance(origin, d) => {
-                particle.position.distance(*origin) > *d
-            }
+            KillCondition::MinSpeed(v) => particle.velocity.length() < *v,
+            KillCondition::MaxDistance(origin, d) => particle.position.distance(*origin) > *d,
         }
     }
 }
 
 impl ParticleModule for KillModule {
-    fn priority(&self) -> i32 { 100 }
+    fn priority(&self) -> i32 {
+        100
+    }
     fn apply(&self, particle: &mut Particle, _dt: f32, _ctx: &mut ModuleContext) {
         if self.should_kill(particle) {
             particle.age = particle.lifetime;
@@ -1363,7 +1441,12 @@ impl ParticleEmitter {
         new_particles
     }
 
-    fn process_bursts(&mut self, effective_time: f32, emitter_position: Vec3, new_particles: &mut Vec<Particle>) {
+    fn process_bursts(
+        &mut self,
+        effective_time: f32,
+        emitter_position: Vec3,
+        new_particles: &mut Vec<Particle>,
+    ) {
         let bursts = match &mut self.emission_mode {
             EmissionMode::Burst(b) => b,
             EmissionMode::Mixed(_, b) => b,
@@ -1613,9 +1696,19 @@ impl Default for ParticleSystem {
 /// 粒子事件
 #[derive(Clone, Debug)]
 pub enum ParticleEvent {
-    Born { index: usize },
-    Died { index: usize, age: f32, position: Vec3 },
-    Collided { index: usize, normal: Vec3, depth: f32 },
+    Born {
+        index: usize,
+    },
+    Died {
+        index: usize,
+        age: f32,
+        position: Vec3,
+    },
+    Collided {
+        index: usize,
+        normal: Vec3,
+        depth: f32,
+    },
 }
 
 /// 粒子事件队列
@@ -1629,7 +1722,9 @@ impl ParticleEventQueue {
     }
 
     pub fn with_capacity(n: usize) -> Self {
-        Self { events: Vec::with_capacity(n) }
+        Self {
+            events: Vec::with_capacity(n),
+        }
     }
 
     pub fn push(&mut self, event: ParticleEvent) {
@@ -1781,7 +1876,10 @@ impl BloomPass {
     }
 
     pub fn with_intensity(f: f32) -> Self {
-        Self { intensity: f, ..Self::new() }
+        Self {
+            intensity: f,
+            ..Self::new()
+        }
     }
 
     pub fn intensity(&self) -> f32 {
@@ -1819,9 +1917,15 @@ impl Default for BloomPass {
 }
 
 impl IPostProcessPass for BloomPass {
-    fn name(&self) -> &str { "Bloom" }
-    fn enabled(&self) -> bool { self.enabled }
-    fn set_enabled(&mut self, b: bool) { self.enabled = b; }
+    fn name(&self) -> &str {
+        "Bloom"
+    }
+    fn enabled(&self) -> bool {
+        self.enabled
+    }
+    fn set_enabled(&mut self, b: bool) {
+        self.enabled = b;
+    }
 
     fn apply(&self, input: &[f32], output: &mut [f32], _width: u32, _height: u32) -> bool {
         if !self.enabled {
@@ -1857,10 +1961,18 @@ impl DOFPass {
         }
     }
 
-    pub fn focus_distance(&self) -> f32 { self.focus_distance }
-    pub fn focal_length(&self) -> f32 { self.focal_length }
-    pub fn aperture(&self) -> f32 { self.aperture }
-    pub fn max_blur(&self) -> f32 { self.max_blur }
+    pub fn focus_distance(&self) -> f32 {
+        self.focus_distance
+    }
+    pub fn focal_length(&self) -> f32 {
+        self.focal_length
+    }
+    pub fn aperture(&self) -> f32 {
+        self.aperture
+    }
+    pub fn max_blur(&self) -> f32 {
+        self.max_blur
+    }
 
     /// 计算模糊圈大小
     pub fn circle_of_confusion(&self, depth: f32) -> f32 {
@@ -1876,9 +1988,15 @@ impl Default for DOFPass {
 }
 
 impl IPostProcessPass for DOFPass {
-    fn name(&self) -> &str { "DepthOfField" }
-    fn enabled(&self) -> bool { self.enabled }
-    fn set_enabled(&mut self, b: bool) { self.enabled = b; }
+    fn name(&self) -> &str {
+        "DepthOfField"
+    }
+    fn enabled(&self) -> bool {
+        self.enabled
+    }
+    fn set_enabled(&mut self, b: bool) {
+        self.enabled = b;
+    }
 
     fn apply(&self, input: &[f32], output: &mut [f32], _width: u32, _height: u32) -> bool {
         if !self.enabled {
@@ -1910,10 +2028,18 @@ impl SSAOPass {
         }
     }
 
-    pub fn radius(&self) -> f32 { self.radius }
-    pub fn bias(&self) -> f32 { self.bias }
-    pub fn power(&self) -> f32 { self.power }
-    pub fn kernel_size(&self) -> u32 { self.kernel_size }
+    pub fn radius(&self) -> f32 {
+        self.radius
+    }
+    pub fn bias(&self) -> f32 {
+        self.bias
+    }
+    pub fn power(&self) -> f32 {
+        self.power
+    }
+    pub fn kernel_size(&self) -> u32 {
+        self.kernel_size
+    }
 
     /// 生成采样核
     pub fn generate_kernel(seed: u64) -> Vec<Vec3> {
@@ -1923,11 +2049,7 @@ impl SSAOPass {
             let theta = rng.range(0.0, core::f32::consts::TAU);
             let phi = rng.range(0.0, core::f32::consts::FRAC_PI_2);
             let r = rng.range(0.0, 1.0);
-            kernel.push(Vec3::new(
-                phi.cos() * theta.cos(),
-                phi.sin(),
-                phi.cos() * theta.sin(),
-            ) * r);
+            kernel.push(Vec3::new(phi.cos() * theta.cos(), phi.sin(), phi.cos() * theta.sin()) * r);
         }
         kernel
     }
@@ -1940,9 +2062,15 @@ impl Default for SSAOPass {
 }
 
 impl IPostProcessPass for SSAOPass {
-    fn name(&self) -> &str { "SSAO" }
-    fn enabled(&self) -> bool { self.enabled }
-    fn set_enabled(&mut self, b: bool) { self.enabled = b; }
+    fn name(&self) -> &str {
+        "SSAO"
+    }
+    fn enabled(&self) -> bool {
+        self.enabled
+    }
+    fn set_enabled(&mut self, b: bool) {
+        self.enabled = b;
+    }
 
     fn apply(&self, input: &[f32], output: &mut [f32], _width: u32, _height: u32) -> bool {
         if !self.enabled {
@@ -1976,9 +2104,15 @@ impl SSRPass {
         }
     }
 
-    pub fn step_count(&self) -> u32 { self.step_count }
-    pub fn thickness(&self) -> f32 { self.thickness }
-    pub fn max_distance(&self) -> f32 { self.max_distance }
+    pub fn step_count(&self) -> u32 {
+        self.step_count
+    }
+    pub fn thickness(&self) -> f32 {
+        self.thickness
+    }
+    pub fn max_distance(&self) -> f32 {
+        self.max_distance
+    }
 }
 
 impl Default for SSRPass {
@@ -1988,9 +2122,15 @@ impl Default for SSRPass {
 }
 
 impl IPostProcessPass for SSRPass {
-    fn name(&self) -> &str { "SSR" }
-    fn enabled(&self) -> bool { self.enabled }
-    fn set_enabled(&mut self, b: bool) { self.enabled = b; }
+    fn name(&self) -> &str {
+        "SSR"
+    }
+    fn enabled(&self) -> bool {
+        self.enabled
+    }
+    fn set_enabled(&mut self, b: bool) {
+        self.enabled = b;
+    }
 
     fn apply(&self, input: &[f32], output: &mut [f32], _width: u32, _height: u32) -> bool {
         if !self.enabled {
@@ -2035,8 +2175,12 @@ impl ToneMappingPass {
         }
     }
 
-    pub fn exposure(&self) -> f32 { self.exposure }
-    pub fn set_exposure(&mut self, e: f32) { self.exposure = e; }
+    pub fn exposure(&self) -> f32 {
+        self.exposure
+    }
+    pub fn set_exposure(&mut self, e: f32) {
+        self.exposure = e;
+    }
 
     fn apply_tone_mapping(&self, v: f32) -> f32 {
         let v = v * self.exposure;
@@ -2076,9 +2220,15 @@ impl Default for ToneMappingPass {
 }
 
 impl IPostProcessPass for ToneMappingPass {
-    fn name(&self) -> &str { "ToneMapping" }
-    fn enabled(&self) -> bool { self.enabled }
-    fn set_enabled(&mut self, b: bool) { self.enabled = b; }
+    fn name(&self) -> &str {
+        "ToneMapping"
+    }
+    fn enabled(&self) -> bool {
+        self.enabled
+    }
+    fn set_enabled(&mut self, b: bool) {
+        self.enabled = b;
+    }
 
     fn apply(&self, input: &[f32], output: &mut [f32], _width: u32, _height: u32) -> bool {
         if !self.enabled {
@@ -2112,10 +2262,18 @@ impl VignettePass {
         }
     }
 
-    pub fn intensity(&self) -> f32 { self.intensity }
-    pub fn smoothness(&self) -> f32 { self.smoothness }
-    pub fn roundness(&self) -> f32 { self.roundness }
-    pub fn center(&self) -> Vec2 { self.center }
+    pub fn intensity(&self) -> f32 {
+        self.intensity
+    }
+    pub fn smoothness(&self) -> f32 {
+        self.smoothness
+    }
+    pub fn roundness(&self) -> f32 {
+        self.roundness
+    }
+    pub fn center(&self) -> Vec2 {
+        self.center
+    }
 }
 
 impl Default for VignettePass {
@@ -2125,9 +2283,15 @@ impl Default for VignettePass {
 }
 
 impl IPostProcessPass for VignettePass {
-    fn name(&self) -> &str { "Vignette" }
-    fn enabled(&self) -> bool { self.enabled }
-    fn set_enabled(&mut self, b: bool) { self.enabled = b; }
+    fn name(&self) -> &str {
+        "Vignette"
+    }
+    fn enabled(&self) -> bool {
+        self.enabled
+    }
+    fn set_enabled(&mut self, b: bool) {
+        self.enabled = b;
+    }
 
     fn apply(&self, input: &[f32], output: &mut [f32], width: u32, height: u32) -> bool {
         if !self.enabled {
@@ -2165,8 +2329,12 @@ impl ChromaticAberrationPass {
         }
     }
 
-    pub fn strength(&self) -> f32 { self.strength }
-    pub fn max_offset(&self) -> f32 { self.max_offset }
+    pub fn strength(&self) -> f32 {
+        self.strength
+    }
+    pub fn max_offset(&self) -> f32 {
+        self.max_offset
+    }
 }
 
 impl Default for ChromaticAberrationPass {
@@ -2176,9 +2344,15 @@ impl Default for ChromaticAberrationPass {
 }
 
 impl IPostProcessPass for ChromaticAberrationPass {
-    fn name(&self) -> &str { "ChromaticAberration" }
-    fn enabled(&self) -> bool { self.enabled }
-    fn set_enabled(&mut self, b: bool) { self.enabled = b; }
+    fn name(&self) -> &str {
+        "ChromaticAberration"
+    }
+    fn enabled(&self) -> bool {
+        self.enabled
+    }
+    fn set_enabled(&mut self, b: bool) {
+        self.enabled = b;
+    }
 
     fn apply(&self, input: &[f32], output: &mut [f32], _width: u32, _height: u32) -> bool {
         if !self.enabled {
@@ -2210,10 +2384,18 @@ impl ColorGradingPass {
         }
     }
 
-    pub fn saturation(&self) -> f32 { self.saturation }
-    pub fn contrast(&self) -> f32 { self.contrast }
-    pub fn hue_shift(&self) -> f32 { self.hue_shift }
-    pub fn white_balance(&self) -> Vec2 { self.white_balance }
+    pub fn saturation(&self) -> f32 {
+        self.saturation
+    }
+    pub fn contrast(&self) -> f32 {
+        self.contrast
+    }
+    pub fn hue_shift(&self) -> f32 {
+        self.hue_shift
+    }
+    pub fn white_balance(&self) -> Vec2 {
+        self.white_balance
+    }
 }
 
 impl Default for ColorGradingPass {
@@ -2223,9 +2405,15 @@ impl Default for ColorGradingPass {
 }
 
 impl IPostProcessPass for ColorGradingPass {
-    fn name(&self) -> &str { "ColorGrading" }
-    fn enabled(&self) -> bool { self.enabled }
-    fn set_enabled(&mut self, b: bool) { self.enabled = b; }
+    fn name(&self) -> &str {
+        "ColorGrading"
+    }
+    fn enabled(&self) -> bool {
+        self.enabled
+    }
+    fn set_enabled(&mut self, b: bool) {
+        self.enabled = b;
+    }
 
     fn apply(&self, input: &[f32], output: &mut [f32], _width: u32, _height: u32) -> bool {
         if !self.enabled {
@@ -2259,8 +2447,12 @@ impl FXAAPass {
         }
     }
 
-    pub fn threshold(&self) -> f32 { self.threshold }
-    pub fn edge_threshold(&self) -> f32 { self.edge_threshold }
+    pub fn threshold(&self) -> f32 {
+        self.threshold
+    }
+    pub fn edge_threshold(&self) -> f32 {
+        self.edge_threshold
+    }
 }
 
 impl Default for FXAAPass {
@@ -2270,9 +2462,15 @@ impl Default for FXAAPass {
 }
 
 impl IPostProcessPass for FXAAPass {
-    fn name(&self) -> &str { "FXAA" }
-    fn enabled(&self) -> bool { self.enabled }
-    fn set_enabled(&mut self, b: bool) { self.enabled = b; }
+    fn name(&self) -> &str {
+        "FXAA"
+    }
+    fn enabled(&self) -> bool {
+        self.enabled
+    }
+    fn set_enabled(&mut self, b: bool) {
+        self.enabled = b;
+    }
 
     fn apply(&self, input: &[f32], output: &mut [f32], _width: u32, _height: u32) -> bool {
         if !self.enabled {
@@ -2310,7 +2508,10 @@ pub struct PostProcessDebugView {
 
 impl PostProcessDebugView {
     pub fn new(mode: DebugViewMode) -> Self {
-        Self { enabled: true, mode }
+        Self {
+            enabled: true,
+            mode,
+        }
     }
 
     pub fn mode(&self) -> DebugViewMode {
@@ -2329,9 +2530,15 @@ impl Default for PostProcessDebugView {
 }
 
 impl IPostProcessPass for PostProcessDebugView {
-    fn name(&self) -> &str { "DebugView" }
-    fn enabled(&self) -> bool { self.enabled }
-    fn set_enabled(&mut self, b: bool) { self.enabled = b; }
+    fn name(&self) -> &str {
+        "DebugView"
+    }
+    fn enabled(&self) -> bool {
+        self.enabled
+    }
+    fn set_enabled(&mut self, b: bool) {
+        self.enabled = b;
+    }
 
     fn apply(&self, input: &[f32], output: &mut [f32], _width: u32, _height: u32) -> bool {
         if !self.enabled || self.mode == DebugViewMode::None {
@@ -2504,10 +2711,7 @@ mod tests {
 
     #[test]
     fn test_color_over_life_module() {
-        let module = ColorOverLifeModule::new(alloc::vec![
-            (0.0, Rgba::BLACK),
-            (1.0, Rgba::WHITE),
-        ]);
+        let module = ColorOverLifeModule::new(alloc::vec![(0.0, Rgba::BLACK), (1.0, Rgba::WHITE),]);
         let mut particle = Particle::default();
         particle.age = 0.5;
         particle.lifetime = 1.0;
@@ -2518,10 +2722,7 @@ mod tests {
 
     #[test]
     fn test_size_over_life_module() {
-        let module = SizeOverLifeModule::new(alloc::vec![
-            (0.0, 1.0),
-            (1.0, 0.0),
-        ]);
+        let module = SizeOverLifeModule::new(alloc::vec![(0.0, 1.0), (1.0, 0.0),]);
         let mut particle = Particle::default();
         particle.age = 0.5;
         particle.lifetime = 1.0;
@@ -2551,9 +2752,7 @@ mod tests {
 
     #[test]
     fn test_collision_module_sphere() {
-        let module = CollisionModule::new(alloc::vec![
-            ParticleCollider::Sphere(Vec3::ZERO, 1.0),
-        ]);
+        let module = CollisionModule::new(alloc::vec![ParticleCollider::Sphere(Vec3::ZERO, 1.0),]);
         let mut particle = Particle::default();
         particle.position = Vec3::new(0.5, 0.0, 0.0);
         particle.velocity = Vec3::new(-1.0, 0.0, 0.0);
@@ -2564,10 +2763,8 @@ mod tests {
 
     #[test]
     fn test_kill_module_aabb() {
-        let module = KillModule::by_outside_aabb(
-            Vec3::new(-1.0, -1.0, -1.0),
-            Vec3::new(1.0, 1.0, 1.0),
-        );
+        let module =
+            KillModule::by_outside_aabb(Vec3::new(-1.0, -1.0, -1.0), Vec3::new(1.0, 1.0, 1.0));
         let mut particle = Particle::default();
         particle.position = Vec3::new(2.0, 0.0, 0.0);
         particle.lifetime = 5.0;
@@ -2724,7 +2921,11 @@ mod tests {
     fn test_particle_event_queue() {
         let mut queue = ParticleEventQueue::new();
         queue.push(ParticleEvent::Born { index: 0 });
-        queue.push(ParticleEvent::Died { index: 0, age: 1.0, position: Vec3::ZERO });
+        queue.push(ParticleEvent::Died {
+            index: 0,
+            age: 1.0,
+            position: Vec3::ZERO,
+        });
         assert_eq!(queue.len(), 2);
         let event = queue.pop();
         assert!(event.is_some());

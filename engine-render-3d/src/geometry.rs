@@ -57,16 +57,22 @@ impl AABB {
 
     #[inline]
     pub fn contains_point(self, p: Vec3) -> bool {
-        p.x >= self.min.x && p.x <= self.max.x
-            && p.y >= self.min.y && p.y <= self.max.y
-            && p.z >= self.min.z && p.z <= self.max.z
+        p.x >= self.min.x
+            && p.x <= self.max.x
+            && p.y >= self.min.y
+            && p.y <= self.max.y
+            && p.z >= self.min.z
+            && p.z <= self.max.z
     }
 
     #[inline]
     pub fn intersects_aabb(self, other: AABB) -> bool {
-        self.min.x <= other.max.x && self.max.x >= other.min.x
-            && self.min.y <= other.max.y && self.max.y >= other.min.y
-            && self.min.z <= other.max.z && self.max.z >= other.min.z
+        self.min.x <= other.max.x
+            && self.max.x >= other.min.x
+            && self.min.y <= other.max.y
+            && self.max.y >= other.min.y
+            && self.min.z <= other.max.z
+            && self.max.z >= other.min.z
     }
 
     #[inline]
@@ -114,10 +120,7 @@ impl AABB {
             Vec3::new(self.max.x, self.max.y, self.max.z),
         ];
 
-        let transformed: Vec<Vec3> = corners
-            .iter()
-            .map(|c| mat.transform_point3(*c))
-            .collect();
+        let transformed: Vec<Vec3> = corners.iter().map(|c| mat.transform_point3(*c)).collect();
 
         Self::from_points(&transformed)
     }
@@ -206,9 +209,12 @@ pub trait Mat4Transform3D {
 
 impl Mat4Transform3D for Mat4 {
     fn transform_point3(&self, p: Vec3) -> Vec3 {
-        let x = self.cols[0][0] * p.x + self.cols[1][0] * p.y + self.cols[2][0] * p.z + self.cols[3][0];
-        let y = self.cols[0][1] * p.x + self.cols[1][1] * p.y + self.cols[2][1] * p.z + self.cols[3][1];
-        let z = self.cols[0][2] * p.x + self.cols[1][2] * p.y + self.cols[2][2] * p.z + self.cols[3][2];
+        let x =
+            self.cols[0][0] * p.x + self.cols[1][0] * p.y + self.cols[2][0] * p.z + self.cols[3][0];
+        let y =
+            self.cols[0][1] * p.x + self.cols[1][1] * p.y + self.cols[2][1] * p.z + self.cols[3][1];
+        let z =
+            self.cols[0][2] * p.x + self.cols[1][2] * p.y + self.cols[2][2] * p.z + self.cols[3][2];
         Vec3::new(x, y, z)
     }
 

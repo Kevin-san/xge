@@ -4,7 +4,7 @@
 
 use engine_math::{Quat, Vec3};
 
-use crate::{AABB, CollisionGroups, ColliderShape3D, EntityHandle};
+use crate::{ColliderShape3D, CollisionGroups, EntityHandle, AABB};
 
 /// 射线
 #[derive(Debug, Clone)]
@@ -266,7 +266,8 @@ impl Query3D {
         solid: bool,
         filter: QueryFilter,
     ) -> Option<RayCastHit> {
-        self.query_pipeline.cast_ray_and_get_normal(ray, max_toi, solid, filter)
+        self.query_pipeline
+            .cast_ray_and_get_normal(ray, max_toi, solid, filter)
     }
 
     /// 形状投射
@@ -281,7 +282,8 @@ impl Query3D {
         max_toi: f32,
         filter: QueryFilter,
     ) -> Option<ShapeCastHit> {
-        self.query_pipeline.cast_shape(shape, position, rotation, direction, max_toi, filter)
+        self.query_pipeline
+            .cast_shape(shape, position, rotation, direction, max_toi, filter)
     }
 
     /// 形状相交检测
@@ -294,28 +296,21 @@ impl Query3D {
         rotation: Quat,
         filter: QueryFilter,
     ) -> Vec<EntityHandle> {
-        self.query_pipeline.intersection_with_shape(shape, position, rotation, filter)
+        self.query_pipeline
+            .intersection_with_shape(shape, position, rotation, filter)
     }
 
     /// 点相交检测
     ///
     /// 检测点与场景中物体的相交。
-    pub fn point_intersections(
-        &self,
-        point: Vec3,
-        filter: QueryFilter,
-    ) -> Vec<EntityHandle> {
+    pub fn point_intersections(&self, point: Vec3, filter: QueryFilter) -> Vec<EntityHandle> {
         self.query_pipeline.point_intersections(point, filter)
     }
 
     /// AABB相交检测
     ///
     /// 检测AABB与场景中物体的相交。
-    pub fn intersections_with_aabb(
-        &self,
-        aabb: AABB,
-        filter: QueryFilter,
-    ) -> Vec<EntityHandle> {
+    pub fn intersections_with_aabb(&self, aabb: AABB, filter: QueryFilter) -> Vec<EntityHandle> {
         self.query_pipeline.intersections_with_aabb(aabb, filter)
     }
 
@@ -400,20 +395,12 @@ impl QueryPipeline {
     }
 
     /// 点相交检测
-    pub fn point_intersections(
-        &self,
-        _point: Vec3,
-        _filter: QueryFilter,
-    ) -> Vec<EntityHandle> {
+    pub fn point_intersections(&self, _point: Vec3, _filter: QueryFilter) -> Vec<EntityHandle> {
         Vec::new()
     }
 
     /// AABB相交检测
-    pub fn intersections_with_aabb(
-        &self,
-        _aabb: AABB,
-        _filter: QueryFilter,
-    ) -> Vec<EntityHandle> {
+    pub fn intersections_with_aabb(&self, _aabb: AABB, _filter: QueryFilter) -> Vec<EntityHandle> {
         Vec::new()
     }
 
@@ -469,41 +456,44 @@ pub fn ray_intersects_shape(
     max_toi: f32,
 ) -> Option<RayCastHit> {
     match shape {
-        ColliderShape3D::Ball { radius } => {
-            ray_intersects_ball(ray, position, *radius, max_toi)
-        },
+        ColliderShape3D::Ball { radius } => ray_intersects_ball(ray, position, *radius, max_toi),
         ColliderShape3D::Cuboid { hx, hy, hz } => {
             ray_intersects_cuboid(ray, position, rotation, *hx, *hy, *hz, max_toi)
-        },
-        ColliderShape3D::Capsule { half_height, radius, axis } => {
-            ray_intersects_capsule(ray, position, rotation, *half_height, *radius, *axis, max_toi)
-        },
-        ColliderShape3D::Cylinder { half_height, radius } => {
-            ray_intersects_cylinder(ray, position, rotation, *half_height, *radius, max_toi)
-        },
-        ColliderShape3D::Cone { half_height, radius } => {
-            ray_intersects_cone(ray, position, rotation, *half_height, *radius, max_toi)
-        },
+        }
+        ColliderShape3D::Capsule {
+            half_height,
+            radius,
+            axis,
+        } => ray_intersects_capsule(
+            ray,
+            position,
+            rotation,
+            *half_height,
+            *radius,
+            *axis,
+            max_toi,
+        ),
+        ColliderShape3D::Cylinder {
+            half_height,
+            radius,
+        } => ray_intersects_cylinder(ray, position, rotation, *half_height, *radius, max_toi),
+        ColliderShape3D::Cone {
+            half_height,
+            radius,
+        } => ray_intersects_cone(ray, position, rotation, *half_height, *radius, max_toi),
         ColliderShape3D::Triangle { a, b, c } => {
             ray_intersects_triangle(ray, position, rotation, *a, *b, *c, max_toi)
-        },
-        ColliderShape3D::Segment { a, b } => {
-            ray_intersects_segment(ray, position, *a, *b, max_toi)
-        },
+        }
+        ColliderShape3D::Segment { a, b } => ray_intersects_segment(ray, position, *a, *b, max_toi),
         ColliderShape3D::Halfspace { outward_normal } => {
             ray_intersects_halfspace(ray, position, *outward_normal, max_toi)
-        },
+        }
         _ => None, // 复杂形状需要更复杂的实现
     }
 }
 
 /// 射线与球体相交检测
-fn ray_intersects_ball(
-    ray: &Ray3,
-    center: Vec3,
-    radius: f32,
-    max_toi: f32,
-) -> Option<RayCastHit> {
+fn ray_intersects_ball(ray: &Ray3, center: Vec3, radius: f32, max_toi: f32) -> Option<RayCastHit> {
     let oc = ray.origin - center;
     let a = ray.direction.dot(ray.direction);
     let b = 2.0 * oc.dot(ray.direction);
@@ -618,7 +608,12 @@ fn ray_intersects_cuboid(
     let point = ray.point_at(t);
     let world_normal = rotation * normal;
 
-    Some(RayCastHit::new(point, world_normal, t, EntityHandle::new(0, 0)))
+    Some(RayCastHit::new(
+        point,
+        world_normal,
+        t,
+        EntityHandle::new(0, 0),
+    ))
 }
 
 /// 射线与胶囊体相交检测
@@ -634,19 +629,19 @@ fn ray_intersects_capsule(
     // 简化实现：将胶囊视为圆柱 + 两端球体
     let axis_vec = axis.vector();
     let rotated_axis = rotation * axis_vec;
-    
+
     // 检测两端球体
     let top = position + rotated_axis * half_height;
     let bottom = position - rotated_axis * half_height;
-    
+
     if let Some(hit) = ray_intersects_ball(ray, top, radius, max_toi) {
         return Some(hit);
     }
-    
+
     if let Some(hit) = ray_intersects_ball(ray, bottom, radius, max_toi) {
         return Some(hit);
     }
-    
+
     // 检测圆柱部分（简化）
     None
 }
@@ -692,9 +687,15 @@ fn ray_intersects_cylinder(
                 local_origin.x + t * local_direction.x,
                 0.0,
                 local_origin.z + t * local_direction.z,
-            ).normalize();
+            )
+            .normalize();
             let world_normal = rotation * local_normal;
-            return Some(RayCastHit::new(point, world_normal, t, EntityHandle::new(0, 0)));
+            return Some(RayCastHit::new(
+                point,
+                world_normal,
+                t,
+                EntityHandle::new(0, 0),
+            ));
         }
     }
 
@@ -759,7 +760,12 @@ fn ray_intersects_triangle(
         let point = ray.point_at(t);
         let normal = edge1.cross(edge2).normalize();
         let world_normal = rotation * normal;
-        return Some(RayCastHit::new(point, world_normal, t, EntityHandle::new(0, 0)));
+        return Some(RayCastHit::new(
+            point,
+            world_normal,
+            t,
+            EntityHandle::new(0, 0),
+        ));
     }
 
     None
@@ -784,7 +790,7 @@ fn ray_intersects_halfspace(
     max_toi: f32,
 ) -> Option<RayCastHit> {
     let denom = ray.direction.dot(outward_normal);
-    
+
     if denom.abs() < f32::EPSILON {
         return None;
     }
@@ -793,7 +799,12 @@ fn ray_intersects_halfspace(
 
     if t >= 0.0 && t <= max_toi {
         let point = ray.point_at(t);
-        return Some(RayCastHit::new(point, outward_normal, t, EntityHandle::new(0, 0)));
+        return Some(RayCastHit::new(
+            point,
+            outward_normal,
+            t,
+            EntityHandle::new(0, 0),
+        ));
     }
 
     None

@@ -31,7 +31,11 @@ impl HotUpdate {
 
         for change in &patch.file_changes {
             match change {
-                FileChange::Added { path, size: _, hash: _ } => {
+                FileChange::Added {
+                    path,
+                    size: _,
+                    hash: _,
+                } => {
                     // In real implementation, would download file
                     // For now, just log the operation
                     let dest = dir.join(path);
@@ -43,7 +47,11 @@ impl HotUpdate {
                     // Placeholder: create empty file (real impl would download)
                     fs::write(&dest, b"")?;
                 }
-                FileChange::Modified { path, diff, size: _ } => {
+                FileChange::Modified {
+                    path,
+                    diff,
+                    size: _,
+                } => {
                     let dest = dir.join(path);
                     // Apply modification (simplified: write diff content)
                     if !diff.is_empty() {
@@ -151,8 +159,7 @@ impl HotUpdatePatch {
 
     /// Deserialize from bytes
     pub fn from_bytes(bytes: &[u8]) -> BuildResult<Self> {
-        serde_json::from_slice(bytes)
-            .map_err(|e| crate::BuildError::parse_error(e.to_string()))
+        serde_json::from_slice(bytes).map_err(|e| crate::BuildError::parse_error(e.to_string()))
     }
 
     /// Save to file
@@ -186,9 +193,7 @@ pub enum FileChange {
         size: u64,
     },
     /// Removed file
-    Removed {
-        path: PathBuf,
-    },
+    Removed { path: PathBuf },
 }
 
 impl FileChange {

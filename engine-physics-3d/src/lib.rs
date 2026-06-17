@@ -15,16 +15,16 @@ pub mod world;
 pub use character::{CharacterController3D, CharacterMovement};
 pub use collider::{Collider3D, Collider3DBuilder, ColliderHandle, ColliderShape3D, ColliderType};
 pub use collision::{
-    ContactEvent, ContactForceEvent, ContactPair, ContactPoint3D, IntersectionEvent,
-    Manifold3D,
+    ContactEvent, ContactForceEvent, ContactPair, ContactPoint3D, IntersectionEvent, Manifold3D,
 };
 pub use joint::{
-    BallJointBuilder, DistanceJointBuilder, FixedJointBuilder, Joint3D, JointHandle,
-    JointType3D, PrismaticJointBuilder, RevoluteJointBuilder, RopeJointBuilder,
-    SphericalJointBuilder,
+    BallJointBuilder, DistanceJointBuilder, FixedJointBuilder, Joint3D, JointHandle, JointType3D,
+    PrismaticJointBuilder, RevoluteJointBuilder, RopeJointBuilder, SphericalJointBuilder,
 };
 pub use query::{Query3D, QueryFilter, Ray3, RayCastHit, ShapeCastHit};
-pub use rigidbody::{RigidBody3D, RigidBody3DBuilder, RigidBodyHandle, RigidBodyState3D, RigidBodyType3D};
+pub use rigidbody::{
+    RigidBody3D, RigidBody3DBuilder, RigidBodyHandle, RigidBodyState3D, RigidBodyType3D,
+};
 pub use world::{PhysicsWorld3D, PhysicsWorldConfig3D};
 
 /// 碰撞分组
@@ -39,7 +39,10 @@ pub struct CollisionGroups {
 impl CollisionGroups {
     /// 创建新的碰撞分组
     pub fn new(memberships: u32, filter: u32) -> Self {
-        Self { memberships, filter }
+        Self {
+            memberships,
+            filter,
+        }
     }
 
     /// 所有分组
@@ -146,7 +149,10 @@ impl AABB {
     }
 
     /// 从中心和半尺寸创建
-    pub fn from_center_half_extents(center: engine_math::Vec3, half_extents: engine_math::Vec3) -> Self {
+    pub fn from_center_half_extents(
+        center: engine_math::Vec3,
+        half_extents: engine_math::Vec3,
+    ) -> Self {
         Self {
             min: center - half_extents,
             max: center + half_extents,
@@ -175,16 +181,22 @@ impl AABB {
 
     /// 检查是否包含点
     pub fn contains(&self, point: engine_math::Vec3) -> bool {
-        point.x >= self.min.x && point.x <= self.max.x
-            && point.y >= self.min.y && point.y <= self.max.y
-            && point.z >= self.min.z && point.z <= self.max.z
+        point.x >= self.min.x
+            && point.x <= self.max.x
+            && point.y >= self.min.y
+            && point.y <= self.max.y
+            && point.z >= self.min.z
+            && point.z <= self.max.z
     }
 
     /// 检查是否与另一个AABB相交
     pub fn intersects(&self, other: &AABB) -> bool {
-        self.min.x <= other.max.x && self.max.x >= other.min.x
-            && self.min.y <= other.max.y && self.max.y >= other.min.y
-            && self.min.z <= other.max.z && self.max.z >= other.min.z
+        self.min.x <= other.max.x
+            && self.max.x >= other.min.x
+            && self.min.y <= other.max.y
+            && self.max.y >= other.min.y
+            && self.min.z <= other.max.z
+            && self.max.z >= other.min.z
     }
 
     /// 合并两个AABB
@@ -240,7 +252,10 @@ impl EntityHandle {
     }
 
     /// 无效句柄
-    pub const INVALID: Self = Self { index: u32::MAX, generation: u32::MAX };
+    pub const INVALID: Self = Self {
+        index: u32::MAX,
+        generation: u32::MAX,
+    };
 
     /// 检查是否有效
     pub fn is_valid(&self) -> bool {
@@ -259,7 +274,13 @@ pub trait DebugRenderer {
     /// 绘制线
     fn draw_line(&mut self, start: engine_math::Vec3, end: engine_math::Vec3, color: [f32; 4]);
     /// 绘制三角形
-    fn draw_triangle(&mut self, a: engine_math::Vec3, b: engine_math::Vec3, c: engine_math::Vec3, color: [f32; 4]);
+    fn draw_triangle(
+        &mut self,
+        a: engine_math::Vec3,
+        b: engine_math::Vec3,
+        c: engine_math::Vec3,
+        color: [f32; 4],
+    );
 }
 
 /// 物理常量
@@ -316,10 +337,8 @@ mod tests {
 
     #[test]
     fn test_aabb() {
-        let aabb1 = AABB::from_center_half_extents(
-            engine_math::Vec3::ZERO,
-            engine_math::Vec3::splat(1.0),
-        );
+        let aabb1 =
+            AABB::from_center_half_extents(engine_math::Vec3::ZERO, engine_math::Vec3::splat(1.0));
         let aabb2 = AABB::from_center_half_extents(
             engine_math::Vec3::new(2.0, 0.0, 0.0),
             engine_math::Vec3::splat(1.0),
@@ -341,10 +360,8 @@ mod tests {
 
     #[test]
     fn test_aabb_merge() {
-        let aabb1 = AABB::from_center_half_extents(
-            engine_math::Vec3::ZERO,
-            engine_math::Vec3::splat(1.0),
-        );
+        let aabb1 =
+            AABB::from_center_half_extents(engine_math::Vec3::ZERO, engine_math::Vec3::splat(1.0));
         let aabb2 = AABB::from_center_half_extents(
             engine_math::Vec3::new(3.0, 0.0, 0.0),
             engine_math::Vec3::splat(1.0),

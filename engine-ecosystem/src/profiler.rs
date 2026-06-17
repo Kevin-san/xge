@@ -206,7 +206,7 @@ impl PerformanceProfiler {
         let start_ns = current_timestamp_ns();
         let thread_id = current_thread_id();
         self.scope_stack.push(name.to_string());
-        
+
         let parent_index = if self.scope_stack.len() > 1 {
             Some(self.scope_stack.len() - 2)
         } else {
@@ -510,13 +510,17 @@ impl FlameGraph {
     }
 
     pub fn search(&self, keyword: &str) -> Vec<&FlameNode> {
-        self.root.children.iter()
+        self.root
+            .children
+            .iter()
             .filter(|n| n.name.contains(keyword))
             .collect()
     }
 
     pub fn hot_path(&self) -> Vec<&FlameNode> {
-        self.root.children.iter()
+        self.root
+            .children
+            .iter()
             .filter(|n| n.duration > 1000000) // > 1ms
             .collect()
     }
@@ -533,7 +537,12 @@ pub struct FlameNode {
 
 impl FlameNode {
     pub fn total_duration(&self) -> u64 {
-        self.duration + self.children.iter().map(|c| c.total_duration()).sum::<u64>()
+        self.duration
+            + self
+                .children
+                .iter()
+                .map(|c| c.total_duration())
+                .sum::<u64>()
     }
 
     pub fn self_duration(&self) -> u64 {
@@ -617,13 +626,19 @@ pub struct Histogram {
 impl Histogram {
     pub fn from_values(values: &[f64], bucket_count: usize) -> Self {
         if values.is_empty() {
-            return Self { buckets: Vec::new() };
+            return Self {
+                buckets: Vec::new(),
+            };
         }
 
         let min = values.iter().cloned().fold(f64::INFINITY, f64::min);
         let max = values.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
         let range = max - min;
-        let bucket_size = if range > 0.0 { range / bucket_count as f64 } else { 1.0 };
+        let bucket_size = if range > 0.0 {
+            range / bucket_count as f64
+        } else {
+            1.0
+        };
 
         let mut buckets = Vec::with_capacity(bucket_count);
         for i in 0..bucket_count {
@@ -645,7 +660,9 @@ impl Histogram {
     }
 
     pub fn mean(&self) -> f64 {
-        let total: f64 = self.buckets.iter()
+        let total: f64 = self
+            .buckets
+            .iter()
             .map(|b| (b.start + b.end) / 2.0 * b.count as f64)
             .sum();
         let count: u64 = self.buckets.iter().map(|b| b.count).sum();
@@ -737,7 +754,11 @@ impl Metrics {
     pub fn new(frame_time_ms: f64) -> Self {
         Self {
             frame_time_ms,
-            fps: if frame_time_ms > 0.0 { 1000.0 / frame_time_ms } else { 0.0 },
+            fps: if frame_time_ms > 0.0 {
+                1000.0 / frame_time_ms
+            } else {
+                0.0
+            },
             cpu_usage_percent: 0.0,
             gpu_usage_percent: 0.0,
             memory_rss_kb: 0,
@@ -821,7 +842,9 @@ pub struct PerformanceDiagnosticEngine {
 
 impl PerformanceDiagnosticEngine {
     pub fn new() -> Self {
-        Self { rules: DiagnosticRuleSet::default().rules().to_vec() }
+        Self {
+            rules: DiagnosticRuleSet::default().rules().to_vec(),
+        }
     }
 
     pub fn add_rule(&mut self, rule: DiagnosticRule) {
@@ -840,7 +863,11 @@ impl PerformanceDiagnosticEngine {
         warnings
     }
 
-    fn check_rule(&self, rule: &DiagnosticRule, profile: &PerformanceProfiler) -> Option<PerformanceWarning> {
+    fn check_rule(
+        &self,
+        rule: &DiagnosticRule,
+        profile: &PerformanceProfiler,
+    ) -> Option<PerformanceWarning> {
         match rule {
             DiagnosticRule::ExcessiveDrawCalls => {
                 let render_samples = profile.render_samples();
@@ -889,7 +916,6 @@ impl Default for DiagnosticRuleSet {
 }
 
 impl DiagnosticRuleSet {
-
     pub fn rules(&self) -> &[DiagnosticRule] {
         &self.rules
     }
@@ -955,8 +981,10 @@ impl BaselineProfile {
     }
 
     pub fn compare(&self, new_samples: &[CpuSample]) -> RegressionReport {
-        let baseline_avg = self.samples.iter().map(|s| s.duration_ns).sum::<u64>() / self.samples.len().max(1) as u64;
-        let new_avg = new_samples.iter().map(|s| s.duration_ns).sum::<u64>() / new_samples.len().max(1) as u64;
+        let baseline_avg = self.samples.iter().map(|s| s.duration_ns).sum::<u64>()
+            / self.samples.len().max(1) as u64;
+        let new_avg = new_samples.iter().map(|s| s.duration_ns).sum::<u64>()
+            / new_samples.len().max(1) as u64;
 
         let delta_percent = if baseline_avg > 0 {
             ((new_avg as f64 - baseline_avg as f64) / baseline_avg as f64) * 100.0

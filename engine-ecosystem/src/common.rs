@@ -49,7 +49,11 @@ pub struct AssetVersion {
 
 impl AssetVersion {
     pub fn new(major: u32, minor: u32, patch: u32) -> Self {
-        Self { major, minor, patch }
+        Self {
+            major,
+            minor,
+            patch,
+        }
     }
 
     pub fn parse(s: &str) -> anyhow::Result<Self> {
@@ -123,8 +127,15 @@ pub enum AssetLicense {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum PriceModel {
     Free,
-    Paid { amount: f64, currency: String },
-    Subscription { amount: f64, currency: String, period: String },
+    Paid {
+        amount: f64,
+        currency: String,
+    },
+    Subscription {
+        amount: f64,
+        currency: String,
+        period: String,
+    },
 }
 
 /// 资源分类
@@ -155,7 +166,10 @@ pub struct AssetRating {
 
 impl AssetRating {
     pub fn new(stars: f32, review_count: usize) -> Self {
-        Self { stars, review_count }
+        Self {
+            stars,
+            review_count,
+        }
     }
 
     pub fn stars(&self) -> f32 {
@@ -213,7 +227,10 @@ pub struct InstalledAsset {
 
 impl InstalledAsset {
     pub fn total_size_bytes(&self) -> u64 {
-        self.files.iter().filter_map(|f| f.metadata().ok().map(|m| m.len())).sum()
+        self.files
+            .iter()
+            .filter_map(|f| f.metadata().ok().map(|m| m.len()))
+            .sum()
     }
 
     pub fn installed_files(&self) -> &[PathBuf] {
@@ -231,7 +248,11 @@ pub struct AssetStoreConfig {
 
 impl AssetStoreConfig {
     pub fn new(server_url: String, cache_dir: PathBuf, install_dir: PathBuf) -> Self {
-        Self { server_url, cache_dir, install_dir }
+        Self {
+            server_url,
+            cache_dir,
+            install_dir,
+        }
     }
 
     pub fn server_url(&self) -> &str {

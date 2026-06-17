@@ -18,6 +18,10 @@ pub enum JointType {
     Rope,
     /// 弹簧关节
     Spring,
+    /// 焊接关节
+    Weld,
+    /// 驱动关节
+    Motor,
 }
 
 /// 关节基类
@@ -345,6 +349,195 @@ impl PrismaticJoint {
     pub fn set_limits(&mut self, min: Option<f32>, max: Option<f32>) {
         self.min_distance = min;
         self.max_distance = max;
+    }
+
+    /// 获取基类
+    pub fn base(&self) -> &Joint2D {
+        &self.base
+    }
+
+    /// 获取可变基类
+    pub fn base_mut(&mut self) -> &mut Joint2D {
+        &mut self.base
+    }
+}
+
+/// 焊接关节
+///
+/// 将两个刚体焊接在一起，保持相对位置和角度不变。
+#[derive(Debug, Clone)]
+pub struct WeldJoint {
+    /// 基类
+    base: Joint2D,
+    /// 刚度（0-1）
+    stiffness: f32,
+    /// 阻尼（0-1）
+    damping: f32,
+}
+
+impl WeldJoint {
+    /// 创建新的焊接关节
+    pub fn new(body_a: usize, body_b: usize, _anchor_a: Vec2, _anchor_b: Vec2) -> Self {
+        Self {
+            base: Joint2D::new(JointType::Weld, body_a, body_b),
+            stiffness: 1.0,
+            damping: 0.0,
+        }
+    }
+
+    /// 获取刚度
+    pub fn stiffness(&self) -> f32 {
+        self.stiffness
+    }
+
+    /// 设置刚度
+    pub fn set_stiffness(&mut self, stiffness: f32) {
+        self.stiffness = stiffness.clamp(0.0, 1.0);
+    }
+
+    /// 获取阻尼
+    pub fn damping(&self) -> f32 {
+        self.damping
+    }
+
+    /// 设置阻尼
+    pub fn set_damping(&mut self, damping: f32) {
+        self.damping = damping.clamp(0.0, 1.0);
+    }
+
+    /// 获取基类
+    pub fn base(&self) -> &Joint2D {
+        &self.base
+    }
+
+    /// 获取可变基类
+    pub fn base_mut(&mut self) -> &mut Joint2D {
+        &mut self.base
+    }
+}
+
+/// 弹簧关节
+///
+/// 两个刚体之间通过弹簧连接。
+#[derive(Debug, Clone)]
+pub struct SpringJoint {
+    /// 基类
+    base: Joint2D,
+    /// 弹簧刚度
+    stiffness: f32,
+    /// 弹簧阻尼
+    damping: f32,
+    /// 弹簧静止长度
+    rest_length: f32,
+}
+
+impl SpringJoint {
+    /// 创建新的弹簧关节
+    pub fn new(body_a: usize, body_b: usize, anchor_a: Vec2, anchor_b: Vec2) -> Self {
+        let rest_length = (anchor_b - anchor_a).length();
+        Self {
+            base: Joint2D::new(JointType::Spring, body_a, body_b),
+            stiffness: 100.0,
+            damping: 1.0,
+            rest_length,
+        }
+    }
+
+    /// 获取刚度
+    pub fn stiffness(&self) -> f32 {
+        self.stiffness
+    }
+
+    /// 设置刚度
+    pub fn set_stiffness(&mut self, stiffness: f32) {
+        self.stiffness = stiffness;
+    }
+
+    /// 获取阻尼
+    pub fn damping(&self) -> f32 {
+        self.damping
+    }
+
+    /// 设置阻尼
+    pub fn set_damping(&mut self, damping: f32) {
+        self.damping = damping;
+    }
+
+    /// 获取静止长度
+    pub fn rest_length(&self) -> f32 {
+        self.rest_length
+    }
+
+    /// 设置静止长度
+    pub fn set_rest_length(&mut self, length: f32) {
+        self.rest_length = length;
+    }
+
+    /// 获取基类
+    pub fn base(&self) -> &Joint2D {
+        &self.base
+    }
+
+    /// 获取可变基类
+    pub fn base_mut(&mut self) -> &mut Joint2D {
+        &mut self.base
+    }
+}
+
+/// 驱动关节
+///
+/// 用于控制两个刚体之间的相对位置和速度。
+#[derive(Debug, Clone)]
+pub struct MotorJoint {
+    /// 基类
+    base: Joint2D,
+    /// 目标偏移量
+    offset: Vec2,
+    /// 电机目标速度
+    motor_velocity: Vec2,
+    /// 电机最大力
+    motor_max_force: f32,
+}
+
+impl MotorJoint {
+    /// 创建新的驱动关节
+    pub fn new(body_a: usize, body_b: usize) -> Self {
+        Self {
+            base: Joint2D::new(JointType::Motor, body_a, body_b),
+            offset: Vec2::ZERO,
+            motor_velocity: Vec2::ZERO,
+            motor_max_force: 1000.0,
+        }
+    }
+
+    /// 获取目标偏移
+    pub fn offset(&self) -> Vec2 {
+        self.offset
+    }
+
+    /// 设置目标偏移
+    pub fn set_offset(&mut self, offset: Vec2) {
+        self.offset = offset;
+    }
+
+    /// 获取电机目标速度
+    pub fn motor_velocity(&self) -> Vec2 {
+        self.motor_velocity
+    }
+
+    /// 设置电机目标速度
+    pub fn set_motor_velocity(&mut self, velocity: Vec2) {
+        self.motor_velocity = velocity;
+    }
+
+    /// 获取电机最大力
+    pub fn motor_max_force(&self) -> f32 {
+        self.motor_max_force
+    }
+
+    /// 设置电机最大力
+    pub fn set_motor_max_force(&mut self, force: f32) {
+        self.motor_max_force = force;
     }
 
     /// 获取基类

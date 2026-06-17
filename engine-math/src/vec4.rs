@@ -335,7 +335,7 @@ mod tests {
     fn test_lerp_extreme_values() {
         let a = Vec4::new(-100.0, -100.0, -100.0, -100.0);
         let b = Vec4::new(100.0, 100.0, 100.0, 100.0);
-        
+
         assert_eq!(a.lerp(b, 0.0), a);
         assert_eq!(a.lerp(b, 1.0), b);
         assert_eq!(a.lerp(b, 0.5), Vec4::ZERO);
@@ -352,7 +352,7 @@ mod tests {
     fn test_normalize_or_zero() {
         let v = Vec4::ZERO;
         assert_eq!(v.normalize_or_zero(), Vec4::ZERO);
-        
+
         let v2 = Vec4::new(1.0, 0.0, 0.0, 0.0);
         assert!((v2.normalize_or_zero().length() - 1.0).abs() < 1e-6);
     }

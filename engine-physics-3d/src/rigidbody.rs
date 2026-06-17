@@ -4,9 +4,7 @@
 
 use engine_math::{Quat, Vec3};
 
-use crate::constants::{
-    DEFAULT_ANGULAR_DAMPING, DEFAULT_GRAVITY, DEFAULT_LINEAR_DAMPING,
-};
+use crate::constants::{DEFAULT_ANGULAR_DAMPING, DEFAULT_GRAVITY, DEFAULT_LINEAR_DAMPING};
 
 /// 刚体类型
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -837,9 +835,7 @@ mod tests {
 
     #[test]
     fn test_gravity_scale() {
-        let mut body = RigidBody3DBuilder::dynamic()
-            .gravity_scale(2.0)
-            .build();
+        let mut body = RigidBody3DBuilder::dynamic().gravity_scale(2.0).build();
         assert_eq!(body.gravity_scale(), 2.0);
     }
 }

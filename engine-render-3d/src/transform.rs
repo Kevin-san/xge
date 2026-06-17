@@ -114,11 +114,7 @@ impl Transform3D {
 
     #[inline]
     pub fn scale_by(&mut self, v: Vec3) {
-        self.scale = Vec3::new(
-            self.scale.x * v.x,
-            self.scale.y * v.y,
-            self.scale.z * v.z,
-        );
+        self.scale = Vec3::new(self.scale.x * v.x, self.scale.y * v.y, self.scale.z * v.z);
     }
 
     /// Orient transform to look at target

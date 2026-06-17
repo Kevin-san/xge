@@ -443,11 +443,7 @@ impl DeleteNodeAction {
     /// 创建新的删除节点操作
     #[inline]
     pub fn new(node: NodeHandle, parent: Option<NodeHandle>, name: String) -> Self {
-        Self {
-            node,
-            parent,
-            name,
-        }
+        Self { node, parent, name }
     }
 }
 
@@ -1398,7 +1394,8 @@ impl ConsolePanel {
             // 级别过滤：只显示高于或等于过滤级别的日志
             let level_match = entry.level >= self.filter_level;
             // 文本过滤
-            let text_match = self.filter_text.is_empty() || entry.message.contains(&self.filter_text);
+            let text_match =
+                self.filter_text.is_empty() || entry.message.contains(&self.filter_text);
             level_match && text_match
         })
     }

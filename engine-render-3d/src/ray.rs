@@ -1,9 +1,9 @@
 //! Ray casting and intersection tests
 
-use engine_math::Vec3;
-use crate::geometry::{AABB, Plane, Sphere, Mat4Transform3D};
+use crate::geometry::{Mat4Transform3D, Plane, Sphere, AABB};
 use crate::mesh::Mesh3D;
 use crate::transform::Transform3D;
+use engine_math::Vec3;
 
 /// 3D Ray for ray casting
 #[derive(Clone, Copy, Debug)]

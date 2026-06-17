@@ -92,11 +92,7 @@ impl ColorGrading {
     /// Negative values cool the image (more blue)
     fn apply_temperature(&self, color: Vec3) -> Vec3 {
         let t = self.temperature;
-        Vec3::new(
-            color.x + t * 0.1,
-            color.y,
-            color.z - t * 0.1,
-        )
+        Vec3::new(color.x + t * 0.1, color.y, color.z - t * 0.1)
     }
 
     /// Apply tint adjustment
@@ -105,11 +101,7 @@ impl ColorGrading {
     /// Negative values shift towards green
     fn apply_tint(&self, color: Vec3) -> Vec3 {
         let t = self.tint;
-        Vec3::new(
-            color.x + t * 0.05,
-            color.y - t * 0.1,
-            color.z + t * 0.05,
-        )
+        Vec3::new(color.x + t * 0.05, color.y - t * 0.1, color.z + t * 0.05)
     }
 
     /// Apply saturation adjustment
