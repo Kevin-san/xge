@@ -9,7 +9,7 @@ fn main() {
     println!("Camera Follow Example");
     println!("=====================");
 
-    let mut ctx = RenderContext::new();
+    let mut _ctx = RenderContext::new();
 
     // Create a 2D camera
     let mut camera = Camera2D::from_window(1280, 720, 1.0);

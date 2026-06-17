@@ -30,10 +30,12 @@
 pub use animated_sprite::{AnimatedSprite, LoopMode};
 pub use camera::{Camera2D, OrthographicCamera, View, Viewport};
 pub use color::Color;
+pub use debug_renderer::DebugRenderer;
 pub use draw_params::{BlendMode, DrawParams};
 pub use image::Image;
 pub use render_stats::RenderStats;
 pub use renderer::{RenderContext, Renderer};
+pub use shader::ShaderModule;
 pub use sprite::Rect;
 pub use sprite::Sprite;
 pub use sprite_batch::SpriteBatch;

@@ -308,6 +308,16 @@ impl RenderContext {
         let _ = (texture, blend_mode);
         true
     }
+
+    /// 获取变换栈深度
+    pub fn transform_stack_len(&self) -> usize {
+        self.transform_stack.len()
+    }
+
+    /// 获取裁剪栈深度
+    pub fn scissor_stack_len(&self) -> usize {
+        self.scissor_stack.len()
+    }
 }
 
 impl Default for RenderContext {
@@ -334,16 +344,16 @@ mod tests {
         let mat2 = Mat4::from_translation(engine_math::Vec3::new(0.0, 20.0, 0.0));
 
         ctx.push_transform(mat1);
-        assert_eq!(ctx.transform_stack.len(), 1);
+        assert_eq!(ctx.transform_stack_len(), 1);
 
         ctx.push_transform(mat2);
-        assert_eq!(ctx.transform_stack.len(), 2);
+        assert_eq!(ctx.transform_stack_len(), 2);
 
         ctx.pop_transform();
-        assert_eq!(ctx.transform_stack.len(), 1);
+        assert_eq!(ctx.transform_stack_len(), 1);
 
         ctx.pop_transform();
-        assert_eq!(ctx.transform_stack.len(), 0);
+        assert_eq!(ctx.transform_stack_len(), 0);
     }
 
     #[test]
@@ -353,16 +363,16 @@ mod tests {
         let rect2 = Rect::new(50.0, 50.0, 100.0, 100.0);
 
         ctx.push_scissor(rect1);
-        assert_eq!(ctx.scissor_stack.len(), 1);
+        assert_eq!(ctx.scissor_stack_len(), 1);
 
         ctx.push_scissor(rect2);
-        assert_eq!(ctx.scissor_stack.len(), 2);
+        assert_eq!(ctx.scissor_stack_len(), 2);
 
         ctx.pop_scissor();
-        assert_eq!(ctx.scissor_stack.len(), 1);
+        assert_eq!(ctx.scissor_stack_len(), 1);
 
         ctx.pop_scissor();
-        assert_eq!(ctx.scissor_stack.len(), 0);
+        assert_eq!(ctx.scissor_stack_len(), 0);
     }
 
     #[test]

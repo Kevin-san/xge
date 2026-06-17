@@ -51,3 +51,23 @@ path = "examples/camera_follow.rs"
 [[example]]
 name = "shape_draw"
 path = "examples/shape_draw.rs"
+
+[[example]]
+name = "debug_draw"
+path = "examples/debug_draw.rs"
+
+[[example]]
+name = "blend_mode"
+path = "examples/blend_mode.rs"
+
+[[example]]
+name = "scissor"
+path = "examples/scissor.rs"
+
+[[example]]
+name = "transform_stack"
+path = "examples/transform_stack.rs"
+
+[[example]]
+name = "hot_shader"
+path = "examples/hot_shader.rs"
