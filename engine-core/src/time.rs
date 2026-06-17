@@ -54,3 +54,71 @@ impl Time {
         self.frame_count
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::thread;
+
+    #[test]
+    fn test_time_initial_state() {
+        let time = Time::new();
+        assert_eq!(time.frame_count(), 0);
+        assert_eq!(time.delta_time(), 0.0);
+        assert_eq!(time.total_time(), 0.0);
+    }
+
+    #[test]
+    fn test_time_update() {
+        let mut time = Time::new();
+        
+        time.update();
+        assert_eq!(time.frame_count(), 1);
+        assert!(time.delta_time() >= 0.0);
+        assert!(time.total_time() >= 0.0);
+        
+        thread::sleep(Duration::from_millis(10));
+        time.update();
+        assert_eq!(time.frame_count(), 2);
+        assert!(time.delta_time() > 0.0);
+    }
+
+    #[test]
+    fn test_time_delta_time_ms() {
+        let mut time = Time::new();
+        
+        thread::sleep(Duration::from_millis(50));
+        time.update();
+        
+        assert!(time.delta_time_ms() >= 50.0);
+        assert!(time.delta_time_ms() < 100.0);
+    }
+
+    #[test]
+    fn test_time_total_time() {
+        let mut time = Time::new();
+        
+        thread::sleep(Duration::from_millis(10));
+        time.update();
+        let t1 = time.total_time();
+        
+        thread::sleep(Duration::from_millis(10));
+        time.update();
+        let t2 = time.total_time();
+        
+        assert!(t2 > t1);
+        assert!(t2 - t1 >= 0.01);
+    }
+
+    #[test]
+    fn test_time_multiple_updates() {
+        let mut time = Time::new();
+        
+        for i in 1..=10 {
+            time.update();
+            assert_eq!(time.frame_count(), i as u64);
+        }
+        
+        assert_eq!(time.frame_count(), 10);
+    }
+}
