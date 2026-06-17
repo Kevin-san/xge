@@ -22,6 +22,9 @@ use thiserror::Error;
 /// Maximum stack depth for interpreter
 const MAX_STACK_DEPTH: usize = 1024;
 
+/// Maximum instruction count per run to prevent infinite loops
+const MAX_INSTRUCTIONS_PER_RUN: u64 = 10_000_000;
+
 // ============================================================================
 // Strong Type IDs
 // ============================================================================
@@ -1016,8 +1019,15 @@ impl BlueprintIR {
         bincode::serialize(self)
     }
 
-    /// Deserialize from binary
+    /// Deserialize from binary with size limit to prevent DoS attacks
     pub fn deserialize(bytes: &[u8]) -> Result<Self, bincode::Error> {
+        // 限制大小为 10MB
+        const MAX_IR_SIZE: u64 = 10 * 1024 * 1024;
+        if bytes.len() as u64 > MAX_IR_SIZE {
+            return Err(bincode::Error::new(bincode::ErrorKind::Custom(
+                "IR too large".to_string(),
+            )));
+        }
         bincode::deserialize(bytes)
     }
 }
@@ -1282,8 +1292,8 @@ pub enum RuntimeError {
     #[error("Unknown function: {0}")]
     UnknownFunction(String),
 
-    #[error("Execution timeout")]
-    Timeout,
+    #[error("Execution timeout: exceeded maximum instruction count")]
+    InstructionLimitExceeded,
 }
 
 /// Interpreter state
@@ -1376,8 +1386,13 @@ impl BlueprintInterpreter {
     /// Run until halt or error
     pub fn run(&mut self, ctx: &mut BlueprintContext) -> Result<(), RuntimeError> {
         self.state = InterpreterState::Running;
+        let mut instruction_count: u64 = 0;
         while self.state == InterpreterState::Running {
             self.step(ctx)?;
+            instruction_count += 1;
+            if instruction_count > MAX_INSTRUCTIONS_PER_RUN {
+                return Err(RuntimeError::InstructionLimitExceeded);
+            }
         }
         if self.state == InterpreterState::Error {
             return Err(RuntimeError::BadInstruction(self.pc));

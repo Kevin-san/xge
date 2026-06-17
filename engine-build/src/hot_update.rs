@@ -9,7 +9,39 @@ use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use rand_core::OsRng;
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
+
+/// 安全地连接根目录和相对路径，防止路径穿越攻击。
+fn safe_join(root: &Path, rel: &Path) -> BuildResult<PathBuf> {
+    if rel.is_absolute() {
+        return Err(crate::BuildError::Path(
+            "Absolute paths are not allowed".to_string(),
+        ));
+    }
+    if rel.components().any(|c| matches!(c, Component::ParentDir)) {
+        return Err(crate::BuildError::Path(
+            "Parent directory references (..) are not allowed".to_string(),
+        ));
+    }
+    let dest = root.join(rel);
+    // 确保目标路径在根目录下
+    let canon = std::fs::canonicalize(root).map_err(|e| {
+        crate::BuildError::Io(format!("Failed to canonicalize root directory: {}", e))
+    })?;
+    let dest_canon = std::fs::canonicalize(&dest).map_err(|_| {
+        crate::BuildError::Path(format!(
+            "Path {} would escape root directory",
+            dest.display()
+        ))
+    })?;
+    if !dest_canon.starts_with(&canon) {
+        return Err(crate::BuildError::Path(format!(
+            "Path {} would escape root directory",
+            dest.display()
+        )));
+    }
+    Ok(dest)
+}
 
 /// Encode bytes to base64.
 fn base64_encode(data: impl AsRef<[u8]>) -> String {
@@ -63,9 +95,8 @@ impl HotUpdate {
                     size: _,
                     hash: _,
                 } => {
-                    // In real implementation, would download file
-                    // For now, just log the operation
-                    let dest = dir.join(path);
+                    // 使用安全路径连接防止路径穿越
+                    let dest = safe_join(dir, path)?;
                     if let Some(parent) = dest.parent() {
                         if !parent.exists() {
                             fs::create_dir_all(parent)?;
@@ -79,14 +110,16 @@ impl HotUpdate {
                     diff,
                     size: _,
                 } => {
-                    let dest = dir.join(path);
+                    // 使用安全路径连接防止路径穿越
+                    let dest = safe_join(dir, path)?;
                     // Apply modification (simplified: write diff content)
                     if !diff.is_empty() {
                         fs::write(&dest, diff)?;
                     }
                 }
                 FileChange::Removed { path } => {
-                    let dest = dir.join(path);
+                    // 使用安全路径连接防止路径穿越
+                    let dest = safe_join(dir, path)?;
                     if dest.exists() {
                         fs::remove_file(dest)?;
                     }
@@ -94,8 +127,9 @@ impl HotUpdate {
             }
         }
 
-        // Update manifest
-        patch.new_manifest.save(dir.join("assets.manifest"))?;
+        // Update manifest (安全路径，固定文件名)
+        let manifest_path = safe_join(dir, Path::new("assets.manifest"))?;
+        patch.new_manifest.save(manifest_path)?;
 
         Ok(())
     }

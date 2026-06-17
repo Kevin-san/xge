@@ -53,7 +53,8 @@ impl TelemetryConfig {
 
 impl Default for TelemetryConfig {
     fn default() -> Self {
-        Self::new(crate::TELEMETRY_ENDPOINT.to_string(), true)
+        // 默认禁用遥测以保护用户隐私
+        Self::new(crate::TELEMETRY_ENDPOINT.to_string(), false)
     }
 }
 
