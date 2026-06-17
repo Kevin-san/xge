@@ -148,7 +148,7 @@ impl<T: Clone> Keyframe<T> {
 // ============================================================================
 
 /// Trait for types that can be interpolated
-pub trait Interpolate: Clone + Sized {
+pub trait Interpolate: Clone + Sized + Default {
     /// Linear interpolation between self and other at t
     fn lerp(&self, other: &Self, t: f32) -> Self;
     /// Cubic spline interpolation
@@ -405,9 +405,7 @@ impl<T: Interpolate> Curve<T> {
 
     /// Get default value for type
     fn default_value(&self) -> T {
-        // This is a workaround; proper implementation would need type-specific defaults
-        // For now, we rely on the keyframes being non-empty
-        unimplemented!("Curve must have at least one keyframe")
+        T::default()
     }
 
     /// Optimize curve by removing redundant keyframes

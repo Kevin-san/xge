@@ -988,6 +988,7 @@ pub struct CollisionModule {
     colliders: Vec<ParticleCollider>,
     bounce: f32,
     friction: f32,
+    #[allow(dead_code)]
     kill_threshold: f32,
 }
 
@@ -1187,10 +1188,12 @@ pub struct ParticleEmitter {
     /// 渲染模式
     render_mode: ParticleRenderMode,
     /// 混合模式
+    #[allow(dead_code)]
     blend_mode: ParticleBlendMode,
     /// 模块列表
     modules: Vec<Box<dyn ParticleModule>>,
     /// 最大粒子数
+    #[allow(dead_code)]
     max_particles: usize,
     /// 持续时间
     duration: f32,
@@ -1207,6 +1210,7 @@ pub struct ParticleEmitter {
     /// 发射累计时间
     emit_accumulator: f32,
     /// 随机种子
+    #[allow(dead_code)]
     random_seed: u64,
     /// 随机数生成器
     rng: SimpleRng,
@@ -1487,6 +1491,7 @@ pub struct ParticleSystem {
     /// 模拟空间
     simulation_space: SimulationSpace,
     /// 缩放模式
+    #[allow(dead_code)]
     scaling_mode: ScalingMode,
     /// 重力修正系数
     gravity_modifier: f32,
@@ -1496,6 +1501,7 @@ pub struct ParticleSystem {
     /// 时间缩放
     delta_time_scale: f32,
     /// 随机种子
+    #[allow(dead_code)]
     random_seed: u64,
 }
 
@@ -2089,6 +2095,7 @@ pub struct SSRPass {
     enabled: bool,
     step_count: u32,
     thickness: f32,
+    #[allow(dead_code)]
     binary_search_steps: u32,
     max_distance: f32,
 }

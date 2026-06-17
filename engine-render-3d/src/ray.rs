@@ -32,34 +32,16 @@ impl Ray3 {
         let mut t_min: f32 = 0.0;
         let mut t_max: f32 = f32::INFINITY;
 
+        let mins = [aabb.min.x, aabb.min.y, aabb.min.z];
+        let maxs = [aabb.max.x, aabb.max.y, aabb.max.z];
+        let dirs = [self.direction.x, self.direction.y, self.direction.z];
+        let origins = [self.origin.x, self.origin.y, self.origin.z];
+
         for i in 0..3 {
-            let axis = match i {
-                0 => aabb.min.x,
-                1 => aabb.min.y,
-                2 => aabb.min.z,
-                _ => unreachable!(),
-            };
-
-            let axis_max = match i {
-                0 => aabb.max.x,
-                1 => aabb.max.y,
-                2 => aabb.max.z,
-                _ => unreachable!(),
-            };
-
-            let dir_component = match i {
-                0 => self.direction.x,
-                1 => self.direction.y,
-                2 => self.direction.z,
-                _ => unreachable!(),
-            };
-
-            let origin_component = match i {
-                0 => self.origin.x,
-                1 => self.origin.y,
-                2 => self.origin.z,
-                _ => unreachable!(),
-            };
+            let axis = mins[i];
+            let axis_max = maxs[i];
+            let dir_component = dirs[i];
+            let origin_component = origins[i];
 
             if dir_component.abs() < 1e-8 {
                 // Ray parallel to slab
