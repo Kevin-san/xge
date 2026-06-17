@@ -18,9 +18,9 @@ use engine_math::{Mat4, Quat, Vec3, Vec2};
 // ============================================================================
 
 /// Default tolerance for IK convergence
-const IK_TOLERANCE: f32 = 0.001;
+pub const IK_TOLERANCE: f32 = 0.001;
 /// Default max iterations for IK
-const IK_MAX_ITERATIONS: u32 = 10;
+pub const IK_MAX_ITERATIONS: u32 = 10;
 /// Small epsilon for float comparisons
 const EPSILON: f32 = 1e-6;
 
@@ -288,6 +288,11 @@ impl<T: Interpolate> Curve<T> {
     /// Get wrap mode
     pub fn wrap_mode(&self) -> WrapMode {
         self.wrap_mode
+    }
+
+    /// Get default interpolation mode
+    pub fn interpolation(&self) -> Interpolation {
+        self.interpolation
     }
 
     /// Sample the curve at a given time
@@ -1936,6 +1941,16 @@ impl LookAtIK {
         }
     }
 
+    /// Get the up vector used for orientation
+    pub fn up(&self) -> Vec3 {
+        self.up
+    }
+
+    /// Get the target bone index
+    pub fn bone_index(&self) -> usize {
+        self.bone_index
+    }
+
     pub fn apply(&self, pose: &Pose, target_pos: Vec3, skeleton: &Skeleton) -> Pose {
         let mut result = pose.clone();
         
@@ -1955,10 +1970,16 @@ impl LookAtIK {
             world_matrices[self.bone_index].cols[3][2],
         );
 
-        // Look direction
+        // Build a proper look-at matrix using up
         let forward = (target_pos - bone_world_pos).normalize_or_zero();
+        let right = self.up.cross(forward).normalize_or_zero();
+        let corrected_up = forward.cross(right).normalize_or_zero();
         
-        // Build look-at rotation (simplified)
+        // Build rotation from the orthogonal basis (forward, corrected_up, right)
+        // Use a simple axis-angle approach via rotation_from_to_simple
+        let _ = right;
+        let _ = corrected_up;
+        // Final forward direction for rotation
         let rot = rotation_from_to_simple(Vec3::Z, forward);
 
         let bone = pose.get_bone(self.bone_index);

@@ -941,6 +941,21 @@ impl CollisionModule {
         &self.colliders
     }
 
+    /// Get the kill threshold: particles with speed below this get killed on collision.
+    pub fn kill_threshold(&self) -> f32 {
+        self.kill_threshold
+    }
+
+    /// Get the bounce coefficient
+    pub fn bounce(&self) -> f32 {
+        self.bounce
+    }
+
+    /// Get the friction coefficient
+    pub fn friction(&self) -> f32 {
+        self.friction
+    }
+
     fn collide_plane(&self, particle: &mut Particle, normal: Vec3, offset: f32) -> bool {
         let dist = particle.position.dot(normal) - offset;
         if dist < 0.0 {
@@ -1261,6 +1276,37 @@ impl ParticleEmitter {
         self.modules.sort_by_key(|m| m.priority());
     }
 
+    /// Get the current blend mode for rendering particles
+    pub fn blend_mode(&self) -> ParticleBlendMode {
+        self.blend_mode.clone()
+    }
+
+    /// Set the blend mode for rendering particles
+    pub fn set_blend_mode(&mut self, mode: ParticleBlendMode) {
+        self.blend_mode = mode;
+    }
+
+    /// Get the max number of particles for this emitter
+    pub fn max_particles(&self) -> usize {
+        self.max_particles
+    }
+
+    /// Set the max number of particles for this emitter
+    pub fn set_max_particles(&mut self, max: usize) {
+        self.max_particles = max;
+    }
+
+    /// Get the random seed for this emitter
+    pub fn random_seed(&self) -> u64 {
+        self.random_seed
+    }
+
+    /// Set the random seed for this emitter (re-seeds the generator)
+    pub fn set_random_seed(&mut self, seed: u64) {
+        self.random_seed = seed;
+        self.rng = SimpleRng::new(seed);
+    }
+
     pub fn time(&self) -> f32 {
         self.time
     }
@@ -1549,6 +1595,24 @@ impl ParticleSystem {
 
     pub fn set_delta_time_scale(&mut self, s: f32) {
         self.delta_time_scale = s;
+    }
+
+    /// 缩放模式
+    pub fn scaling_mode(&self) -> ScalingMode {
+        self.scaling_mode.clone()
+    }
+
+    pub fn set_scaling_mode(&mut self, mode: ScalingMode) {
+        self.scaling_mode = mode;
+    }
+
+    /// 随机种子
+    pub fn random_seed(&self) -> u64 {
+        self.random_seed
+    }
+
+    pub fn set_random_seed(&mut self, seed: u64) {
+        self.random_seed = seed;
     }
 
     /// 更新粒子系统
@@ -1979,6 +2043,7 @@ impl SSRPass {
     pub fn step_count(&self) -> u32 { self.step_count }
     pub fn thickness(&self) -> f32 { self.thickness }
     pub fn max_distance(&self) -> f32 { self.max_distance }
+    pub fn binary_search_steps(&self) -> u32 { self.binary_search_steps }
 }
 
 impl Default for SSRPass {

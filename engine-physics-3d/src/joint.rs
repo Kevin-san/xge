@@ -486,6 +486,15 @@ impl PrismaticJoint {
         (self.limits_min, self.limits_max)
     }
 
+    /// 刚体A的局部锚点
+    pub fn local_anchor_a(&self) -> Vec3 { self.local_anchor1 }
+    /// 刚体B的局部锚点
+    pub fn local_anchor_b(&self) -> Vec3 { self.local_anchor2 }
+    /// 设置刚体A的局部锚点
+    pub fn set_local_anchor_a(&mut self, anchor: Vec3) { self.local_anchor1 = anchor; }
+    /// 设置刚体B的局部锚点
+    pub fn set_local_anchor_b(&mut self, anchor: Vec3) { self.local_anchor2 = anchor; }
+
     /// 获取基类
     pub fn base(&self) -> &Joint3D {
         &self.base
@@ -655,6 +664,15 @@ impl DistanceJoint {
         self.length = length;
     }
 
+    /// 刚体A的局部锚点
+    pub fn local_anchor_a(&self) -> Vec3 { self.local_anchor1 }
+    /// 刚体B的局部锚点
+    pub fn local_anchor_b(&self) -> Vec3 { self.local_anchor2 }
+    /// 设置刚体A的局部锚点
+    pub fn set_local_anchor_a(&mut self, anchor: Vec3) { self.local_anchor1 = anchor; }
+    /// 设置刚体B的局部锚点
+    pub fn set_local_anchor_b(&mut self, anchor: Vec3) { self.local_anchor2 = anchor; }
+
     /// 获取基类
     pub fn base(&self) -> &Joint3D {
         &self.base
@@ -734,6 +752,15 @@ impl RopeJoint {
         self.max_length = length;
     }
 
+    /// 刚体A的局部锚点
+    pub fn local_anchor_a(&self) -> Vec3 { self.local_anchor1 }
+    /// 刚体B的局部锚点
+    pub fn local_anchor_b(&self) -> Vec3 { self.local_anchor2 }
+    /// 设置刚体A的局部锚点
+    pub fn set_local_anchor_a(&mut self, anchor: Vec3) { self.local_anchor1 = anchor; }
+    /// 设置刚体B的局部锚点
+    pub fn set_local_anchor_b(&mut self, anchor: Vec3) { self.local_anchor2 = anchor; }
+
     /// 获取基类
     pub fn base(&self) -> &Joint3D {
         &self.base
@@ -810,6 +837,15 @@ impl SphericalJoint {
     pub fn cone_limit(&self) -> (Option<Vec3>, Option<f32>) {
         (self.cone_limit_axis, self.cone_limit_angle)
     }
+
+    /// 刚体A的局部锚点
+    pub fn local_anchor_a(&self) -> Vec3 { self.local_anchor1 }
+    /// 刚体B的局部锚点
+    pub fn local_anchor_b(&self) -> Vec3 { self.local_anchor2 }
+    /// 设置刚体A的局部锚点
+    pub fn set_local_anchor_a(&mut self, anchor: Vec3) { self.local_anchor1 = anchor; }
+    /// 设置刚体B的局部锚点
+    pub fn set_local_anchor_b(&mut self, anchor: Vec3) { self.local_anchor2 = anchor; }
 
     /// 获取基类
     pub fn base(&self) -> &Joint3D {
