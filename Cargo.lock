@@ -785,6 +785,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "engine-window",
+ "scopeguard",
 ]
 
 [[package]]

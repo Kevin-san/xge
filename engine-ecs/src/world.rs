@@ -9,20 +9,37 @@ use std::collections::HashMap;
 use super::bundle::Bundle;
 use super::{Component, Entity, Event, EventReader, Resource, Resources};
 
-/// 实体表
+trait ComponentStorage: Any + Send + Sync {
+    fn remove_entity(&mut self, entity_id: u32);
+    fn clear(&mut self);
+}
+
+impl<T: Any + Send + Sync> ComponentStorage for T
+where
+    T: for<'a> ComponentStorageImpl<'a>,
+{
+    fn remove_entity(&mut self, entity_id: u32) {
+        <Self as ComponentStorageImpl>::remove_entity(self, entity_id);
+    }
+
+    fn clear(&mut self) {
+        <Self as ComponentStorageImpl>::clear(self);
+    }
+}
+
+trait ComponentStorageImpl<'a> {
+    fn remove_entity(&mut self, entity_id: u32);
+    fn clear(&mut self);
+}
+
 struct EntityTable {
-    /// 实体数据
     entities: Slab<EntityData>,
-    /// 空闲实体索引
     free_list: Vec<u32>,
-    /// 下一个可用索引
     next_index: u32,
 }
 
-/// 实体数据
 #[derive(Clone)]
 struct EntityData {
-    #[allow(dead_code)]
     id: u32,
     generation: u32,
     alive: bool,
@@ -65,20 +82,20 @@ impl EntityTable {
         entity
     }
 
-    fn despawn(&mut self, entity: Entity) -> bool {
+    fn despawn(&mut self, entity: Entity) -> Option<&EntityData> {
         let id = entity.id() as usize;
         if id >= self.entities.len() {
-            return false;
+            return None;
         }
 
         let data = &mut self.entities[id];
         if !data.alive || data.generation != entity.generation() {
-            return false;
+            return None;
         }
 
         data.alive = false;
         self.free_list.push(id as u32);
-        true
+        Some(data)
     }
 
     fn contains(&self, entity: Entity) -> bool {
@@ -99,7 +116,6 @@ impl EntityTable {
         self.entities.is_empty()
     }
 
-    #[allow(dead_code)]
     fn get(&self, entity: Entity) -> Option<&EntityData> {
         let id = entity.id() as usize;
         self.entities
@@ -121,9 +137,8 @@ impl EntityTable {
     }
 }
 
-/// 组件存储
 struct ComponentStorages {
-    storages: HashMap<TypeId, Box<dyn Any + Send + Sync>>,
+    storages: HashMap<TypeId, Box<dyn ComponentStorage>>,
 }
 
 impl ComponentStorages {
@@ -138,7 +153,7 @@ impl ComponentStorages {
         let storage = self
             .storages
             .entry(type_id)
-            .or_insert_with(|| Box::new(DenseStorage::<C>::new()) as Box<dyn Any + Send + Sync>);
+            .or_insert_with(|| Box::new(DenseStorage::<C>::new()) as Box<dyn ComponentStorage>);
 
         if let Some(storage) = storage.downcast_mut::<DenseStorage<C>>() {
             storage.insert(entity.id(), component)
@@ -174,7 +189,6 @@ impl ComponentStorages {
         })
     }
 
-    #[allow(dead_code)]
     fn contains<C: Component>(&self, entity: Entity) -> bool {
         self.get::<C>(entity).is_some()
     }
@@ -182,23 +196,26 @@ impl ComponentStorages {
     fn clear(&mut self) {
         self.storages.clear();
     }
-    
-    /// 移除实体的所有组件（用于实体销毁时的清理）
-    /// 
-    /// 注意：由于组件存储使用类型擦除，此方法无法正常工作。
-    /// 无法在运行时通过 TypeId 调用泛型 remove<C> 方法。
-    /// 这是一个已知的架构限制。组件会残留在存储中直到 clear_entities。
-    #[allow(dead_code)]
-    fn remove_entity(&mut self, _entity_id: u32) {
-        // 无法通过类型擦除的 Box<dyn Any> 调用具体的 remove 方法
-        // 真正的解决方案是重新设计组件存储以支持按 entity_id 批量移除
+
+    fn remove_entity(&mut self, entity_id: u32) {
+        for storage in self.storages.values_mut() {
+            storage.remove_entity(entity_id);
+        }
+    }
+
+    fn remove_entity_with_types(&mut self, entity_id: u32, types: &[TypeId]) {
+        for &type_id in types {
+            if let Some(storage) = self.storages.get_mut(&type_id) {
+                storage.remove_entity(entity_id);
+            }
+        }
     }
 }
 
-/// 密集向量存储
 struct DenseStorage<C: Component> {
     data: Vec<Option<C>>,
     sparse: HashMap<u32, usize>,
+    reverse: HashMap<usize, u32>,
 }
 
 impl<C: Component> DenseStorage<C> {
@@ -206,6 +223,7 @@ impl<C: Component> DenseStorage<C> {
         Self {
             data: Vec::new(),
             sparse: HashMap::new(),
+            reverse: HashMap::new(),
         }
     }
 
@@ -213,9 +231,9 @@ impl<C: Component> DenseStorage<C> {
         if let Some(&dense_index) = self.sparse.get(&entity_id) {
             self.data[dense_index].replace(component)
         } else {
-            // 插入新组件
             let dense_index = self.data.len();
             self.sparse.insert(entity_id, dense_index);
+            self.reverse.insert(dense_index, entity_id);
             self.data.push(Some(component));
             None
         }
@@ -223,7 +241,18 @@ impl<C: Component> DenseStorage<C> {
 
     fn remove(&mut self, entity_id: u32) -> Option<C> {
         if let Some(dense_index) = self.sparse.remove(&entity_id) {
-            self.data[dense_index].take()
+            self.reverse.remove(&dense_index);
+            
+            let last_index = self.data.len() - 1;
+            if dense_index != last_index {
+                if let Some(last_entity_id) = self.reverse.remove(&last_index) {
+                    self.sparse.insert(last_entity_id, dense_index);
+                    self.reverse.insert(dense_index, last_entity_id);
+                    self.data.swap(dense_index, last_index);
+                }
+            }
+            
+            self.data.pop()
         } else {
             None
         }
@@ -244,22 +273,36 @@ impl<C: Component> DenseStorage<C> {
             None
         }
     }
+
+    fn len(&self) -> usize {
+        self.sparse.len()
+    }
+
+    fn is_empty(&self) -> bool {
+        self.sparse.is_empty()
+    }
 }
 
-/// ECS World
+impl<C: Component> ComponentStorageImpl<'_> for DenseStorage<C> {
+    fn remove_entity(&mut self, entity_id: u32) {
+        let _ = self.remove(entity_id);
+    }
+
+    fn clear(&mut self) {
+        self.data.clear();
+        self.sparse.clear();
+        self.reverse.clear();
+    }
+}
+
 pub struct World {
-    /// 实体表
     entities: EntityTable,
-    /// 组件存储
     components: ComponentStorages,
-    /// 资源存储
     resources: Resources,
-    /// 事件
     events: HashMap<TypeId, Box<dyn Any + Send + Sync>>,
 }
 
 impl World {
-    /// 创建新的空世界
     pub fn new() -> Self {
         Self {
             entities: EntityTable::new(),
@@ -269,57 +312,37 @@ impl World {
         }
     }
 
-    /// 生成新实体
     pub fn spawn(&mut self) -> Entity {
         self.entities.spawn()
     }
 
-    /// 使用 Bundle 生成实体
     pub fn spawn_bundle<B: Bundle>(&mut self, bundle: B) -> Entity {
         let entity = self.spawn();
         bundle.insert(self, entity);
         entity
     }
 
-    /// 批量生成实体
     pub fn spawn_batch(&mut self, bundles: impl Iterator<Item = impl Bundle>) {
         for bundle in bundles {
             self.spawn_bundle(bundle);
         }
     }
 
-    /// 销毁实体
     pub fn despawn(&mut self, entity: Entity) -> bool {
-        // 重要：此实现有已知限制 - 由于组件存储使用类型擦除（HashMap<TypeId, Box<dyn Any>>），
-        // 无法在运行时获取泛型类型信息，因此无法正确移除该实体的组件。
-        // 已死亡实体的组件会残留在存储中直到 clear_entities 被调用。
-        // 这是一个架构设计限制，真正的解决方案是重新设计组件存储以支持按 entity_id 移除。
-        
-        // 标记实体为死亡
-        let result = self.entities.despawn(entity);
-        
-        // 注意：组件并未从 self.components 中移除，这是一个内存泄漏问题
-        // 组件数据会保留在 DenseStorage 中直到实体被重新创建（generation 增加）
-        // 或者直到 clear_entities 被调用
-        
-        result
-    }
-    
-    /// 通过实体ID移除组件（内部辅助方法）
-    #[allow(dead_code)]
-    fn remove_components_by_entity(&mut self, entity_id: u32) {
-        // 由于 ComponentStorages 使用类型擦除，无法在运行时调用泛型 remove<C> 方法
-        // 尝试移除实体在所有组件类型中的数据
-        self.components.remove_entity(entity_id);
+        if let Some(entity_data) = self.entities.despawn(entity) {
+            let component_types = entity_data.component_types.clone();
+            self.components.remove_entity_with_types(entity.id(), &component_types);
+            true
+        } else {
+            false
+        }
     }
 
-    /// 清空所有实体
     pub fn clear_entities(&mut self) {
         self.entities.clear();
         self.components.clear();
     }
 
-    /// 获取实体引用
     pub fn entity(&self, entity: Entity) -> super::EntityRef<'_> {
         super::EntityRef {
             world: self,
@@ -327,7 +350,6 @@ impl World {
         }
     }
 
-    /// 获取实体可变引用
     pub fn entity_mut(&mut self, entity: Entity) -> super::EntityMut<'_> {
         super::EntityMut {
             world: self,
@@ -335,20 +357,20 @@ impl World {
         }
     }
 
-    /// 检查实体是否存活
     pub fn contains(&self, entity: Entity) -> bool {
         self.entities.contains(entity)
     }
 
-    /// 插入单个组件
     pub fn insert<C: Component>(&mut self, entity: Entity, component: C) -> Option<C> {
         if let Some(data) = self.entities.get_mut(entity) {
-            data.component_types.push(TypeId::of::<C>());
+            let type_id = TypeId::of::<C>();
+            if !data.component_types.contains(&type_id) {
+                data.component_types.push(type_id);
+            }
         }
         self.components.insert(entity, component)
     }
 
-    /// 移除单个组件
     pub fn remove<C: Component>(&mut self, entity: Entity) -> Option<C> {
         if let Some(data) = self.entities.get_mut(entity) {
             data.component_types.retain(|&t| t != TypeId::of::<C>());
@@ -356,47 +378,38 @@ impl World {
         self.components.remove::<C>(entity)
     }
 
-    /// 获取组件只读引用
     pub fn get_component<C: Component>(&self, entity: Entity) -> Option<&C> {
         self.components.get::<C>(entity)
     }
 
-    /// 获取组件可变引用
     pub fn get_component_mut<C: Component>(&mut self, entity: Entity) -> Option<&mut C> {
         self.components.get_mut::<C>(entity)
     }
 
-    /// 插入资源
     pub fn insert_resource<R: Resource>(&mut self, resource: R) {
         self.resources.insert(resource);
     }
 
-    /// 获取资源只读引用
     pub fn resource<R: Resource>(&self) -> &R {
         self.resources.get::<R>().expect("Resource not found")
     }
 
-    /// 获取资源可变引用
     pub fn resource_mut<R: Resource>(&mut self) -> &mut R {
         self.resources.get_mut::<R>().expect("Resource not found")
     }
 
-    /// 获取资源（可选）
     pub fn get_resource<R: Resource>(&self) -> Option<&R> {
         self.resources.get::<R>()
     }
 
-    /// 移除资源
     pub fn remove_resource<R: Resource>(&mut self) -> Option<R> {
         self.resources.remove::<R>()
     }
 
-    /// 检查资源是否存在
     pub fn contains_resource<R: Resource>(&self) -> bool {
         self.resources.contains::<R>()
     }
 
-    /// 发送事件
     pub fn send_event<E: Event>(&mut self, event: E) {
         let type_id = TypeId::of::<E>();
         let events = self
@@ -408,7 +421,6 @@ impl World {
         }
     }
 
-    /// 获取事件读取器
     pub fn events<E: Event>(&self) -> EventReader<E> {
         let type_id = TypeId::of::<E>();
         if let Some(events) = self.events.get(&type_id) {
@@ -419,17 +431,14 @@ impl World {
         EventReader::new(Vec::new())
     }
 
-    /// 获取实体数量
     pub fn entity_count(&self) -> usize {
         self.entities.len()
     }
 
-    /// 检查是否为空
     pub fn is_empty(&self) -> bool {
         self.entities.is_empty()
     }
 
-    /// 运行系统
     pub fn run_system<F: FnOnce(&mut Self)>(&mut self, system_fn: F) {
         system_fn(self);
     }
@@ -460,6 +469,13 @@ mod tests {
     }
 
     impl Component for Velocity {}
+
+    #[derive(Debug, Clone, PartialEq)]
+    struct Health {
+        value: i32,
+    }
+
+    impl Component for Health {}
 
     #[test]
     fn test_world_spawn() {
@@ -539,34 +555,92 @@ mod tests {
         assert!(world.contains(e1));
         assert!(world.contains(e2));
     }
-    
+
     #[test]
-    fn test_world_despawn_entity_not_accessible() {
+    fn test_despawn_cleans_up_components() {
         let mut world = World::new();
         let entity = world.spawn();
-        world.insert(entity, Position { x: 1.0, y: 2.0 });
-
-        // 实体被销毁后，contains 返回 false
-        assert!(world.despawn(entity));
-        assert!(!world.contains(entity));
         
-        // 注意：组件仍然残留在存储中（已知限制）
-        // 这是一个架构设计问题，需要重新设计组件存储来解决
+        world.insert(entity, Position { x: 1.0, y: 2.0 });
+        world.insert(entity, Velocity { x: 3.0, y: 4.0 });
+        world.insert(entity, Health { value: 100 });
+
+        assert!(world.get_component::<Position>(entity).is_some());
+        assert!(world.get_component::<Velocity>(entity).is_some());
+        assert!(world.get_component::<Health>(entity).is_some());
+
+        assert!(world.despawn(entity));
+
+        assert!(!world.contains(entity));
+        assert!(world.get_component::<Position>(entity).is_none());
+        assert!(world.get_component::<Velocity>(entity).is_none());
+        assert!(world.get_component::<Health>(entity).is_none());
     }
-    
+
     #[test]
-    fn test_world_despawn_clears_component_tracking() {
+    fn test_despawn_multiple_entities() {
+        let mut world = World::new();
+        
+        let e1 = world.spawn();
+        world.insert(e1, Position { x: 1.0, y: 2.0 });
+        
+        let e2 = world.spawn();
+        world.insert(e2, Position { x: 3.0, y: 4.0 });
+
+        assert!(world.get_component::<Position>(e1).is_some());
+        assert!(world.get_component::<Position>(e2).is_some());
+
+        assert!(world.despawn(e1));
+
+        assert!(!world.contains(e1));
+        assert!(world.contains(e2));
+        assert!(world.get_component::<Position>(e1).is_none());
+        assert!(world.get_component::<Position>(e2).is_some());
+
+        assert!(world.despawn(e2));
+        assert!(world.get_component::<Position>(e2).is_none());
+    }
+
+    #[test]
+    fn test_storage_compaction() {
+        let mut world = World::new();
+        
+        let e1 = world.spawn();
+        let e2 = world.spawn();
+        let e3 = world.spawn();
+        
+        world.insert(e1, Position { x: 1.0, y: 1.0 });
+        world.insert(e2, Position { x: 2.0, y: 2.0 });
+        world.insert(e3, Position { x: 3.0, y: 3.0 });
+
+        assert_eq!(world.get_component::<Position>(e1).unwrap().x, 1.0);
+        assert_eq!(world.get_component::<Position>(e2).unwrap().x, 2.0);
+        assert_eq!(world.get_component::<Position>(e3).unwrap().x, 3.0);
+
+        assert!(world.despawn(e2));
+
+        assert!(world.get_component::<Position>(e1).is_some());
+        assert!(world.get_component::<Position>(e2).is_none());
+        assert!(world.get_component::<Position>(e3).is_some());
+
+        assert_eq!(world.get_component::<Position>(e1).unwrap().x, 1.0);
+        assert_eq!(world.get_component::<Position>(e3).unwrap().x, 3.0);
+    }
+
+    #[test]
+    fn test_despawn_nonexistent_entity() {
+        let mut world = World::new();
+        let entity = Entity::new(999, 0);
+
+        assert!(!world.despawn(entity));
+    }
+
+    #[test]
+    fn test_despawn_twice() {
         let mut world = World::new();
         let entity = world.spawn();
-        world.insert(entity, Position { x: 1.0, y: 2.0 });
-        world.insert(entity, Velocity { x: 0.0, y: 0.0 });
 
         assert!(world.despawn(entity));
-        
-        // 实体不再存在
-        assert!(!world.contains(entity));
-        
-        // 注意：由于类型擦除限制，无法在运行时移除组件
-        // 这是已知的架构限制
+        assert!(!world.despawn(entity));
     }
 }

@@ -9,6 +9,7 @@ rust-version = "1.70"
 [dependencies]
 anyhow.workspace = true
 engine-window = { path = "../engine-window" }
+scopeguard = "1.2.0"
 
 [build-dependencies]
 chrono.workspace = true
