@@ -941,6 +941,8 @@ dependencies = [
  "engine-render",
  "engine-utils",
  "parking_lot",
+ "serde",
+ "serde_json",
  "slab",
  "thiserror 1.0.69",
 ]

@@ -20,7 +20,8 @@ impl AssetPipeline {
     /// Create new asset pipeline
     pub fn new(asset_dir: impl AsRef<Path>) -> Self {
         let asset_dir = asset_dir.as_ref().to_path_buf();
-        let cache = BuildCache::new(asset_dir.join(".cache")).unwrap_or_else(|_| BuildCache::new_default());
+        let cache =
+            BuildCache::new(asset_dir.join(".cache")).unwrap_or_else(|_| BuildCache::new_default());
         Self {
             asset_dir,
             entries: Vec::new(),
@@ -146,11 +147,7 @@ impl AssetPipeline {
     }
 
     /// Calculate diff between two manifests
-    pub fn diff(
-        &self,
-        from_manifest: &AssetManifest,
-        to_manifest: &AssetManifest,
-    ) -> DiffResult {
+    pub fn diff(&self, from_manifest: &AssetManifest, to_manifest: &AssetManifest) -> DiffResult {
         from_manifest.diff(to_manifest)
     }
 
@@ -271,7 +268,11 @@ impl AssetManifest {
             }
         }
 
-        DiffResult { added, modified, removed }
+        DiffResult {
+            added,
+            modified,
+            removed,
+        }
     }
 }
 
@@ -343,8 +344,12 @@ impl AssetKind {
     pub fn from_extension(ext: Option<&std::ffi::OsStr>) -> Self {
         let ext_str = ext.and_then(|e| e.to_str()).map(|s| s.to_lowercase());
         match ext_str.as_deref() {
-            Some("png") | Some("jpg") | Some("jpeg") | Some("tga") | Some("bmp") | Some("gif") => AssetKind::Texture,
-            Some("wav") | Some("ogg") | Some("mp3") | Some("flac") | Some("aac") => AssetKind::Audio,
+            Some("png") | Some("jpg") | Some("jpeg") | Some("tga") | Some("bmp") | Some("gif") => {
+                AssetKind::Texture
+            }
+            Some("wav") | Some("ogg") | Some("mp3") | Some("flac") | Some("aac") => {
+                AssetKind::Audio
+            }
             Some("glb") | Some("gltf") | Some("obj") | Some("fbx") => AssetKind::Model,
             Some("scene") => AssetKind::Scene,
             Some("prefab") => AssetKind::Prefab,
@@ -408,9 +413,18 @@ mod tests {
 
     #[test]
     fn test_asset_kind_from_extension() {
-        assert_eq!(AssetKind::from_extension(Some("png".as_ref())), AssetKind::Texture);
-        assert_eq!(AssetKind::from_extension(Some("wav".as_ref())), AssetKind::Audio);
-        assert_eq!(AssetKind::from_extension(Some("glb".as_ref())), AssetKind::Model);
+        assert_eq!(
+            AssetKind::from_extension(Some("png".as_ref())),
+            AssetKind::Texture
+        );
+        assert_eq!(
+            AssetKind::from_extension(Some("wav".as_ref())),
+            AssetKind::Audio
+        );
+        assert_eq!(
+            AssetKind::from_extension(Some("glb".as_ref())),
+            AssetKind::Model
+        );
     }
 
     #[test]

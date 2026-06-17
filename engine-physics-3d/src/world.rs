@@ -252,7 +252,10 @@ impl PhysicsWorld3D {
         let index = self.bodies.len();
         let generation = 0;
         self.bodies.push(body);
-        self.body_versions.push(BodyVersion { generation, is_valid: true });
+        self.body_versions.push(BodyVersion {
+            generation,
+            is_valid: true,
+        });
         RigidBodyHandle::new(index as u32, generation)
     }
 
@@ -294,10 +297,14 @@ impl PhysicsWorld3D {
     }
 
     /// 添加碰撞体
-    pub fn insert_collider(&mut self, collider: Collider3D, parent_body: RigidBodyHandle) -> ColliderHandle {
+    pub fn insert_collider(
+        &mut self,
+        collider: Collider3D,
+        parent_body: RigidBodyHandle,
+    ) -> ColliderHandle {
         // 先检查父刚体是否有效
         let parent_is_valid = self.is_valid_body_handle(parent_body);
-        
+
         // 查找可用的空位
         let mut found_index = None;
         let mut found_generation = 0;
@@ -310,7 +317,7 @@ impl PhysicsWorld3D {
                 break;
             }
         }
-        
+
         if let Some(index) = found_index {
             self.colliders[index] = collider;
             // 设置父刚体索引
@@ -325,14 +332,17 @@ impl PhysicsWorld3D {
         let index = self.colliders.len();
         let generation = 0;
         self.colliders.push(collider);
-        self.collider_versions.push(ColliderVersion { generation, is_valid: true });
-        
+        self.collider_versions.push(ColliderVersion {
+            generation,
+            is_valid: true,
+        });
+
         // 设置父刚体索引
         if parent_is_valid {
             self.bodies[parent_body.index as usize].add_collider_index(index);
             self.colliders[index].set_parent_body_index(Some(parent_body.index as usize));
         }
-        
+
         ColliderHandle::new(index as u32, generation)
     }
 
@@ -372,7 +382,12 @@ impl PhysicsWorld3D {
     }
 
     /// 添加关节
-    pub fn insert_joint(&mut self, _body1: RigidBodyHandle, _body2: RigidBodyHandle, joint: Joint3D) -> JointHandle {
+    pub fn insert_joint(
+        &mut self,
+        _body1: RigidBodyHandle,
+        _body2: RigidBodyHandle,
+        joint: Joint3D,
+    ) -> JointHandle {
         // 查找可用的空位
         for (index, version) in self.joint_versions.iter_mut().enumerate() {
             if !version.is_valid {
@@ -387,7 +402,10 @@ impl PhysicsWorld3D {
         let index = self.joints.len();
         let generation = 0;
         self.joints.push(joint);
-        self.joint_versions.push(JointVersion { generation, is_valid: true });
+        self.joint_versions.push(JointVersion {
+            generation,
+            is_valid: true,
+        });
         JointHandle::new(index as u32, generation)
     }
 
@@ -562,9 +580,22 @@ impl PhysicsWorld3D {
                 self.manifolds.insert(key, pair);
 
                 // 生成碰撞事件
-                let handle_a = ColliderHandle::new(i as u32, self.collider_versions.get(i).map(|v| v.generation).unwrap_or(0));
-                let handle_b = ColliderHandle::new(j as u32, self.collider_versions.get(j).map(|v| v.generation).unwrap_or(0));
-                self.contact_events.push_back(ContactEvent::Started(handle_a, handle_b));
+                let handle_a = ColliderHandle::new(
+                    i as u32,
+                    self.collider_versions
+                        .get(i)
+                        .map(|v| v.generation)
+                        .unwrap_or(0),
+                );
+                let handle_b = ColliderHandle::new(
+                    j as u32,
+                    self.collider_versions
+                        .get(j)
+                        .map(|v| v.generation)
+                        .unwrap_or(0),
+                );
+                self.contact_events
+                    .push_back(ContactEvent::Started(handle_a, handle_b));
             }
         }
     }
@@ -727,26 +758,32 @@ impl PhysicsWorld3D {
 
     /// 迭代所有刚体
     pub fn bodies_iter(&self) -> impl Iterator<Item = (RigidBodyHandle, &RigidBody3D)> {
-        self.body_versions.iter().enumerate().filter_map(|(index, version)| {
-            if version.is_valid {
-                let handle = RigidBodyHandle::new(index as u32, version.generation);
-                Some((handle, &self.bodies[index]))
-            } else {
-                None
-            }
-        })
+        self.body_versions
+            .iter()
+            .enumerate()
+            .filter_map(|(index, version)| {
+                if version.is_valid {
+                    let handle = RigidBodyHandle::new(index as u32, version.generation);
+                    Some((handle, &self.bodies[index]))
+                } else {
+                    None
+                }
+            })
     }
 
     /// 迭代所有碰撞体
     pub fn colliders_iter(&self) -> impl Iterator<Item = (ColliderHandle, &Collider3D)> {
-        self.collider_versions.iter().enumerate().filter_map(|(index, version)| {
-            if version.is_valid {
-                let handle = ColliderHandle::new(index as u32, version.generation);
-                Some((handle, &self.colliders[index]))
-            } else {
-                None
-            }
-        })
+        self.collider_versions
+            .iter()
+            .enumerate()
+            .filter_map(|(index, version)| {
+                if version.is_valid {
+                    let handle = ColliderHandle::new(index as u32, version.generation);
+                    Some((handle, &self.colliders[index]))
+                } else {
+                    None
+                }
+            })
     }
 }
 
@@ -794,7 +831,7 @@ mod tests {
             .translation(Vec3::new(10.0, 20.0, 30.0))
             .build();
         let handle = world.insert_body(body);
-        
+
         let retrieved = world.body(handle);
         assert!(retrieved.is_some());
         assert_eq!(retrieved.unwrap().position(), Vec3::new(10.0, 20.0, 30.0));
@@ -829,10 +866,10 @@ mod tests {
     fn test_paused() {
         let mut world = PhysicsWorld3D::with_default_config();
         assert!(!world.paused());
-        
+
         world.set_paused(true);
         assert!(world.paused());
-        
+
         // 暂停时不应该步进
         world.step(1.0 / 60.0);
         assert_eq!(world.simulation_time(), 0.0);
@@ -841,13 +878,13 @@ mod tests {
     #[test]
     fn test_iterators() {
         let mut world = PhysicsWorld3D::with_default_config();
-        
+
         let body1 = RigidBody3DBuilder::dynamic().build();
         let body2 = RigidBody3DBuilder::static_().build();
-        
+
         world.insert_body(body1);
         world.insert_body(body2);
-        
+
         let count = world.bodies_iter().count();
         assert_eq!(count, 2);
     }
@@ -858,7 +895,7 @@ mod tests {
             .with_gravity(Vec3::new(0.0, -5.0, 0.0))
             .with_timestep(1.0 / 30.0)
             .with_iterations(4, 2);
-        
+
         assert_eq!(config.gravity, Vec3::new(0.0, -5.0, 0.0));
         assert_eq!(config.timestep, 1.0 / 30.0);
         assert_eq!(config.velocity_iterations, 4);

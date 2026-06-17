@@ -166,13 +166,16 @@ impl Telemetry {
     /// 生成遥测报告
     pub fn generate_report(&self) -> TelemetryReport {
         let events = self.events();
-        let performance_events = events.iter()
+        let performance_events = events
+            .iter()
             .filter(|e| matches!(e, TelemetryEvent::Performance { .. }))
             .count();
-        let error_events = events.iter()
+        let error_events = events
+            .iter()
             .filter(|e| matches!(e, TelemetryEvent::Error { .. }))
             .count();
-        let user_action_events = events.iter()
+        let user_action_events = events
+            .iter()
             .filter(|e| matches!(e, TelemetryEvent::UserAction { .. }))
             .count();
 
@@ -383,7 +386,9 @@ impl TelemetryStats {
                 TelemetryEvent::UserAction { .. } => "UserAction",
                 TelemetryEvent::System { .. } => "System",
             };
-            events_by_type.entry(type_name.to_string()).or_insert(0usize);
+            events_by_type
+                .entry(type_name.to_string())
+                .or_insert(0usize);
             *events_by_type.get_mut(type_name).unwrap() += 1;
         }
 

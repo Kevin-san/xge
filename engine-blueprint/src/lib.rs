@@ -485,12 +485,16 @@ impl BlueprintNode {
     }
 
     pub fn pin(&self, id: PinId) -> Option<&BlueprintPin> {
-        self.input_pins.iter().find(|p| p.id() == id)
+        self.input_pins
+            .iter()
+            .find(|p| p.id() == id)
             .or_else(|| self.output_pins.iter().find(|p| p.id() == id))
     }
 
     pub fn pin_by_name(&self, name: &str) -> Option<&BlueprintPin> {
-        self.input_pins.iter().find(|p| p.name() == name)
+        self.input_pins
+            .iter()
+            .find(|p| p.name() == name)
             .or_else(|| self.output_pins.iter().find(|p| p.name() == name))
     }
 
@@ -570,7 +574,11 @@ pub enum BlueprintError {
     InvalidPinRef { pin: PinRef },
 
     #[error("Invalid connection from {from:?} to {to:?}: {reason}")]
-    InvalidConnection { from: PinRef, to: PinRef, reason: String },
+    InvalidConnection {
+        from: PinRef,
+        to: PinRef,
+        reason: String,
+    },
 
     #[error("Duplicate wire from {from:?} to {to:?}")]
     DuplicateWire { from: PinRef, to: PinRef },
@@ -649,7 +657,8 @@ impl BlueprintGraph {
     /// Remove a node and all connected wires
     pub fn remove_node(&mut self, node_id: NodeId) {
         // Remove all wires connected to this node
-        self.wires.retain(|w| w.from.0 != node_id && w.to.0 != node_id);
+        self.wires
+            .retain(|w| w.from.0 != node_id && w.to.0 != node_id);
         // Remove the node
         self.nodes.retain(|n| n.id() != node_id);
     }
@@ -682,13 +691,17 @@ impl BlueprintGraph {
     /// Add a wire between two pins
     pub fn add_wire(&mut self, from: PinRef, to: PinRef) -> Result<WireId, BlueprintError> {
         // Validate connection
-        let from_node = self.node(from.0)
+        let from_node = self
+            .node(from.0)
             .ok_or(BlueprintError::InvalidPinRef { pin: from })?;
-        let to_node = self.node(to.0)
+        let to_node = self
+            .node(to.0)
             .ok_or(BlueprintError::InvalidPinRef { pin: to })?;
-        let from_pin = from_node.pin(from.1)
+        let from_pin = from_node
+            .pin(from.1)
             .ok_or(BlueprintError::InvalidPinRef { pin: from })?;
-        let to_pin = to_node.pin(to.1)
+        let to_pin = to_node
+            .pin(to.1)
             .ok_or(BlueprintError::InvalidPinRef { pin: to })?;
 
         if !from_pin.can_connect(to_pin) {
@@ -816,26 +829,33 @@ impl BlueprintGraph {
 
         // Check all wires have valid pin references
         for wire in &self.wires {
-            let from_node = self.node(wire.from.0)
+            let from_node = self
+                .node(wire.from.0)
                 .ok_or(BlueprintError::InvalidPinRef { pin: wire.from })?;
-            let to_node = self.node(wire.to.0)
+            let to_node = self
+                .node(wire.to.0)
                 .ok_or(BlueprintError::InvalidPinRef { pin: wire.to })?;
 
-            from_node.pin(wire.from.1)
+            from_node
+                .pin(wire.from.1)
                 .ok_or(BlueprintError::InvalidPinRef { pin: wire.from })?;
-            to_node.pin(wire.to.1)
+            to_node
+                .pin(wire.to.1)
                 .ok_or(BlueprintError::InvalidPinRef { pin: wire.to })?;
         }
 
         // Check variable references
         for node in &self.nodes {
             if node.kind() == NodeKind::VariableGet || node.kind() == NodeKind::VariableSet {
-                let var_name = node.metadata().get("variable_name")
-                    .ok_or_else(|| BlueprintError::UndefinedVariable {
+                let var_name = node.metadata().get("variable_name").ok_or_else(|| {
+                    BlueprintError::UndefinedVariable {
                         name: "unknown".to_string(),
-                    })?;
+                    }
+                })?;
                 if !self.variables.contains_key(var_name) {
-                    return Err(BlueprintError::UndefinedVariable { name: var_name.clone() });
+                    return Err(BlueprintError::UndefinedVariable {
+                        name: var_name.clone(),
+                    });
                 }
             }
         }
@@ -1113,7 +1133,11 @@ impl BlueprintCompiler {
     }
 
     /// Compile a single node
-    fn compile_node(&mut self, node: &BlueprintNode, graph: &BlueprintGraph) -> Result<(), CompileError> {
+    fn compile_node(
+        &mut self,
+        node: &BlueprintNode,
+        graph: &BlueprintGraph,
+    ) -> Result<(), CompileError> {
         match node.kind() {
             NodeKind::BeginPlay => {
                 // Entry point - no action needed
@@ -1139,14 +1163,18 @@ impl BlueprintCompiler {
             }
 
             NodeKind::VariableGet => {
-                let var_name = node.metadata().get("variable_name")
+                let var_name = node
+                    .metadata()
+                    .get("variable_name")
                     .ok_or_else(|| CompileError::UndefinedVariable("unknown".to_string()))?;
                 let slot = self.emit_var(var_name, PinType::Any);
                 self.emit_instruction(BlueprintIRInstruction::LoadVar(slot));
             }
 
             NodeKind::VariableSet => {
-                let var_name = node.metadata().get("variable_name")
+                let var_name = node
+                    .metadata()
+                    .get("variable_name")
                     .ok_or_else(|| CompileError::UndefinedVariable("unknown".to_string()))?;
                 self.compile_data_inputs(node, graph)?;
                 let slot = self.emit_var(var_name, PinType::Any);
@@ -1158,11 +1186,12 @@ impl BlueprintCompiler {
                 // JumpIfNot to skip the true branch
                 let jump_offset = self.instructions.len() as u32;
                 self.emit_instruction(BlueprintIRInstruction::JumpIfNot(InstrOffset(0))); // Placeholder
-                // Compile true branch (find connected nodes)
-                // ... (simplified for now)
-                // Fix jump target
+                                                                                          // Compile true branch (find connected nodes)
+                                                                                          // ... (simplified for now)
+                                                                                          // Fix jump target
                 let end_offset = InstrOffset(self.instructions.len() as u32);
-                self.instructions[jump_offset as usize] = BlueprintIRInstruction::JumpIfNot(end_offset);
+                self.instructions[jump_offset as usize] =
+                    BlueprintIRInstruction::JumpIfNot(end_offset);
             }
 
             NodeKind::Delay => {
@@ -1183,14 +1212,21 @@ impl BlueprintCompiler {
     }
 
     /// Compile data input connections for a node
-    fn compile_data_inputs(&mut self, node: &BlueprintNode, graph: &BlueprintGraph) -> Result<(), CompileError> {
+    fn compile_data_inputs(
+        &mut self,
+        node: &BlueprintNode,
+        graph: &BlueprintGraph,
+    ) -> Result<(), CompileError> {
         for pin in node.input_pins() {
             if pin.data_type() == PinType::Exec {
                 continue; // Skip exec pins
             }
 
             // Find wire connected to this pin
-            let wire = graph.wires().iter().find(|w| w.to == PinRef(node.id(), pin.id()));
+            let wire = graph
+                .wires()
+                .iter()
+                .find(|w| w.to == PinRef(node.id(), pin.id()));
 
             if let Some(wire) = wire {
                 // Get source node and pin
@@ -1375,19 +1411,28 @@ impl BlueprintInterpreter {
     }
 
     /// Execute a single instruction
-    fn execute_instruction(&mut self, instr: &BlueprintIRInstruction, _ctx: &mut BlueprintContext) -> Result<(), RuntimeError> {
+    fn execute_instruction(
+        &mut self,
+        instr: &BlueprintIRInstruction,
+        _ctx: &mut BlueprintContext,
+    ) -> Result<(), RuntimeError> {
         match instr {
             BlueprintIRInstruction::Nop => {}
 
             BlueprintIRInstruction::PushConst(id) => {
-                let value = self.ir.constants.get(id.0 as usize)
+                let value = self
+                    .ir
+                    .constants
+                    .get(id.0 as usize)
                     .cloned()
                     .unwrap_or(PinValue::Invalid);
                 self.push(value)?;
             }
 
             BlueprintIRInstruction::LoadVar(slot) => {
-                let value = self.variables.get(slot.0 as usize)
+                let value = self
+                    .variables
+                    .get(slot.0 as usize)
                     .cloned()
                     .unwrap_or(PinValue::Invalid);
                 self.push(value)?;
@@ -1422,8 +1467,12 @@ impl BlueprintInterpreter {
                 let result = match (&a, &b) {
                     (PinValue::Int(x), PinValue::Int(y)) => PinValue::Int(x + y),
                     (PinValue::Float(x), PinValue::Float(y)) => PinValue::Float(x + y),
-                    (PinValue::Vec2(x), PinValue::Vec2(y)) => PinValue::Vec2([x[0] + y[0], x[1] + y[1]]),
-                    (PinValue::Vec3(x), PinValue::Vec3(y)) => PinValue::Vec3([x[0] + y[0], x[1] + y[1], x[2] + y[2]]),
+                    (PinValue::Vec2(x), PinValue::Vec2(y)) => {
+                        PinValue::Vec2([x[0] + y[0], x[1] + y[1]])
+                    }
+                    (PinValue::Vec3(x), PinValue::Vec3(y)) => {
+                        PinValue::Vec3([x[0] + y[0], x[1] + y[1], x[2] + y[2]])
+                    }
                     _ => PinValue::Invalid,
                 };
                 self.push(result)?;
@@ -1456,11 +1505,15 @@ impl BlueprintInterpreter {
                 let a = self.pop()?;
                 let result = match (&a, &b) {
                     (PinValue::Int(x), PinValue::Int(y)) => {
-                        if *y == 0 { return Err(RuntimeError::DivisionByZero); }
+                        if *y == 0 {
+                            return Err(RuntimeError::DivisionByZero);
+                        }
                         PinValue::Int(x / y)
                     }
                     (PinValue::Float(x), PinValue::Float(y)) => {
-                        if *y == 0.0 { return Err(RuntimeError::DivisionByZero); }
+                        if *y == 0.0 {
+                            return Err(RuntimeError::DivisionByZero);
+                        }
                         PinValue::Float(x / y)
                     }
                     _ => PinValue::Invalid,
@@ -1653,7 +1706,8 @@ impl BlueprintInterpreter {
                 }
             }
 
-            BlueprintIRInstruction::ActivateExec(_, _) | BlueprintIRInstruction::DeactivateExec(_, _) => {
+            BlueprintIRInstruction::ActivateExec(_, _)
+            | BlueprintIRInstruction::DeactivateExec(_, _) => {
                 // Exec flow control - no runtime action needed
             }
 
@@ -1662,11 +1716,15 @@ impl BlueprintInterpreter {
                 let a = self.pop()?;
                 let result = match (&a, &b) {
                     (PinValue::Int(x), PinValue::Int(y)) => {
-                        if *y == 0 { return Err(RuntimeError::DivisionByZero); }
+                        if *y == 0 {
+                            return Err(RuntimeError::DivisionByZero);
+                        }
                         PinValue::Int(x % y)
                     }
                     (PinValue::Float(x), PinValue::Float(y)) => {
-                        if *y == 0.0 { return Err(RuntimeError::DivisionByZero); }
+                        if *y == 0.0 {
+                            return Err(RuntimeError::DivisionByZero);
+                        }
                         PinValue::Float(x % y)
                     }
                     _ => PinValue::Invalid,
@@ -1794,7 +1852,8 @@ impl ScriptValue {
                 format!("[{}]", items.join(", "))
             }
             ScriptValue::Map(map) => {
-                let items: Vec<String> = map.iter()
+                let items: Vec<String> = map
+                    .iter()
                     .map(|(k, v)| format!("{}: {}", k, v.to_string_lossy()))
                     .collect();
                 format!("{{{}}}", items.join(", "))
@@ -1988,7 +2047,8 @@ impl ScriptVM for BlueprintScriptVM {
                     .map_err(|e| ScriptError::CompileError(e.to_string()))?;
 
                 let mut compiler = BlueprintCompiler::new();
-                let ir = compiler.compile(&graph)
+                let ir = compiler
+                    .compile(&graph)
                     .map_err(|e| ScriptError::CompileError(e.to_string()))?;
 
                 self.load_ir(ir)
@@ -2012,23 +2072,29 @@ impl ScriptVM for BlueprintScriptVM {
         _fn_name: &str,
         args: &[ScriptValue],
     ) -> Result<ScriptValue, ScriptError> {
-        let (_ir, interpreter) = self.instances.get_mut(&handle)
+        let (_ir, interpreter) = self
+            .instances
+            .get_mut(&handle)
             .ok_or_else(|| ScriptError::NotFound(format!("handle {}", handle.0)))?;
 
         interpreter.reset();
 
         // Push args onto stack
         for arg in args {
-            interpreter.push(PinValue::from(arg.clone()))
+            interpreter
+                .push(PinValue::from(arg.clone()))
                 .map_err(|_| ScriptError::RuntimeError("Stack overflow".to_string()))?;
         }
 
         let mut ctx = BlueprintContext::new(0.0);
-        interpreter.run(&mut ctx)
+        interpreter
+            .run(&mut ctx)
             .map_err(|e| ScriptError::RuntimeError(e.to_string()))?;
 
         // Return top of stack
-        let result = interpreter.stack().last()
+        let result = interpreter
+            .stack()
+            .last()
             .cloned()
             .map(ScriptValue::from)
             .unwrap_or(ScriptValue::Null);
@@ -2049,7 +2115,9 @@ impl ScriptVM for BlueprintScriptVM {
             if interpreter.state() == InterpreterState::Yielding {
                 let mut ctx = BlueprintContext::new(dt);
                 // Continue execution
-                while interpreter.state() == InterpreterState::Running || interpreter.state() == InterpreterState::Yielding {
+                while interpreter.state() == InterpreterState::Running
+                    || interpreter.state() == InterpreterState::Yielding
+                {
                     interpreter.step(&mut ctx).ok();
                 }
             }
@@ -2122,15 +2190,30 @@ mod tests {
 
         let node1 = BlueprintNode::new(
             NodeKind::Add,
-            vec![BlueprintPin::new("a", PinDirection::Input, PinType::Int, None)],
-            vec![BlueprintPin::new("result", PinDirection::Output, PinType::Int, None)],
+            vec![BlueprintPin::new(
+                "a",
+                PinDirection::Input,
+                PinType::Int,
+                None,
+            )],
+            vec![BlueprintPin::new(
+                "result",
+                PinDirection::Output,
+                PinType::Int,
+                None,
+            )],
             HashMap::new(),
         );
         let id1 = graph.add_node(node1);
 
         let node2 = BlueprintNode::new(
             NodeKind::PrintString,
-            vec![BlueprintPin::new("value", PinDirection::Input, PinType::Int, None)],
+            vec![BlueprintPin::new(
+                "value",
+                PinDirection::Input,
+                PinType::Int,
+                None,
+            )],
             vec![],
             HashMap::new(),
         );
@@ -2151,14 +2234,34 @@ mod tests {
         // Create nodes with exec pins
         let node1 = BlueprintNode::new(
             NodeKind::Function,
-            vec![BlueprintPin::new("exec_in", PinDirection::Input, PinType::Exec, None)],
-            vec![BlueprintPin::new("exec_out", PinDirection::Output, PinType::Exec, None)],
+            vec![BlueprintPin::new(
+                "exec_in",
+                PinDirection::Input,
+                PinType::Exec,
+                None,
+            )],
+            vec![BlueprintPin::new(
+                "exec_out",
+                PinDirection::Output,
+                PinType::Exec,
+                None,
+            )],
             HashMap::new(),
         );
         let node2 = BlueprintNode::new(
             NodeKind::Function,
-            vec![BlueprintPin::new("exec_in", PinDirection::Input, PinType::Exec, None)],
-            vec![BlueprintPin::new("exec_out", PinDirection::Output, PinType::Exec, None)],
+            vec![BlueprintPin::new(
+                "exec_in",
+                PinDirection::Input,
+                PinType::Exec,
+                None,
+            )],
+            vec![BlueprintPin::new(
+                "exec_out",
+                PinDirection::Output,
+                PinType::Exec,
+                None,
+            )],
             HashMap::new(),
         );
 
@@ -2171,8 +2274,12 @@ mod tests {
         let pin2_out = graph.node(id2).unwrap().output_pins()[0].id();
         let pin1_in = graph.node(id1).unwrap().input_pins()[0].id();
 
-        graph.add_wire(PinRef(id1, pin1_out), PinRef(id2, pin2_in)).unwrap();
-        graph.add_wire(PinRef(id2, pin2_out), PinRef(id1, pin1_in)).unwrap();
+        graph
+            .add_wire(PinRef(id1, pin1_out), PinRef(id2, pin2_in))
+            .unwrap();
+        graph
+            .add_wire(PinRef(id2, pin2_out), PinRef(id1, pin1_in))
+            .unwrap();
 
         let result = graph.topological_sort();
         assert!(result.is_err());
@@ -2185,8 +2292,18 @@ mod tests {
 
         let begin = BlueprintNode::new(
             NodeKind::BeginPlay,
-            vec![BlueprintPin::new("exec", PinDirection::Input, PinType::Exec, None)],
-            vec![BlueprintPin::new("exec", PinDirection::Output, PinType::Exec, None)],
+            vec![BlueprintPin::new(
+                "exec",
+                PinDirection::Input,
+                PinType::Exec,
+                None,
+            )],
+            vec![BlueprintPin::new(
+                "exec",
+                PinDirection::Output,
+                PinType::Exec,
+                None,
+            )],
             HashMap::new(),
         );
         graph.add_node(begin);
@@ -2195,9 +2312,19 @@ mod tests {
             NodeKind::PrintString,
             vec![
                 BlueprintPin::new("exec", PinDirection::Input, PinType::Exec, None),
-                BlueprintPin::new("value", PinDirection::Input, PinType::String, Some(PinValue::String("Hello Blueprint".to_string()))),
+                BlueprintPin::new(
+                    "value",
+                    PinDirection::Input,
+                    PinType::String,
+                    Some(PinValue::String("Hello Blueprint".to_string())),
+                ),
             ],
-            vec![BlueprintPin::new("exec", PinDirection::Output, PinType::Exec, None)],
+            vec![BlueprintPin::new(
+                "exec",
+                PinDirection::Output,
+                PinType::Exec,
+                None,
+            )],
             HashMap::new(),
         );
         graph.add_node(print);
@@ -2213,8 +2340,10 @@ mod tests {
         let mut ir = BlueprintIR::new();
         ir.constants.push(PinValue::Int(10));
         ir.constants.push(PinValue::Int(20));
-        ir.instructions.push(BlueprintIRInstruction::PushConst(ConstId(0)));
-        ir.instructions.push(BlueprintIRInstruction::PushConst(ConstId(1)));
+        ir.instructions
+            .push(BlueprintIRInstruction::PushConst(ConstId(0)));
+        ir.instructions
+            .push(BlueprintIRInstruction::PushConst(ConstId(1)));
         ir.instructions.push(BlueprintIRInstruction::Add);
         ir.instructions.push(BlueprintIRInstruction::Halt);
 
@@ -2248,7 +2377,12 @@ mod tests {
         let node = BlueprintNode::new(
             NodeKind::Add,
             vec![],
-            vec![BlueprintPin::new("result", PinDirection::Output, PinType::Int, None)],
+            vec![BlueprintPin::new(
+                "result",
+                PinDirection::Output,
+                PinType::Int,
+                None,
+            )],
             HashMap::new(),
         );
         graph.add_node(node);
@@ -2263,7 +2397,8 @@ mod tests {
     fn test_ir_serialize_deserialize() {
         let mut ir = BlueprintIR::new();
         ir.constants.push(PinValue::Int(100));
-        ir.instructions.push(BlueprintIRInstruction::PushConst(ConstId(0)));
+        ir.instructions
+            .push(BlueprintIRInstruction::PushConst(ConstId(0)));
         ir.instructions.push(BlueprintIRInstruction::Halt);
 
         let bytes = ir.serialize().unwrap();
@@ -2278,8 +2413,10 @@ mod tests {
         let mut ir = BlueprintIR::new();
         ir.constants.push(PinValue::Int(10));
         ir.constants.push(PinValue::Int(0));
-        ir.instructions.push(BlueprintIRInstruction::PushConst(ConstId(0)));
-        ir.instructions.push(BlueprintIRInstruction::PushConst(ConstId(1)));
+        ir.instructions
+            .push(BlueprintIRInstruction::PushConst(ConstId(0)));
+        ir.instructions
+            .push(BlueprintIRInstruction::PushConst(ConstId(1)));
         ir.instructions.push(BlueprintIRInstruction::Div);
         ir.instructions.push(BlueprintIRInstruction::Halt);
 
@@ -2305,36 +2442,50 @@ mod tests {
         ir.constants.push(PinValue::Int(1));
 
         // sum = 0 (offset 0-1)
-        ir.instructions.push(BlueprintIRInstruction::PushConst(ConstId(0))); // 0
-        ir.instructions.push(BlueprintIRInstruction::StoreVar(VarSlot(0)));  // 1
+        ir.instructions
+            .push(BlueprintIRInstruction::PushConst(ConstId(0))); // 0
+        ir.instructions
+            .push(BlueprintIRInstruction::StoreVar(VarSlot(0))); // 1
 
         // i = 0 (offset 2-3)
-        ir.instructions.push(BlueprintIRInstruction::PushConst(ConstId(0))); // 2
-        ir.instructions.push(BlueprintIRInstruction::StoreVar(VarSlot(1)));  // 3
+        ir.instructions
+            .push(BlueprintIRInstruction::PushConst(ConstId(0))); // 2
+        ir.instructions
+            .push(BlueprintIRInstruction::StoreVar(VarSlot(1))); // 3
 
         // Loop start at offset 4
-        ir.instructions.push(BlueprintIRInstruction::LoadVar(VarSlot(1)));   // 4: push i
-        ir.instructions.push(BlueprintIRInstruction::PushConst(ConstId(1))); // 5: push 10
-        ir.instructions.push(BlueprintIRInstruction::Lt);                    // 6: i < 10
-        ir.instructions.push(BlueprintIRInstruction::JumpIfNot(InstrOffset(17))); // 7: if not, jump to halt
+        ir.instructions
+            .push(BlueprintIRInstruction::LoadVar(VarSlot(1))); // 4: push i
+        ir.instructions
+            .push(BlueprintIRInstruction::PushConst(ConstId(1))); // 5: push 10
+        ir.instructions.push(BlueprintIRInstruction::Lt); // 6: i < 10
+        ir.instructions
+            .push(BlueprintIRInstruction::JumpIfNot(InstrOffset(17))); // 7: if not, jump to halt
 
         // sum += i (offset 8-11)
-        ir.instructions.push(BlueprintIRInstruction::LoadVar(VarSlot(0)));   // 8: push sum
-        ir.instructions.push(BlueprintIRInstruction::LoadVar(VarSlot(1)));   // 9: push i
-        ir.instructions.push(BlueprintIRInstruction::Add);                   // 10: sum + i
-        ir.instructions.push(BlueprintIRInstruction::StoreVar(VarSlot(0)));  // 11: store sum
+        ir.instructions
+            .push(BlueprintIRInstruction::LoadVar(VarSlot(0))); // 8: push sum
+        ir.instructions
+            .push(BlueprintIRInstruction::LoadVar(VarSlot(1))); // 9: push i
+        ir.instructions.push(BlueprintIRInstruction::Add); // 10: sum + i
+        ir.instructions
+            .push(BlueprintIRInstruction::StoreVar(VarSlot(0))); // 11: store sum
 
         // i += 1 (offset 12-15)
-        ir.instructions.push(BlueprintIRInstruction::LoadVar(VarSlot(1)));   // 12: push i
-        ir.instructions.push(BlueprintIRInstruction::PushConst(ConstId(2))); // 13: push 1
-        ir.instructions.push(BlueprintIRInstruction::Add);                   // 14: i + 1
-        ir.instructions.push(BlueprintIRInstruction::StoreVar(VarSlot(1)));  // 15: store i
+        ir.instructions
+            .push(BlueprintIRInstruction::LoadVar(VarSlot(1))); // 12: push i
+        ir.instructions
+            .push(BlueprintIRInstruction::PushConst(ConstId(2))); // 13: push 1
+        ir.instructions.push(BlueprintIRInstruction::Add); // 14: i + 1
+        ir.instructions
+            .push(BlueprintIRInstruction::StoreVar(VarSlot(1))); // 15: store i
 
         // Jump back to loop start (offset 16)
-        ir.instructions.push(BlueprintIRInstruction::Jump(InstrOffset(4)));  // 16: jump to offset 4
+        ir.instructions
+            .push(BlueprintIRInstruction::Jump(InstrOffset(4))); // 16: jump to offset 4
 
         // End (offset 17)
-        ir.instructions.push(BlueprintIRInstruction::Halt);                  // 17
+        ir.instructions.push(BlueprintIRInstruction::Halt); // 17
 
         let arc_ir = Arc::new(ir);
         let mut interpreter = BlueprintInterpreter::new(arc_ir);

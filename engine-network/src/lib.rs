@@ -17,23 +17,23 @@
 //! - [`plugin`] - Plugin system for extensibility
 //! - [`stats`] - Network statistics
 
-pub mod error;
-pub mod packet;
-pub mod message;
 pub mod channel;
-pub mod transport;
+pub mod error;
 pub mod manager;
+pub mod message;
+pub mod packet;
 pub mod plugin;
 pub mod stats;
+pub mod transport;
 
-pub use error::{NetError, NetResult};
-pub use packet::Packet;
-pub use message::{Message, MessageId, NetMessage};
 pub use channel::{Channel, ChannelConfig, ChannelId, NetChannel};
-pub use transport::{NetworkTransport, TransportType};
+pub use error::{NetError, NetResult};
 pub use manager::{NetworkClient, NetworkManager, NetworkServer};
+pub use message::{Message, MessageId, NetMessage};
+pub use packet::Packet;
 pub use plugin::{Plugin, PluginContext, PluginManager, PluginState};
 pub use stats::NetStats;
+pub use transport::{NetworkTransport, TransportType};
 
 /// Default timeout for RPC operations (5 seconds)
 pub const DEFAULT_RPC_TIMEOUT_MS: u64 = 5_000;

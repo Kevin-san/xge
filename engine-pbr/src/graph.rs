@@ -411,9 +411,17 @@ impl ShaderGraph {
                 format!("let {}: {};", name, ty_str)
             }
             NodeKind::ConstantFloat(v) => format!("let n{}: f32 = {}f;", node.id.0, v),
-            NodeKind::ConstantVec2(v) => format!("let n{}: vec2<f32> = vec2({}, {});", node.id.0, v[0], v[1]),
-            NodeKind::ConstantVec3(v) => format!("let n{}: vec3<f32> = vec3({}, {}, {});", node.id.0, v[0], v[1], v[2]),
-            NodeKind::ConstantVec4(v) => format!("let n{}: vec4<f32> = vec4({}, {}, {}, {});", node.id.0, v[0], v[1], v[2], v[3]),
+            NodeKind::ConstantVec2(v) => {
+                format!("let n{}: vec2<f32> = vec2({}, {});", node.id.0, v[0], v[1])
+            }
+            NodeKind::ConstantVec3(v) => format!(
+                "let n{}: vec3<f32> = vec3({}, {}, {});",
+                node.id.0, v[0], v[1], v[2]
+            ),
+            NodeKind::ConstantVec4(v) => format!(
+                "let n{}: vec4<f32> = vec4({}, {}, {}, {});",
+                node.id.0, v[0], v[1], v[2], v[3]
+            ),
             NodeKind::ConstantBool(v) => format!("let n{}: bool = {};", node.id.0, v),
             NodeKind::Add => format!("let n{} = a{} + b{};", node.id.0, node.id.0, node.id.0),
             NodeKind::Sub => format!("let n{} = a{} - b{};", node.id.0, node.id.0, node.id.0),

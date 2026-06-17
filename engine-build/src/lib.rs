@@ -15,27 +15,24 @@
 //! - [`logger`] - Build logging and reporting
 //! - [`error`] - Error types
 
-mod config;
-mod pipeline;
 mod asset;
-mod hot_update;
 mod cache;
-mod hash;
 mod compress;
-mod logger;
+mod config;
 mod error;
+mod hash;
+mod hot_update;
+mod logger;
+mod pipeline;
 
-pub use config::{
-    BuildConfig, MiniAppPlatform, Orientation, Permission, PlatformTarget, Profile,
-};
-pub use pipeline::{BuildArtifact, BuildPipeline, Package, PackageFormat};
 pub use asset::{
-    AssetCompress, AssetEncrypt, AssetEntry, AssetKind, AssetManifest, AssetPipeline,
-    DiffResult,
+    AssetCompress, AssetEncrypt, AssetEntry, AssetKind, AssetManifest, AssetPipeline, DiffResult,
 };
-pub use hot_update::{FileChange, HotUpdate, HotUpdatePatch};
 pub use cache::BuildCache;
-pub use hash::Hash;
 pub use compress::{Compress, Encrypt};
-pub use logger::{BuildLogger, BuildProgress, BuildReport, BuildStage};
+pub use config::{BuildConfig, MiniAppPlatform, Orientation, Permission, PlatformTarget, Profile};
 pub use error::{BuildError, BuildResult};
+pub use hash::Hash;
+pub use hot_update::{FileChange, HotUpdate, HotUpdatePatch};
+pub use logger::{BuildLogger, BuildProgress, BuildReport, BuildStage};
+pub use pipeline::{BuildArtifact, BuildPipeline, Package, PackageFormat};

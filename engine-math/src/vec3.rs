@@ -348,11 +348,11 @@ mod tests {
         let x = Vec3::X;
         let y = Vec3::Y;
         let z = Vec3::Z;
-        
+
         assert_eq!(x.cross(y), z);
         assert_eq!(y.cross(z), x);
         assert_eq!(z.cross(x), y);
-        
+
         // Anti-commutative
         assert_eq!(y.cross(x), -z);
         assert_eq!(z.cross(y), -x);
@@ -370,7 +370,7 @@ mod tests {
         let x = Vec3::X;
         let y = Vec3::Y;
         let z = Vec3::Z;
-        
+
         assert_eq!(x.dot(y), 0.0);
         assert_eq!(y.dot(z), 0.0);
         assert_eq!(x.dot(z), 0.0);
@@ -387,7 +387,7 @@ mod tests {
     fn test_lerp_extreme_values() {
         let a = Vec3::new(-100.0, -100.0, -100.0);
         let b = Vec3::new(100.0, 100.0, 100.0);
-        
+
         assert_eq!(a.lerp(b, 0.0), a);
         assert_eq!(a.lerp(b, 1.0), b);
         assert_eq!(a.lerp(b, 0.5), Vec3::ZERO);
@@ -404,7 +404,7 @@ mod tests {
     fn test_normalize_or_zero() {
         let v = Vec3::ZERO;
         assert_eq!(v.normalize_or_zero(), Vec3::ZERO);
-        
+
         let v2 = Vec3::new(1.0, 0.0, 0.0);
         assert!((v2.normalize_or_zero().length() - 1.0).abs() < 1e-6);
     }

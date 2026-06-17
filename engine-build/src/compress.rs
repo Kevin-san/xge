@@ -27,7 +27,9 @@ impl Compress {
         };
         let mut encoder = GzEncoder::new(Vec::new(), level);
         encoder.write_all(bytes)?;
-        encoder.finish().map_err(|e| crate::BuildError::io_error(e.to_string()))
+        encoder
+            .finish()
+            .map_err(|e| crate::BuildError::io_error(e.to_string()))
     }
 
     /// Brotli compression (simplified - returns original if not available)
@@ -81,9 +83,12 @@ impl Encrypt {
 
     #[cfg(feature = "encryption")]
     pub fn aes_gcm_128(bytes: &[u8], key: &[u8; 16], nonce: &[u8; 12]) -> BuildResult<Vec<u8>> {
-        use aes_gcm::{Aes128Gcm, KeyInit, aead::Aead};
-        let cipher = Aes128Gcm::new_from_slice(key).map_err(|_| crate::BuildError::crypto_error("Invalid key"))?;
-        cipher.encrypt(nonce.into(), bytes).map_err(|_| crate::BuildError::crypto_error("Encryption failed"))
+        use aes_gcm::{aead::Aead, Aes128Gcm, KeyInit};
+        let cipher = Aes128Gcm::new_from_slice(key)
+            .map_err(|_| crate::BuildError::crypto_error("Invalid key"))?;
+        cipher
+            .encrypt(nonce.into(), bytes)
+            .map_err(|_| crate::BuildError::crypto_error("Encryption failed"))
     }
 
     /// AES-GCM-256 encryption (placeholder)
@@ -94,9 +99,12 @@ impl Encrypt {
 
     #[cfg(feature = "encryption")]
     pub fn aes_gcm_256(bytes: &[u8], key: &[u8; 32], nonce: &[u8; 12]) -> BuildResult<Vec<u8>> {
-        use aes_gcm::{Aes256Gcm, KeyInit, aead::Aead};
-        let cipher = Aes256Gcm::new_from_slice(key).map_err(|_| crate::BuildError::crypto_error("Invalid key"))?;
-        cipher.encrypt(nonce.into(), bytes).map_err(|_| crate::BuildError::crypto_error("Encryption failed"))
+        use aes_gcm::{aead::Aead, Aes256Gcm, KeyInit};
+        let cipher = Aes256Gcm::new_from_slice(key)
+            .map_err(|_| crate::BuildError::crypto_error("Invalid key"))?;
+        cipher
+            .encrypt(nonce.into(), bytes)
+            .map_err(|_| crate::BuildError::crypto_error("Encryption failed"))
     }
 
     /// ChaCha20-Poly1305 encryption (placeholder)
@@ -107,35 +115,57 @@ impl Encrypt {
 
     #[cfg(feature = "encryption")]
     pub fn chacha20(bytes: &[u8], key: &[u8; 32], nonce: &[u8; 24]) -> BuildResult<Vec<u8>> {
-        use chacha20poly1305::{ChaCha20Poly1305, KeyInit, aead::Aead};
-        let cipher = ChaCha20Poly1305::new_from_slice(key).map_err(|_| crate::BuildError::crypto_error("Invalid key"))?;
-        cipher.encrypt(nonce.into(), bytes).map_err(|_| crate::BuildError::crypto_error("Encryption failed"))
+        use chacha20poly1305::{aead::Aead, ChaCha20Poly1305, KeyInit};
+        let cipher = ChaCha20Poly1305::new_from_slice(key)
+            .map_err(|_| crate::BuildError::crypto_error("Invalid key"))?;
+        cipher
+            .encrypt(nonce.into(), bytes)
+            .map_err(|_| crate::BuildError::crypto_error("Encryption failed"))
     }
 
     /// Decrypt with specified algorithm
     #[cfg(not(feature = "encryption"))]
-    pub fn decrypt(bytes: &[u8], _key: &[u8], _nonce: &[u8], _algo: crate::AssetEncrypt) -> BuildResult<Vec<u8>> {
+    pub fn decrypt(
+        bytes: &[u8],
+        _key: &[u8],
+        _nonce: &[u8],
+        _algo: crate::AssetEncrypt,
+    ) -> BuildResult<Vec<u8>> {
         Ok(bytes.to_vec())
     }
 
     #[cfg(feature = "encryption")]
-    pub fn decrypt(bytes: &[u8], key: &[u8], nonce: &[u8], algo: crate::AssetEncrypt) -> BuildResult<Vec<u8>> {
+    pub fn decrypt(
+        bytes: &[u8],
+        key: &[u8],
+        nonce: &[u8],
+        algo: crate::AssetEncrypt,
+    ) -> BuildResult<Vec<u8>> {
         match algo {
             crate::AssetEncrypt::None => Ok(bytes.to_vec()),
             crate::AssetEncrypt::AesGcm128 => {
-                use aes_gcm::{Aes128Gcm, KeyInit, aead::Aead};
-                let cipher = Aes128Gcm::new_from_slice(key).map_err(|_| crate::BuildError::crypto_error("Invalid key"))?;
-                cipher.decrypt(nonce.into(), bytes).map_err(|_| crate::BuildError::crypto_error("Decryption failed"))
+                use aes_gcm::{aead::Aead, Aes128Gcm, KeyInit};
+                let cipher = Aes128Gcm::new_from_slice(key)
+                    .map_err(|_| crate::BuildError::crypto_error("Invalid key"))?;
+                cipher
+                    .decrypt(nonce.into(), bytes)
+                    .map_err(|_| crate::BuildError::crypto_error("Decryption failed"))
             }
             crate::AssetEncrypt::AesGcm256 => {
-                use aes_gcm::{Aes256Gcm, KeyInit, aead::Aead};
-                let cipher = Aes256Gcm::new_from_slice(key).map_err(|_| crate::BuildError::crypto_error("Invalid key"))?;
-                cipher.decrypt(nonce.into(), bytes).map_err(|_| crate::BuildError::crypto_error("Decryption failed"))
+                use aes_gcm::{aead::Aead, Aes256Gcm, KeyInit};
+                let cipher = Aes256Gcm::new_from_slice(key)
+                    .map_err(|_| crate::BuildError::crypto_error("Invalid key"))?;
+                cipher
+                    .decrypt(nonce.into(), bytes)
+                    .map_err(|_| crate::BuildError::crypto_error("Decryption failed"))
             }
             crate::AssetEncrypt::XorChaCha20 => {
-                use chacha20poly1305::{ChaCha20Poly1305, KeyInit, aead::Aead};
-                let cipher = ChaCha20Poly1305::new_from_slice(key).map_err(|_| crate::BuildError::crypto_error("Invalid key"))?;
-                cipher.decrypt(nonce.into(), bytes).map_err(|_| crate::BuildError::crypto_error("Decryption failed"))
+                use chacha20poly1305::{aead::Aead, ChaCha20Poly1305, KeyInit};
+                let cipher = ChaCha20Poly1305::new_from_slice(key)
+                    .map_err(|_| crate::BuildError::crypto_error("Invalid key"))?;
+                cipher
+                    .decrypt(nonce.into(), bytes)
+                    .map_err(|_| crate::BuildError::crypto_error("Decryption failed"))
             }
         }
     }

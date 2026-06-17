@@ -73,7 +73,10 @@ impl Packet {
     pub fn new(message_type: u32, payload: Vec<u8>) -> NetResult<Self> {
         let payload_len = payload.len();
         if payload_len > crate::MAX_PACKET_SIZE {
-            return Err(NetError::PacketTooLarge(payload_len, crate::MAX_PACKET_SIZE));
+            return Err(NetError::PacketTooLarge(
+                payload_len,
+                crate::MAX_PACKET_SIZE,
+            ));
         }
 
         Ok(Self {
@@ -205,7 +208,10 @@ impl PacketBuilder {
     pub fn build(self) -> NetResult<Packet> {
         let payload_len = self.payload.len();
         if payload_len > crate::MAX_PACKET_SIZE {
-            return Err(NetError::PacketTooLarge(payload_len, crate::MAX_PACKET_SIZE));
+            return Err(NetError::PacketTooLarge(
+                payload_len,
+                crate::MAX_PACKET_SIZE,
+            ));
         }
 
         Ok(Packet {
@@ -258,7 +264,10 @@ mod tests {
         let serialized = original.serialize().unwrap();
         let deserialized = Packet::deserialize(&serialized).unwrap();
 
-        assert_eq!(original.header.message_type, deserialized.header.message_type);
+        assert_eq!(
+            original.header.message_type,
+            deserialized.header.message_type
+        );
         assert_eq!(original.header.sequence, deserialized.header.sequence);
         assert_eq!(original.header.ack, deserialized.header.ack);
         assert_eq!(original.payload, deserialized.payload);

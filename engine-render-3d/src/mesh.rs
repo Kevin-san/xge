@@ -1,9 +1,9 @@
 //! 3D Mesh structures and primitives
 
-use alloc::vec::Vec;
-use engine_math::{Vec2, Vec3, Mat4};
+use crate::geometry::{Mat4Transform3D, Sphere, AABB};
 use crate::vertex::Vertex;
-use crate::geometry::{AABB, Sphere, Mat4Transform3D};
+use alloc::vec::Vec;
+use engine_math::{Mat4, Vec2, Vec3};
 
 /// Mesh primitive (submesh with material index)
 #[derive(Clone, Debug)]
@@ -139,7 +139,10 @@ impl Mesh3D {
                 let i1 = prim.indices[tri_idx + 1] as usize;
                 let i2 = prim.indices[tri_idx + 2] as usize;
 
-                if i0 >= self.vertices.len() || i1 >= self.vertices.len() || i2 >= self.vertices.len() {
+                if i0 >= self.vertices.len()
+                    || i1 >= self.vertices.len()
+                    || i2 >= self.vertices.len()
+                {
                     continue;
                 }
 
@@ -194,7 +197,11 @@ impl Mesh3D {
             Vertex::new(Vec3::new(-half, half, half), Vec3::Z, Vec2::new(0.0, 1.0)),
             // Back face (Z-)
             Vertex::new(Vec3::new(half, -half, -half), -Vec3::Z, Vec2::new(0.0, 0.0)),
-            Vertex::new(Vec3::new(-half, -half, -half), -Vec3::Z, Vec2::new(1.0, 0.0)),
+            Vertex::new(
+                Vec3::new(-half, -half, -half),
+                -Vec3::Z,
+                Vec2::new(1.0, 0.0),
+            ),
             Vertex::new(Vec3::new(-half, half, -half), -Vec3::Z, Vec2::new(1.0, 1.0)),
             Vertex::new(Vec3::new(half, half, -half), -Vec3::Z, Vec2::new(0.0, 1.0)),
             // Top face (Y+)
@@ -203,7 +210,11 @@ impl Mesh3D {
             Vertex::new(Vec3::new(half, half, -half), Vec3::Y, Vec2::new(1.0, 1.0)),
             Vertex::new(Vec3::new(-half, half, -half), Vec3::Y, Vec2::new(0.0, 1.0)),
             // Bottom face (Y-)
-            Vertex::new(Vec3::new(-half, -half, -half), -Vec3::Y, Vec2::new(0.0, 0.0)),
+            Vertex::new(
+                Vec3::new(-half, -half, -half),
+                -Vec3::Y,
+                Vec2::new(0.0, 0.0),
+            ),
             Vertex::new(Vec3::new(half, -half, -half), -Vec3::Y, Vec2::new(1.0, 0.0)),
             Vertex::new(Vec3::new(half, -half, half), -Vec3::Y, Vec2::new(1.0, 1.0)),
             Vertex::new(Vec3::new(-half, -half, half), -Vec3::Y, Vec2::new(0.0, 1.0)),
@@ -213,16 +224,20 @@ impl Mesh3D {
             Vertex::new(Vec3::new(half, half, -half), Vec3::X, Vec2::new(1.0, 1.0)),
             Vertex::new(Vec3::new(half, half, half), Vec3::X, Vec2::new(0.0, 1.0)),
             // Left face (X-)
-            Vertex::new(Vec3::new(-half, -half, -half), -Vec3::X, Vec2::new(0.0, 0.0)),
+            Vertex::new(
+                Vec3::new(-half, -half, -half),
+                -Vec3::X,
+                Vec2::new(0.0, 0.0),
+            ),
             Vertex::new(Vec3::new(-half, -half, half), -Vec3::X, Vec2::new(1.0, 0.0)),
             Vertex::new(Vec3::new(-half, half, half), -Vec3::X, Vec2::new(1.0, 1.0)),
             Vertex::new(Vec3::new(-half, half, -half), -Vec3::X, Vec2::new(0.0, 1.0)),
         ];
 
         let indices = vec![
-            0, 1, 2, 0, 2, 3,       // Front
-            4, 5, 6, 4, 6, 7,       // Back
-            8, 9, 10, 8, 10, 11,    // Top
+            0, 1, 2, 0, 2, 3, // Front
+            4, 5, 6, 4, 6, 7, // Back
+            8, 9, 10, 8, 10, 11, // Top
             12, 13, 14, 12, 14, 15, // Bottom
             16, 17, 18, 16, 18, 19, // Right
             20, 21, 22, 20, 22, 23, // Left
@@ -361,7 +376,11 @@ impl Mesh3D {
 
         // Top cap center
         let top_center_idx = vertices.len();
-        vertices.push(Vertex::new(Vec3::new(0.0, half_height, 0.0), Vec3::Y, Vec2::new(0.5, 0.5)));
+        vertices.push(Vertex::new(
+            Vec3::new(0.0, half_height, 0.0),
+            Vec3::Y,
+            Vec2::new(0.5, 0.5),
+        ));
 
         // Top cap vertices
         let top_cap_start = vertices.len();
@@ -383,7 +402,11 @@ impl Mesh3D {
 
         // Bottom cap center
         let bottom_center_idx = vertices.len();
-        vertices.push(Vertex::new(Vec3::new(0.0, -half_height, 0.0), -Vec3::Y, Vec2::new(0.5, 0.5)));
+        vertices.push(Vertex::new(
+            Vec3::new(0.0, -half_height, 0.0),
+            -Vec3::Y,
+            Vec2::new(0.5, 0.5),
+        ));
 
         // Bottom cap vertices
         let bottom_cap_start = vertices.len();
@@ -413,7 +436,11 @@ impl Mesh3D {
 
         // Apex vertex
         let apex_idx = 0;
-        vertices.push(Vertex::new(Vec3::new(0.0, height, 0.0), Vec3::Y, Vec2::new(0.5, 0.0)));
+        vertices.push(Vertex::new(
+            Vec3::new(0.0, height, 0.0),
+            Vec3::Y,
+            Vec2::new(0.5, 0.0),
+        ));
 
         // Base vertices
         for i in 0..=segments {
@@ -441,7 +468,11 @@ impl Mesh3D {
 
         // Bottom cap center
         let bottom_center_idx = vertices.len();
-        vertices.push(Vertex::new(Vec3::new(0.0, 0.0, 0.0), -Vec3::Y, Vec2::new(0.5, 0.5)));
+        vertices.push(Vertex::new(
+            Vec3::new(0.0, 0.0, 0.0),
+            -Vec3::Y,
+            Vec2::new(0.5, 0.5),
+        ));
 
         // Bottom cap indices
         for i in 0..segments {
@@ -454,7 +485,12 @@ impl Mesh3D {
     }
 
     /// Create torus (donut shape)
-    pub fn torus(major_radius: f32, minor_radius: f32, major_segments: usize, minor_segments: usize) -> Self {
+    pub fn torus(
+        major_radius: f32,
+        minor_radius: f32,
+        major_segments: usize,
+        minor_segments: usize,
+    ) -> Self {
         let mut vertices = Vec::new();
         let mut indices = Vec::new();
 
@@ -464,7 +500,8 @@ impl Mesh3D {
             let sin_major = major_angle.sin();
 
             for minor in 0..=minor_segments {
-                let minor_angle = (minor as f32 / minor_segments as f32) * 2.0 * core::f32::consts::PI;
+                let minor_angle =
+                    (minor as f32 / minor_segments as f32) * 2.0 * core::f32::consts::PI;
                 let cos_minor = minor_angle.cos();
                 let sin_minor = minor_angle.sin();
 
@@ -479,7 +516,10 @@ impl Mesh3D {
                 vertices.push(Vertex::new(
                     Vec3::new(x, y, z),
                     Vec3::new(nx, ny, nz),
-                    Vec2::new(major as f32 / major_segments as f32, minor as f32 / minor_segments as f32),
+                    Vec2::new(
+                        major as f32 / major_segments as f32,
+                        minor as f32 / minor_segments as f32,
+                    ),
                 ));
             }
         }

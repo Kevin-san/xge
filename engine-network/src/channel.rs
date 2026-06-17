@@ -156,7 +156,8 @@ impl NetChannel for MemoryChannel {
         }
 
         queue.push_back(data.to_vec());
-        self.bytes_out.fetch_add(data.len() as u64, Ordering::SeqCst);
+        self.bytes_out
+            .fetch_add(data.len() as u64, Ordering::SeqCst);
         self.msg_out.fetch_add(1, Ordering::SeqCst);
 
         Ok(())

@@ -37,7 +37,9 @@ impl AssetStore {
     }
 
     pub fn add_installed(&self, asset: InstalledAsset) {
-        self.installed_assets.write().insert(asset.id.clone(), asset);
+        self.installed_assets
+            .write()
+            .insert(asset.id.clone(), asset);
     }
 
     pub fn remove_installed(&self, id: &AssetId) -> Option<InstalledAsset> {
@@ -50,7 +52,12 @@ impl AssetStore {
     }
 
     /// 创建快照
-    pub fn create_snapshot(&self, asset_id: &AssetId, from_version: AssetVersion, to_version: AssetVersion) -> SnapshotId {
+    pub fn create_snapshot(
+        &self,
+        asset_id: &AssetId,
+        from_version: AssetVersion,
+        to_version: AssetVersion,
+    ) -> SnapshotId {
         let id = SnapshotId::new();
         let snapshot = Snapshot {
             id: id.clone(),
@@ -60,7 +67,8 @@ impl AssetStore {
             created_at: Utc::now(),
             size_bytes: 0,
         };
-        self.snapshots.write()
+        self.snapshots
+            .write()
             .entry(asset_id.clone())
             .or_default()
             .push(snapshot);
@@ -69,7 +77,11 @@ impl AssetStore {
 
     /// 获取快照列表
     pub fn list_snapshots(&self, asset_id: &AssetId) -> Vec<Snapshot> {
-        self.snapshots.read().get(asset_id).cloned().unwrap_or_default()
+        self.snapshots
+            .read()
+            .get(asset_id)
+            .cloned()
+            .unwrap_or_default()
     }
 
     /// 清理旧快照
@@ -255,13 +267,14 @@ impl Cart {
     }
 
     pub fn total(&self) -> f64 {
-        self.items.iter().map(|item| {
-            match &item.price {
+        self.items
+            .iter()
+            .map(|item| match &item.price {
                 PriceModel::Free => 0.0,
                 PriceModel::Paid { amount, .. } => *amount,
                 PriceModel::Subscription { amount, .. } => *amount,
-            }
-        }).sum()
+            })
+            .sum()
     }
 
     pub fn clear(&mut self) {
@@ -329,7 +342,9 @@ pub struct CommentSystem {
 
 impl CommentSystem {
     pub fn new() -> Self {
-        Self { comments: HashMap::new() }
+        Self {
+            comments: HashMap::new(),
+        }
     }
 
     pub fn post(&mut self, asset_id: AssetId, comment: Comment) -> CommentId {

@@ -1,7 +1,7 @@
 //! 3D Camera system
 
-use engine_math::{Mat4, Vec2, Vec3, Vec4};
 use crate::ray::Ray3;
+use engine_math::{Mat4, Vec2, Vec3, Vec4};
 
 /// Projection mode for Camera3D
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -79,7 +79,12 @@ impl Camera3D {
                 [r.x, u.x, -f.x, 0.0],
                 [r.y, u.y, -f.y, 0.0],
                 [r.z, u.z, -f.z, 0.0],
-                [-r.dot(self.position), -u.dot(self.position), f.dot(self.position), 1.0],
+                [
+                    -r.dot(self.position),
+                    -u.dot(self.position),
+                    f.dot(self.position),
+                    1.0,
+                ],
             ],
         }
     }
@@ -93,8 +98,18 @@ impl Camera3D {
                     cols: [
                         [f / self.aspect, 0.0, 0.0, 0.0],
                         [0.0, f, 0.0, 0.0],
-                        [0.0, 0.0, (self.far + self.near) / (self.near - self.far), -1.0],
-                        [0.0, 0.0, (2.0 * self.far * self.near) / (self.near - self.far), 0.0],
+                        [
+                            0.0,
+                            0.0,
+                            (self.far + self.near) / (self.near - self.far),
+                            -1.0,
+                        ],
+                        [
+                            0.0,
+                            0.0,
+                            (2.0 * self.far * self.near) / (self.near - self.far),
+                            0.0,
+                        ],
                     ],
                 }
             }
@@ -248,10 +263,17 @@ impl Camera3D {
         // Transform to world space
         let inv_view = self.inverse_view();
         let world_dir = Vec3::new(
-            inv_view.cols[0][0] * view_dir.x + inv_view.cols[1][0] * view_dir.y + inv_view.cols[2][0] * view_dir.z,
-            inv_view.cols[0][1] * view_dir.x + inv_view.cols[1][1] * view_dir.y + inv_view.cols[2][1] * view_dir.z,
-            inv_view.cols[0][2] * view_dir.x + inv_view.cols[1][2] * view_dir.y + inv_view.cols[2][2] * view_dir.z,
-        ).normalize();
+            inv_view.cols[0][0] * view_dir.x
+                + inv_view.cols[1][0] * view_dir.y
+                + inv_view.cols[2][0] * view_dir.z,
+            inv_view.cols[0][1] * view_dir.x
+                + inv_view.cols[1][1] * view_dir.y
+                + inv_view.cols[2][1] * view_dir.z,
+            inv_view.cols[0][2] * view_dir.x
+                + inv_view.cols[1][2] * view_dir.y
+                + inv_view.cols[2][2] * view_dir.z,
+        )
+        .normalize();
 
         Ray3::new(self.position, world_dir)
     }

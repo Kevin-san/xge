@@ -5,24 +5,26 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 extern crate alloc;
 
-mod geometry;
+mod buffer;
 mod camera;
-mod light;
-mod transform;
 mod frustum;
+mod geometry;
+mod light;
+mod mesh;
 mod ray;
 mod scene;
-mod mesh;
+mod transform;
 mod vertex;
-mod buffer;
 
-pub use geometry::{AABB, Sphere, Plane, Mat4Transform3D};
+pub use buffer::{IndexBuffer, IndexFormat, VertexBuffer};
 pub use camera::Camera3D;
-pub use light::{Light3D, DirectionalLight, PointLight, SpotLight, AmbientLight, HemisphereLight, LightManager};
-pub use transform::Transform3D;
 pub use frustum::Frustum;
-pub use ray::{Ray3, HitResult};
-pub use scene::{Scene3D, Node3D, NodeHandle, RenderEntity3D, SceneStats3D};
+pub use geometry::{Mat4Transform3D, Plane, Sphere, AABB};
+pub use light::{
+    AmbientLight, DirectionalLight, HemisphereLight, Light3D, LightManager, PointLight, SpotLight,
+};
 pub use mesh::{Mesh3D, MeshBuilder3D, Primitive};
+pub use ray::{HitResult, Ray3};
+pub use scene::{Node3D, NodeHandle, RenderEntity3D, Scene3D, SceneStats3D};
+pub use transform::Transform3D;
 pub use vertex::{Vertex, VertexLayout};
-pub use buffer::{VertexBuffer, IndexBuffer, IndexFormat};

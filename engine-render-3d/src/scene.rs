@@ -1,13 +1,13 @@
 //! 3D Scene node tree
 
-use alloc::vec::Vec;
-use alloc::string::String;
-use engine_math::{Mat4, Vec3};
-use engine_utils::Handle;
-use crate::transform::Transform3D;
+use crate::frustum::Frustum;
 use crate::geometry::AABB;
 use crate::mesh::Mesh3D;
-use crate::frustum::Frustum;
+use crate::transform::Transform3D;
+use alloc::string::String;
+use alloc::vec::Vec;
+use engine_math::{Mat4, Vec3};
+use engine_utils::Handle;
 
 /// Node handle type
 pub type NodeHandle = Handle<Node3D>;
@@ -272,9 +272,11 @@ impl Scene3D {
             let world_mat = parent_mat * local_mat;
 
             // Update world transform (simplified - just store matrix)
-            node.world_transform = Transform3D::from_translation(
-                Vec3::new(world_mat.cols[3][0], world_mat.cols[3][1], world_mat.cols[3][2])
-            );
+            node.world_transform = Transform3D::from_translation(Vec3::new(
+                world_mat.cols[3][0],
+                world_mat.cols[3][1],
+                world_mat.cols[3][2],
+            ));
 
             // Update children
             let children = node.children.clone();

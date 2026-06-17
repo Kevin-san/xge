@@ -14,7 +14,11 @@ pub struct Vertex {
 impl Vertex {
     #[inline]
     pub fn new(position: Vec3, normal: Vec3, texcoord: Vec2) -> Self {
-        Self { position, normal, texcoord }
+        Self {
+            position,
+            normal,
+            texcoord,
+        }
     }
 
     #[inline]
@@ -47,11 +51,8 @@ impl VertexLayout {
     pub const STRIDE: usize = 32;
 
     /// Layout: POS3F_NORMAL3F_UV2F
-    pub const POS3F_NORMAL3F_UV2F: [usize; 3] = [
-        Self::POS_OFFSET,
-        Self::NORMAL_OFFSET,
-        Self::UV_OFFSET,
-    ];
+    pub const POS3F_NORMAL3F_UV2F: [usize; 3] =
+        [Self::POS_OFFSET, Self::NORMAL_OFFSET, Self::UV_OFFSET];
 }
 
 /// Extended vertex with tangent and color

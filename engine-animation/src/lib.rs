@@ -5,13 +5,13 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 extern crate alloc;
 
+use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
 use alloc::string::String;
 use alloc::string::ToString;
-use alloc::vec::Vec;
 use alloc::vec;
-use alloc::boxed::Box;
-use engine_math::{Mat4, Quat, Vec3, Vec2};
+use alloc::vec::Vec;
+use engine_math::{Mat4, Quat, Vec2, Vec3};
 
 // ============================================================================
 // Constants
@@ -152,14 +152,30 @@ pub trait Interpolate: Clone + Sized {
     /// Linear interpolation between self and other at t
     fn lerp(&self, other: &Self, t: f32) -> Self;
     /// Cubic spline interpolation
-    fn cubic_spline(&self, other: &Self, t: f32, t0: f32, t1: f32, in_t: &Self, out_t: &Self) -> Self;
+    fn cubic_spline(
+        &self,
+        other: &Self,
+        t: f32,
+        t0: f32,
+        t1: f32,
+        in_t: &Self,
+        out_t: &Self,
+    ) -> Self;
 }
 
 impl Interpolate for f32 {
     fn lerp(&self, other: &Self, t: f32) -> Self {
         self + (other - self) * t
     }
-    fn cubic_spline(&self, other: &Self, t: f32, t0: f32, t1: f32, in_t: &Self, out_t: &Self) -> Self {
+    fn cubic_spline(
+        &self,
+        other: &Self,
+        t: f32,
+        t0: f32,
+        t1: f32,
+        in_t: &Self,
+        out_t: &Self,
+    ) -> Self {
         let dt = t1 - t0;
         let t2 = t * t;
         let t3 = t2 * t;
@@ -167,7 +183,10 @@ impl Interpolate for f32 {
         let m0 = *out_t * dt;
         let p1 = *other;
         let m1 = *in_t * dt;
-        (2.0 * t3 - 3.0 * t2 + 1.0) * p0 + (t3 - 2.0 * t2 + t) * m0 + (-2.0 * t3 + 3.0 * t2) * p1 + (t3 - t2) * m1
+        (2.0 * t3 - 3.0 * t2 + 1.0) * p0
+            + (t3 - 2.0 * t2 + t) * m0
+            + (-2.0 * t3 + 3.0 * t2) * p1
+            + (t3 - t2) * m1
     }
 }
 
@@ -179,7 +198,15 @@ impl Interpolate for Vec3 {
             self.z + (other.z - self.z) * t,
         )
     }
-    fn cubic_spline(&self, other: &Self, t: f32, t0: f32, t1: f32, in_t: &Self, out_t: &Self) -> Self {
+    fn cubic_spline(
+        &self,
+        other: &Self,
+        t: f32,
+        t0: f32,
+        t1: f32,
+        in_t: &Self,
+        out_t: &Self,
+    ) -> Self {
         Vec3::new(
             self.x.cubic_spline(&other.x, t, t0, t1, &in_t.x, &out_t.x),
             self.y.cubic_spline(&other.y, t, t0, t1, &in_t.y, &out_t.y),
@@ -192,7 +219,15 @@ impl Interpolate for Quat {
     fn lerp(&self, other: &Self, t: f32) -> Self {
         self.nlerp(*other, t)
     }
-    fn cubic_spline(&self, other: &Self, t: f32, _t0: f32, _t1: f32, _in_t: &Self, _out_t: &Self) -> Self {
+    fn cubic_spline(
+        &self,
+        other: &Self,
+        t: f32,
+        _t0: f32,
+        _t1: f32,
+        _in_t: &Self,
+        _out_t: &Self,
+    ) -> Self {
         // Simplified: use nlerp for quaternion spline approximation
         self.lerp(other, t)
     }
@@ -305,13 +340,23 @@ impl<T: Interpolate> Curve<T> {
         let wrapped_time = match wrap {
             WrapMode::Once => time.min(duration),
             WrapMode::Loop => {
-                if duration > 0.0 { time % duration } else { 0.0 }
+                if duration > 0.0 {
+                    time % duration
+                } else {
+                    0.0
+                }
             }
             WrapMode::PingPong => {
-                if duration <= 0.0 { return self.default_value(); }
+                if duration <= 0.0 {
+                    return self.default_value();
+                }
                 let cycle = (time / duration) as i32;
                 let t = time % duration;
-                if cycle % 2 == 0 { t } else { duration - t }
+                if cycle % 2 == 0 {
+                    t
+                } else {
+                    duration - t
+                }
             }
             WrapMode::ClampForever => time.min(duration),
         };
@@ -341,7 +386,11 @@ impl<T: Interpolate> Curve<T> {
         let t0 = k0.time;
         let t1 = k1.time;
         let dt = t1 - t0;
-        let t = if dt > 0.0 { (wrapped_time - t0) / dt } else { 0.0 };
+        let t = if dt > 0.0 {
+            (wrapped_time - t0) / dt
+        } else {
+            0.0
+        };
 
         match k0.interpolation {
             Interpolation::Step => k0.value.clone(),
@@ -419,7 +468,12 @@ impl Track {
     }
 
     /// Create track with curves
-    pub fn with_curves(bone_index: usize, translation: Curve<Vec3>, rotation: Curve<Quat>, scale: Curve<Vec3>) -> Self {
+    pub fn with_curves(
+        bone_index: usize,
+        translation: Curve<Vec3>,
+        rotation: Curve<Quat>,
+        scale: Curve<Vec3>,
+    ) -> Self {
         Self {
             bone_index,
             translation,
@@ -493,12 +547,20 @@ pub struct AnimationEvent {
 impl AnimationEvent {
     /// Create a new event
     pub fn new(name: String, time: f32) -> Self {
-        Self { name, time, payload: None }
+        Self {
+            name,
+            time,
+            payload: None,
+        }
     }
 
     /// Create event with payload
     pub fn with_payload(name: String, time: f32, payload: String) -> Self {
-        Self { name, time, payload: Some(payload) }
+        Self {
+            name,
+            time,
+            payload: Some(payload),
+        }
     }
 
     /// Get event name
@@ -614,13 +676,23 @@ impl AnimationClip {
         match self.wrap_mode {
             WrapMode::Once => time.min(self.duration),
             WrapMode::Loop => {
-                if self.duration > 0.0 { time % self.duration } else { 0.0 }
+                if self.duration > 0.0 {
+                    time % self.duration
+                } else {
+                    0.0
+                }
             }
             WrapMode::PingPong => {
-                if self.duration <= 0.0 { return 0.0; }
+                if self.duration <= 0.0 {
+                    return 0.0;
+                }
                 let cycle = (time / self.duration) as i32;
                 let t = time % self.duration;
-                if cycle % 2 == 0 { t } else { self.duration - t }
+                if cycle % 2 == 0 {
+                    t
+                } else {
+                    self.duration - t
+                }
             }
             WrapMode::ClampForever => time.min(self.duration),
         }
@@ -631,7 +703,12 @@ impl AnimationClip {
         let wrapped_time = self.wrap_time(time);
 
         // Find max bone index to determine pose size
-        let max_bone = self.tracks.iter().map(|t| t.bone_index()).max().unwrap_or(0);
+        let max_bone = self
+            .tracks
+            .iter()
+            .map(|t| t.bone_index())
+            .max()
+            .unwrap_or(0);
         let mut pose = Pose::new(max_bone + 1);
 
         for track in &self.tracks {
@@ -654,7 +731,8 @@ impl AnimationClip {
 
     /// Get events triggered between two times
     pub fn events_in_range(&self, start_time: f32, end_time: f32) -> Vec<&AnimationEvent> {
-        self.events.iter()
+        self.events
+            .iter()
             .filter(|e| e.time >= start_time && e.time < end_time)
             .collect()
     }
@@ -680,7 +758,11 @@ impl BoneTransform {
     };
 
     pub fn new(position: Vec3, rotation: Quat, scale: Vec3) -> Self {
-        Self { position, rotation, scale }
+        Self {
+            position,
+            rotation,
+            scale,
+        }
     }
 
     /// Convert to matrix
@@ -827,7 +909,7 @@ impl Pose {
     /// Compute world matrices from local pose given skeleton
     pub fn local_to_world(&self, skeleton: &Skeleton) -> Vec<Mat4> {
         let mut world_matrices = vec![Mat4::IDENTITY; self.len()];
-        
+
         for i in 0..self.len() {
             let local = self.bones[i].to_matrix();
             let parent_idx = skeleton.bone(i).parent();
@@ -841,7 +923,7 @@ impl Pose {
                 world_matrices[i] = local;
             }
         }
-        
+
         world_matrices
     }
 
@@ -849,7 +931,7 @@ impl Pose {
     pub fn compute_skin_matrices(&self, skeleton: &Skeleton) -> Vec<Mat4> {
         let world_matrices = self.local_to_world(skeleton);
         let inverse_bind = skeleton.get_inverse_bind_matrices();
-        
+
         let mut skin_matrices = vec![Mat4::IDENTITY; self.len()];
         for i in 0..self.len().min(inverse_bind.len()) {
             skin_matrices[i] = world_matrices[i] * inverse_bind[i];
@@ -877,7 +959,12 @@ pub struct Bone {
 
 impl Bone {
     /// Create a new bone
-    pub fn new(name: String, parent: Option<usize>, local_bind_pose: BoneTransform, inverse_bind_pose: Mat4) -> Self {
+    pub fn new(
+        name: String,
+        parent: Option<usize>,
+        local_bind_pose: BoneTransform,
+        inverse_bind_pose: Mat4,
+    ) -> Self {
         Self {
             name,
             parent,
@@ -887,7 +974,13 @@ impl Bone {
     }
 
     /// Create bone with simple transform
-    pub fn simple(name: String, parent: Option<usize>, position: Vec3, rotation: Quat, scale: Vec3) -> Self {
+    pub fn simple(
+        name: String,
+        parent: Option<usize>,
+        position: Vec3,
+        rotation: Quat,
+        scale: Vec3,
+    ) -> Self {
         let local_bind = BoneTransform::new(position, rotation, scale);
         let inverse_bind = local_bind.to_matrix().inverse().unwrap_or(Mat4::IDENTITY);
         Self::new(name, parent, local_bind, inverse_bind)
@@ -931,14 +1024,11 @@ impl Skeleton {
     /// Create a new skeleton from bones
     pub fn new(bones: Vec<Bone>) -> Self {
         let bind_pose = Pose::new(bones.len());
-        let inverse_bind_matrices: Vec<Mat4> = bones.iter()
-            .map(|b| b.inverse_bind_pose())
-            .collect();
-        
+        let inverse_bind_matrices: Vec<Mat4> =
+            bones.iter().map(|b| b.inverse_bind_pose()).collect();
+
         // Find root bone (no parent)
-        let root_index = bones.iter()
-            .position(|b| b.parent.is_none())
-            .unwrap_or(0);
+        let root_index = bones.iter().position(|b| b.parent.is_none()).unwrap_or(0);
 
         Self {
             bones,
@@ -952,7 +1042,7 @@ impl Skeleton {
     pub fn with_bind_pose(bones: Vec<Bone>) -> Self {
         let num_bones = bones.len();
         let mut bind_pose = Pose::new(num_bones);
-        
+
         for (i, bone) in bones.iter().enumerate() {
             bind_pose.set_bone_transform(i, bone.local_bind_pose());
         }
@@ -973,13 +1063,12 @@ impl Skeleton {
         }
 
         // Compute inverse bind matrices
-        let inverse_bind_matrices: Vec<Mat4> = world_bind.iter()
+        let inverse_bind_matrices: Vec<Mat4> = world_bind
+            .iter()
             .map(|m| m.inverse().unwrap_or(Mat4::IDENTITY))
             .collect();
 
-        let root_index = bones.iter()
-            .position(|b| b.parent.is_none())
-            .unwrap_or(0);
+        let root_index = bones.iter().position(|b| b.parent.is_none()).unwrap_or(0);
 
         Self {
             bones,
@@ -1024,9 +1113,16 @@ impl Skeleton {
 
     /// Get children of a bone
     pub fn children(&self, parent: usize) -> Vec<usize> {
-        self.bones.iter()
+        self.bones
+            .iter()
             .enumerate()
-            .filter_map(|(i, b)| if b.parent == Some(parent) { Some(i) } else { None })
+            .filter_map(|(i, b)| {
+                if b.parent == Some(parent) {
+                    Some(i)
+                } else {
+                    None
+                }
+            })
             .collect()
     }
 
@@ -1093,7 +1189,10 @@ pub struct Skin {
 
 impl Skin {
     pub fn new(bone_names: Vec<String>, inverse_bind_matrices: Vec<Mat4>) -> Self {
-        Self { bone_names, inverse_bind_matrices }
+        Self {
+            bone_names,
+            inverse_bind_matrices,
+        }
     }
 
     pub fn bone_count(&self) -> usize {
@@ -1166,7 +1265,10 @@ pub struct ParameterMap {
 
 impl ParameterMap {
     pub fn new() -> Self {
-        Self { params: BTreeMap::new(), pending_triggers: vec![] }
+        Self {
+            params: BTreeMap::new(),
+            pending_triggers: vec![],
+        }
     }
 
     pub fn get(&self, name: &str) -> Option<&ParameterValue> {
@@ -1249,37 +1351,33 @@ impl Condition {
             Condition::Parameter(name, op, value) => {
                 let param = params.get(name);
                 match (param, value) {
-                    (Some(ParameterValue::Bool(p)), ParameterValue::Bool(v)) => {
-                        match op {
-                            CompareOp::Equal => *p == *v,
-                            CompareOp::NotEqual => *p != *v,
-                            _ => false,
-                        }
-                    }
-                    (Some(ParameterValue::Float(p)), ParameterValue::Float(v)) => {
-                        match op {
-                            CompareOp::Equal => (*p - *v).abs() < EPSILON,
-                            CompareOp::NotEqual => (*p - *v).abs() >= EPSILON,
-                            CompareOp::Less => *p < *v,
-                            CompareOp::LessEqual => *p <= *v,
-                            CompareOp::Greater => *p > *v,
-                            CompareOp::GreaterEqual => *p >= *v,
-                        }
-                    }
-                    (Some(ParameterValue::Int(p)), ParameterValue::Int(v)) => {
-                        match op {
-                            CompareOp::Equal => *p == *v,
-                            CompareOp::NotEqual => *p != *v,
-                            CompareOp::Less => *p < *v,
-                            CompareOp::LessEqual => *p <= *v,
-                            CompareOp::Greater => *p > *v,
-                            CompareOp::GreaterEqual => *p >= *v,
-                        }
-                    }
+                    (Some(ParameterValue::Bool(p)), ParameterValue::Bool(v)) => match op {
+                        CompareOp::Equal => *p == *v,
+                        CompareOp::NotEqual => *p != *v,
+                        _ => false,
+                    },
+                    (Some(ParameterValue::Float(p)), ParameterValue::Float(v)) => match op {
+                        CompareOp::Equal => (*p - *v).abs() < EPSILON,
+                        CompareOp::NotEqual => (*p - *v).abs() >= EPSILON,
+                        CompareOp::Less => *p < *v,
+                        CompareOp::LessEqual => *p <= *v,
+                        CompareOp::Greater => *p > *v,
+                        CompareOp::GreaterEqual => *p >= *v,
+                    },
+                    (Some(ParameterValue::Int(p)), ParameterValue::Int(v)) => match op {
+                        CompareOp::Equal => *p == *v,
+                        CompareOp::NotEqual => *p != *v,
+                        CompareOp::Less => *p < *v,
+                        CompareOp::LessEqual => *p <= *v,
+                        CompareOp::Greater => *p > *v,
+                        CompareOp::GreaterEqual => *p >= *v,
+                    },
                     _ => false,
                 }
             }
-            Condition::And(a, b) => a.evaluate(params, state_time) && b.evaluate(params, state_time),
+            Condition::And(a, b) => {
+                a.evaluate(params, state_time) && b.evaluate(params, state_time)
+            }
             Condition::Or(a, b) => a.evaluate(params, state_time) || b.evaluate(params, state_time),
             Condition::Not(c) => !c.evaluate(params, state_time),
             Condition::TimeElapsed(t) => state_time >= *t,
@@ -1326,7 +1424,13 @@ impl Transition {
     }
 
     /// Create transition with exit time
-    pub fn with_exit_time(from: String, to: String, duration: f32, exit_time: f32, condition: Condition) -> Self {
+    pub fn with_exit_time(
+        from: String,
+        to: String,
+        duration: f32,
+        exit_time: f32,
+        condition: Condition,
+    ) -> Self {
         Self {
             from,
             to,
@@ -1370,7 +1474,11 @@ impl Transition {
     pub fn can_trigger(&self, params: &ParameterMap, state_time: f32, state_duration: f32) -> bool {
         let cond_ok = self.condition.evaluate(params, state_time);
         let time_ok = if self.has_exit_time {
-            let normalized_time = if state_duration > 0.0 { state_time / state_duration } else { 0.0 };
+            let normalized_time = if state_duration > 0.0 {
+                state_time / state_duration
+            } else {
+                0.0
+            };
             normalized_time >= self.exit_time.unwrap_or(0.0)
         } else {
             true
@@ -1410,7 +1518,8 @@ impl BlendNode1D {
     pub fn push(&mut self, value: f32, clip_index: usize) {
         self.points.push((value, clip_index));
         // Sort by value
-        self.points.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(core::cmp::Ordering::Equal));
+        self.points
+            .sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(core::cmp::Ordering::Equal));
     }
 
     /// Get parameter name
@@ -1420,13 +1529,20 @@ impl BlendNode1D {
 
     /// Get duration (max of all clips)
     pub fn duration(&self, clips: &[AnimationClip]) -> f32 {
-        self.points.iter()
+        self.points
+            .iter()
             .filter_map(|(_, idx)| clips.get(*idx).map(|c| c.duration()))
             .fold(0.0, |a, b| a.max(b))
     }
 
     /// Interpolate poses based on parameter value
-    pub fn interpolate(&self, time: f32, param_value: f32, clips: &[AnimationClip], skeleton: &Skeleton) -> Pose {
+    pub fn interpolate(
+        &self,
+        time: f32,
+        param_value: f32,
+        clips: &[AnimationClip],
+        skeleton: &Skeleton,
+    ) -> Pose {
         if self.points.is_empty() {
             return Pose::new(skeleton.bone_count());
         }
@@ -1434,11 +1550,15 @@ impl BlendNode1D {
         // Find surrounding points
         if param_value <= self.points[0].0 {
             let clip = clips.get(self.points[0].1);
-            return clip.map(|c| c.sample(time)).unwrap_or_else(|| Pose::new(skeleton.bone_count()));
+            return clip
+                .map(|c| c.sample(time))
+                .unwrap_or_else(|| Pose::new(skeleton.bone_count()));
         }
         if param_value >= self.points.last().unwrap().0 {
             let clip = clips.get(self.points.last().unwrap().1);
-            return clip.map(|c| c.sample(time)).unwrap_or_else(|| Pose::new(skeleton.bone_count()));
+            return clip
+                .map(|c| c.sample(time))
+                .unwrap_or_else(|| Pose::new(skeleton.bone_count()));
         }
 
         // Binary search
@@ -1499,8 +1619,16 @@ impl BlendNode2D {
     }
 
     /// Create with points
-    pub fn with_points(x_parameter: String, y_parameter: String, points: Vec<(f32, f32, usize)>) -> Self {
-        Self { x_parameter, y_parameter, points }
+    pub fn with_points(
+        x_parameter: String,
+        y_parameter: String,
+        points: Vec<(f32, f32, usize)>,
+    ) -> Self {
+        Self {
+            x_parameter,
+            y_parameter,
+            points,
+        }
     }
 
     /// Add a blend point
@@ -1520,29 +1648,37 @@ impl BlendNode2D {
 
     /// Get duration (max of all clips)
     pub fn duration(&self, clips: &[AnimationClip]) -> f32 {
-        self.points.iter()
+        self.points
+            .iter()
             .filter_map(|(_, _, idx)| clips.get(*idx).map(|c| c.duration()))
             .fold(0.0, |a, b| a.max(b))
     }
 
     /// Interpolate poses based on (x, y) parameter values
-    pub fn interpolate(&self, time: f32, x: f32, y: f32, clips: &[AnimationClip], skeleton: &Skeleton) -> Pose {
+    pub fn interpolate(
+        &self,
+        time: f32,
+        x: f32,
+        y: f32,
+        clips: &[AnimationClip],
+        skeleton: &Skeleton,
+    ) -> Pose {
         if self.points.is_empty() {
             return Pose::new(skeleton.bone_count());
         }
 
         // Find nearest point (simplified)
-        let nearest = self.points.iter()
-            .min_by(|a, b| {
-                let da = (a.0 - x).powi(2) + (a.1 - y).powi(2);
-                let db = (b.0 - x).powi(2) + (b.1 - y).powi(2);
-                da.partial_cmp(&db).unwrap_or(core::cmp::Ordering::Equal)
-            });
+        let nearest = self.points.iter().min_by(|a, b| {
+            let da = (a.0 - x).powi(2) + (a.1 - y).powi(2);
+            let db = (b.0 - x).powi(2) + (b.1 - y).powi(2);
+            da.partial_cmp(&db).unwrap_or(core::cmp::Ordering::Equal)
+        });
 
         match nearest {
-            Some((_, _, idx)) => {
-                clips.get(*idx).map(|c| c.sample(time)).unwrap_or_else(|| Pose::new(skeleton.bone_count()))
-            }
+            Some((_, _, idx)) => clips
+                .get(*idx)
+                .map(|c| c.sample(time))
+                .unwrap_or_else(|| Pose::new(skeleton.bone_count())),
             None => Pose::new(skeleton.bone_count()),
         }
     }
@@ -1561,7 +1697,9 @@ pub struct AnimationMask {
 
 impl AnimationMask {
     pub fn new(num_bones: usize) -> Self {
-        Self { mask: vec![false; num_bones] }
+        Self {
+            mask: vec![false; num_bones],
+        }
     }
 
     pub fn set(&mut self, idx: usize, value: bool) {
@@ -1671,30 +1809,33 @@ impl IK {
         let upper_len = (elbow_pos - shoulder_pos).length();
         let lower_len = (wrist_pos - elbow_pos).length();
         let total_len = upper_len + lower_len;
-        
+
         // Distance to target
         let target_dist = (target_pos - shoulder_pos).length();
-        
+
         // Clamp target to reachable range
-        let clamped_dist = target_dist.min(total_len - EPSILON).max((upper_len - lower_len).abs() + EPSILON);
+        let clamped_dist = target_dist
+            .min(total_len - EPSILON)
+            .max((upper_len - lower_len).abs() + EPSILON);
         let clamped_target = shoulder_pos + (target_pos - shoulder_pos).normalize() * clamped_dist;
-        
+
         // Calculate desired elbow angle using law of cosines
-        let cos_angle = (upper_len * upper_len + lower_len * lower_len - clamped_dist * clamped_dist)
+        let cos_angle = (upper_len * upper_len + lower_len * lower_len
+            - clamped_dist * clamped_dist)
             / (2.0 * upper_len * lower_len);
         let elbow_angle = cos_angle.clamp(-1.0, 1.0).acos();
-        
+
         // Calculate shoulder rotation to point towards target
         let to_target = (clamped_target - shoulder_pos).normalize_or_zero();
         let to_elbow = (elbow_pos - shoulder_pos).normalize_or_zero();
-        
+
         // Rotation from current elbow direction to target direction
         let shoulder_rot = rotation_from_to(to_elbow, to_target, elbow_dir);
-        
+
         // Apply elbow bend
         let elbow_axis = elbow_dir.normalize_or_zero();
         let elbow_rot = quat_from_axis_angle(elbow_axis, -elbow_angle);
-        
+
         (shoulder_rot, elbow_rot)
     }
 
@@ -1712,7 +1853,7 @@ impl IK {
 
         let mut positions = chain_positions.to_vec();
         let mut rotations = vec![Quat::IDENTITY; n];
-        
+
         let tip_idx = n - 1;
         let tolerance_sq = tolerance * tolerance;
 
@@ -1727,22 +1868,22 @@ impl IK {
             for i in (0..tip_idx).rev() {
                 // Current tip position
                 let tip_pos = positions[tip_idx];
-                
+
                 // Joint position
                 let joint_pos = positions[i];
-                
+
                 // Vector from joint to tip
                 let to_tip = (tip_pos - joint_pos).normalize_or_zero();
-                
+
                 // Vector from joint to target
                 let to_target = (target_pos - joint_pos).normalize_or_zero();
-                
+
                 // Rotation to align tip with target
                 let rot = rotation_from_to_simple(to_tip, to_target);
-                
+
                 // Apply rotation
                 rotations[i] = rot * rotations[i];
-                
+
                 // Update positions of all bones after this joint
                 for j in (i + 1)..n {
                     let rel = positions[j] - positions[i];
@@ -1767,7 +1908,8 @@ impl IK {
         }
 
         // Calculate bone lengths
-        let bone_lengths: Vec<f32> = chain_positions.iter()
+        let bone_lengths: Vec<f32> = chain_positions
+            .iter()
             .skip(1)
             .enumerate()
             .map(|(i, p)| (*p - chain_positions[i]).length())
@@ -1820,39 +1962,40 @@ fn quat_from_axis_angle(axis: Vec3, angle: f32) -> Quat {
 fn rotation_from_to(from: Vec3, to: Vec3, up_hint: Vec3) -> Quat {
     let from = from.normalize_or_zero();
     let to = to.normalize_or_zero();
-    
+
     if (from - to).length_squared() < EPSILON {
         return Quat::IDENTITY;
     }
-    
+
     if (from + to).length_squared() < EPSILON {
         // Directions are opposite, use up hint
         let axis = up_hint.normalize_or_zero();
         return quat_from_axis_angle(axis, core::f32::consts::PI);
     }
-    
+
     let half = (from + to).normalize_or_zero();
     let cross = from.cross(half);
-    
+
     Quat {
         x: cross.x,
         y: cross.y,
         z: cross.z,
         w: from.dot(half),
-    }.normalize()
+    }
+    .normalize()
 }
 
 /// Helper: simple rotation from one direction to another
 fn rotation_from_to_simple(from: Vec3, to: Vec3) -> Quat {
     let from = from.normalize_or_zero();
     let to = to.normalize_or_zero();
-    
+
     let dot = from.dot(to);
-    
+
     if dot > 1.0 - EPSILON {
         return Quat::IDENTITY;
     }
-    
+
     if dot < -1.0 + EPSILON {
         // Find perpendicular axis
         let axis = if from.x.abs() > from.y.abs() {
@@ -1863,16 +2006,17 @@ fn rotation_from_to_simple(from: Vec3, to: Vec3) -> Quat {
         let cross = from.cross(axis).normalize_or_zero();
         return quat_from_axis_angle(cross, core::f32::consts::PI);
     }
-    
+
     let cross = from.cross(to);
     let s = (1.0 + dot).sqrt();
-    
+
     Quat {
         x: cross.x / s,
         y: cross.y / s,
         z: cross.z / s,
         w: s / 2.0,
-    }.normalize()
+    }
+    .normalize()
 }
 
 /// Aim IK: make a bone aim at target
@@ -1891,7 +2035,7 @@ impl AimIK {
 
     pub fn apply(&self, pose: &Pose, target_pos: Vec3, skeleton: &Skeleton) -> Pose {
         let mut result = pose.clone();
-        
+
         if self.bone_index >= pose.len() {
             return result;
         }
@@ -1901,7 +2045,7 @@ impl AimIK {
         if self.bone_index >= world_matrices.len() {
             return result;
         }
-        
+
         let bone_world_pos = Vec3::new(
             world_matrices[self.bone_index].cols[3][0],
             world_matrices[self.bone_index].cols[3][1],
@@ -1916,7 +2060,12 @@ impl AimIK {
 
         // Apply to bone
         let bone = pose.get_bone(self.bone_index);
-        result.set_bone(self.bone_index, bone.position, rot * bone.rotation, bone.scale);
+        result.set_bone(
+            self.bone_index,
+            bone.position,
+            rot * bone.rotation,
+            bone.scale,
+        );
 
         result
     }
@@ -1938,7 +2087,7 @@ impl LookAtIK {
 
     pub fn apply(&self, pose: &Pose, target_pos: Vec3, skeleton: &Skeleton) -> Pose {
         let mut result = pose.clone();
-        
+
         if self.bone_index >= pose.len() {
             return result;
         }
@@ -1948,7 +2097,7 @@ impl LookAtIK {
         if self.bone_index >= world_matrices.len() {
             return result;
         }
-        
+
         let bone_world_pos = Vec3::new(
             world_matrices[self.bone_index].cols[3][0],
             world_matrices[self.bone_index].cols[3][1],
@@ -1957,12 +2106,17 @@ impl LookAtIK {
 
         // Look direction
         let forward = (target_pos - bone_world_pos).normalize_or_zero();
-        
+
         // Build look-at rotation (simplified)
         let rot = rotation_from_to_simple(Vec3::Z, forward);
 
         let bone = pose.get_bone(self.bone_index);
-        result.set_bone(self.bone_index, bone.position, rot * bone.rotation, bone.scale);
+        result.set_bone(
+            self.bone_index,
+            bone.position,
+            rot * bone.rotation,
+            bone.scale,
+        );
 
         result
     }
@@ -2109,7 +2263,7 @@ mod tests {
         let mut curve: Curve<f32> = Curve::new();
         curve.push(Keyframe::new(0.0, 0.0));
         curve.push(Keyframe::new(1.0, 10.0));
-        
+
         assert_eq!(curve.sample_with_wrap(0.0, WrapMode::Once), 0.0);
         assert_eq!(curve.sample_with_wrap(0.5, WrapMode::Once), 5.0);
         assert_eq!(curve.sample_with_wrap(1.0, WrapMode::Once), 10.0);
@@ -2120,7 +2274,7 @@ mod tests {
         let mut curve: Curve<Vec3> = Curve::new();
         curve.push(Keyframe::new(0.0, Vec3::ZERO));
         curve.push(Keyframe::new(1.0, Vec3::ONE));
-        
+
         let mid = curve.sample_with_wrap(0.5, WrapMode::Once);
         assert!((mid.x - 0.5).abs() < EPSILON);
         assert!((mid.y - 0.5).abs() < EPSILON);
@@ -2131,8 +2285,11 @@ mod tests {
     fn test_curve_quat_slerp() {
         let mut curve: Curve<Quat> = Curve::new();
         curve.push(Keyframe::new(0.0, Quat::IDENTITY));
-        curve.push(Keyframe::new(1.0, Quat::from_rotation_y(core::f32::consts::PI)));
-        
+        curve.push(Keyframe::new(
+            1.0,
+            Quat::from_rotation_y(core::f32::consts::PI),
+        ));
+
         let mid = curve.sample_with_wrap(0.5, WrapMode::Once);
         // Should be rotation by PI/2
         let rotated = mid * Vec3::X;
@@ -2146,7 +2303,7 @@ mod tests {
         let mut curve: Curve<f32> = Curve::new();
         curve.push(Keyframe::new(0.0, 0.0));
         curve.push(Keyframe::new(1.0, 10.0));
-        
+
         assert_eq!(curve.sample_with_wrap(1.5, WrapMode::Loop), 5.0);
         assert_eq!(curve.sample_with_wrap(2.0, WrapMode::Loop), 0.0);
     }
@@ -2156,7 +2313,7 @@ mod tests {
         let mut curve: Curve<f32> = Curve::new();
         curve.push(Keyframe::new(0.0, 0.0));
         curve.push(Keyframe::new(1.0, 10.0));
-        
+
         assert_eq!(curve.sample_with_wrap(0.5, WrapMode::PingPong), 5.0);
         assert_eq!(curve.sample_with_wrap(1.5, WrapMode::PingPong), 5.0); // Going back
         assert_eq!(curve.sample_with_wrap(2.0, WrapMode::PingPong), 0.0); // Back to start
@@ -2166,13 +2323,18 @@ mod tests {
     fn test_pose_blend() {
         let mut pose_a = Pose::new(1);
         pose_a.set_bone(0, Vec3::ZERO, Quat::IDENTITY, Vec3::ONE);
-        
+
         let mut pose_b = Pose::new(1);
-        pose_b.set_bone(0, Vec3::ONE, Quat::from_rotation_y(core::f32::consts::PI), Vec3::splat(2.0));
-        
+        pose_b.set_bone(
+            0,
+            Vec3::ONE,
+            Quat::from_rotation_y(core::f32::consts::PI),
+            Vec3::splat(2.0),
+        );
+
         let blended = Pose::blend(&pose_a, &pose_b, 0.5);
         let bone = blended.get_bone(0);
-        
+
         assert!((bone.position.x - 0.5).abs() < EPSILON);
         assert!((bone.scale.x - 1.5).abs() < EPSILON);
     }
@@ -2181,13 +2343,18 @@ mod tests {
     fn test_pose_additive_blend() {
         let mut base = Pose::new(1);
         base.set_bone(0, Vec3::ZERO, Quat::IDENTITY, Vec3::ONE);
-        
+
         let mut additive = Pose::new(1);
-        additive.set_bone(0, Vec3::new(0.1, 0.0, 0.0), Quat::IDENTITY, Vec3::splat(1.1));
-        
+        additive.set_bone(
+            0,
+            Vec3::new(0.1, 0.0, 0.0),
+            Quat::IDENTITY,
+            Vec3::splat(1.1),
+        );
+
         let result = Pose::additive_blend(&base, &additive, 0.5);
         let bone = result.get_bone(0);
-        
+
         assert!((bone.position.x - 0.05).abs() < EPSILON);
         assert!((bone.scale.x - 1.05).abs() < EPSILON);
     }
@@ -2195,11 +2362,23 @@ mod tests {
     #[test]
     fn test_skeleton_find_bone() {
         let bones = vec![
-            Bone::simple("root".to_string(), None, Vec3::ZERO, Quat::IDENTITY, Vec3::ONE),
-            Bone::simple("child".to_string(), Some(0), Vec3::Y, Quat::IDENTITY, Vec3::ONE),
+            Bone::simple(
+                "root".to_string(),
+                None,
+                Vec3::ZERO,
+                Quat::IDENTITY,
+                Vec3::ONE,
+            ),
+            Bone::simple(
+                "child".to_string(),
+                Some(0),
+                Vec3::Y,
+                Quat::IDENTITY,
+                Vec3::ONE,
+            ),
         ];
         let skeleton = Skeleton::new(bones);
-        
+
         assert_eq!(skeleton.find_bone_by_name("root"), Some(0));
         assert_eq!(skeleton.find_bone_by_name("child"), Some(1));
         assert_eq!(skeleton.find_bone_by_name("missing"), None);
@@ -2208,12 +2387,30 @@ mod tests {
     #[test]
     fn test_skeleton_children() {
         let bones = vec![
-            Bone::simple("root".to_string(), None, Vec3::ZERO, Quat::IDENTITY, Vec3::ONE),
-            Bone::simple("child1".to_string(), Some(0), Vec3::Y, Quat::IDENTITY, Vec3::ONE),
-            Bone::simple("child2".to_string(), Some(0), Vec3::new(1.0, 0.0, 0.0), Quat::IDENTITY, Vec3::ONE),
+            Bone::simple(
+                "root".to_string(),
+                None,
+                Vec3::ZERO,
+                Quat::IDENTITY,
+                Vec3::ONE,
+            ),
+            Bone::simple(
+                "child1".to_string(),
+                Some(0),
+                Vec3::Y,
+                Quat::IDENTITY,
+                Vec3::ONE,
+            ),
+            Bone::simple(
+                "child2".to_string(),
+                Some(0),
+                Vec3::new(1.0, 0.0, 0.0),
+                Quat::IDENTITY,
+                Vec3::ONE,
+            ),
         ];
         let skeleton = Skeleton::new(bones);
-        
+
         let children = skeleton.children(0);
         assert_eq!(children.len(), 2);
         assert!(children.contains(&1));
@@ -2224,10 +2421,10 @@ mod tests {
     fn test_condition_parameter() {
         let mut params = ParameterMap::new();
         params.set("speed".to_string(), ParameterValue::Float(5.0));
-        
+
         let cond = Condition::param("speed", CompareOp::Greater, ParameterValue::Float(3.0));
         assert!(cond.evaluate(&params, 0.0));
-        
+
         let cond2 = Condition::param("speed", CompareOp::Less, ParameterValue::Float(3.0));
         assert!(!cond2.evaluate(&params, 0.0));
     }
@@ -2237,13 +2434,13 @@ mod tests {
         let mut params = ParameterMap::new();
         params.set("a".to_string(), ParameterValue::Bool(true));
         params.set("b".to_string(), ParameterValue::Bool(false));
-        
+
         let cond_a = Condition::param("a", CompareOp::Equal, ParameterValue::Bool(true));
         let cond_b = Condition::param("b", CompareOp::Equal, ParameterValue::Bool(true));
-        
+
         let and_cond = Condition::and(cond_a.clone(), cond_b.clone());
         assert!(!and_cond.evaluate(&params, 0.0));
-        
+
         let or_cond = Condition::or(cond_a, cond_b);
         assert!(or_cond.evaluate(&params, 0.0));
     }
@@ -2251,7 +2448,7 @@ mod tests {
     #[test]
     fn test_condition_time_elapsed() {
         let params = ParameterMap::new();
-        
+
         let cond = Condition::TimeElapsed(1.0);
         assert!(!cond.evaluate(&params, 0.5));
         assert!(cond.evaluate(&params, 1.0));
@@ -2263,11 +2460,11 @@ mod tests {
         let mut mask_a = AnimationMask::new(4);
         mask_a.set(0, true);
         mask_a.set(1, true);
-        
+
         let mut mask_b = AnimationMask::new(4);
         mask_b.set(2, true);
         mask_b.set(3, true);
-        
+
         let union = mask_a.union(&mask_b);
         assert!(union.get(0));
         assert!(union.get(1));
@@ -2280,11 +2477,11 @@ mod tests {
         let mut mask_a = AnimationMask::new(4);
         mask_a.set(0, true);
         mask_a.set(1, true);
-        
+
         let mut mask_b = AnimationMask::new(4);
         mask_b.set(0, true);
         mask_b.set(2, true);
-        
+
         let intersection = mask_a.intersection(&mask_b);
         assert!(intersection.get(0));
         assert!(!intersection.get(1));
@@ -2299,32 +2496,46 @@ mod tests {
         let wrist = Vec3::new(0.0, 2.0, 0.0);
         let target = Vec3::new(0.0, 1.0, 0.0); // Target at elbow position
         let elbow_dir = Vec3::Z;
-        
+
         let (shoulder_rot, elbow_rot) = IK::two_bone_ik(shoulder, elbow, wrist, target, elbow_dir);
-        
+
         // Verify rotations are valid (normalized)
-        assert!((shoulder_rot.x * shoulder_rot.x + shoulder_rot.y * shoulder_rot.y + 
-                 shoulder_rot.z * shoulder_rot.z + shoulder_rot.w * shoulder_rot.w - 1.0).abs() < 0.1);
-        assert!((elbow_rot.x * elbow_rot.x + elbow_rot.y * elbow_rot.y + 
-                 elbow_rot.z * elbow_rot.z + elbow_rot.w * elbow_rot.w - 1.0).abs() < 0.1);
+        assert!(
+            (shoulder_rot.x * shoulder_rot.x
+                + shoulder_rot.y * shoulder_rot.y
+                + shoulder_rot.z * shoulder_rot.z
+                + shoulder_rot.w * shoulder_rot.w
+                - 1.0)
+                .abs()
+                < 0.1
+        );
+        assert!(
+            (elbow_rot.x * elbow_rot.x
+                + elbow_rot.y * elbow_rot.y
+                + elbow_rot.z * elbow_rot.z
+                + elbow_rot.w * elbow_rot.w
+                - 1.0)
+                .abs()
+                < 0.1
+        );
     }
 
     #[test]
     fn test_ik_ccd() {
         // Simple test: verify CCD produces valid rotations
-        let positions = vec![
-            Vec3::ZERO,
-            Vec3::Y,
-            Vec3::new(0.0, 2.0, 0.0),
-        ];
+        let positions = vec![Vec3::ZERO, Vec3::Y, Vec3::new(0.0, 2.0, 0.0)];
         let target = Vec3::new(0.0, 1.0, 0.0);
-        
+
         let rotations = IK::ccd_ik(&positions, target, 0.5, 5);
-        
+
         // Verify all rotations are valid quaternions
         for rot in &rotations {
             let len_sq = rot.x * rot.x + rot.y * rot.y + rot.z * rot.z + rot.w * rot.w;
-            assert!((len_sq - 1.0).abs() < 0.1, "Invalid quaternion length: {}", len_sq);
+            assert!(
+                (len_sq - 1.0).abs() < 0.1,
+                "Invalid quaternion length: {}",
+                len_sq
+            );
         }
     }
 
@@ -2337,13 +2548,13 @@ mod tests {
             Vec3::new(0.0, 3.0, 0.0),
         ];
         let target = Vec3::new(0.0, 2.0, 1.0);
-        
+
         let result = IK::fabrik(&positions, target, 0.01, 10);
-        
+
         let tip = result[result.len() - 1];
         let dist = (tip - target).length();
         assert!(dist < 0.1, "FABRIK distance to target: {}", dist);
-        
+
         // Root should stay fixed
         assert!((result[0] - positions[0]).length() < EPSILON);
     }
@@ -2351,15 +2562,15 @@ mod tests {
     #[test]
     fn test_animation_clip_sample() {
         let mut clip = AnimationClip::new("test".to_string(), 1.0);
-        
+
         let mut track = Track::new(0);
         track.translation.push(Keyframe::new(0.0, Vec3::ZERO));
         track.translation.push(Keyframe::new(1.0, Vec3::ONE));
         clip.add_track(track);
-        
+
         let pose = clip.sample(0.5);
         let bone = pose.get_bone(0);
-        
+
         assert!((bone.position.x - 0.5).abs() < EPSILON);
     }
 
@@ -2368,11 +2579,11 @@ mod tests {
         let mut clip = AnimationClip::new("test".to_string(), 2.0);
         clip.add_event(AnimationEvent::new("step".to_string(), 0.5));
         clip.add_event(AnimationEvent::new("step".to_string(), 1.5));
-        
+
         let events = clip.events_in_range(0.0, 1.0);
         assert_eq!(events.len(), 1);
         assert_eq!(events[0].name(), "step");
-        
+
         let events2 = clip.events_in_range(1.0, 2.0);
         assert_eq!(events2.len(), 1);
     }
@@ -2384,18 +2595,24 @@ mod tests {
             AnimationClip::new("walk".to_string(), 1.0),
             AnimationClip::new("run".to_string(), 1.0),
         ];
-        
+
         let mut blend = BlendNode1D::new("speed".to_string());
         blend.push(0.0, 0);
         blend.push(0.5, 1);
         blend.push(1.0, 2);
-        
-        let skeleton = Skeleton::new(vec![Bone::simple("root".to_string(), None, Vec3::ZERO, Quat::IDENTITY, Vec3::ONE)]);
-        
+
+        let skeleton = Skeleton::new(vec![Bone::simple(
+            "root".to_string(),
+            None,
+            Vec3::ZERO,
+            Quat::IDENTITY,
+            Vec3::ONE,
+        )]);
+
         // Test interpolation at boundaries
         let pose_0 = blend.interpolate(0.0, 0.0, &clips, &skeleton);
         let pose_1 = blend.interpolate(0.0, 1.0, &clips, &skeleton);
-        
+
         // Should sample valid poses
         assert_eq!(pose_0.len(), skeleton.bone_count());
         assert_eq!(pose_1.len(), skeleton.bone_count());
@@ -2403,14 +2620,10 @@ mod tests {
 
     #[test]
     fn test_bone_transform_to_matrix() {
-        let transform = BoneTransform::new(
-            Vec3::new(1.0, 2.0, 3.0),
-            Quat::IDENTITY,
-            Vec3::ONE,
-        );
-        
+        let transform = BoneTransform::new(Vec3::new(1.0, 2.0, 3.0), Quat::IDENTITY, Vec3::ONE);
+
         let mat = transform.to_matrix();
-        
+
         // Check translation
         assert!((mat.cols[3][0] - 1.0).abs() < EPSILON);
         assert!((mat.cols[3][1] - 2.0).abs() < EPSILON);
@@ -2421,19 +2634,31 @@ mod tests {
     fn test_pose_local_to_world() {
         // Create a simple skeleton with root at origin and child at Y=1
         let bones = vec![
-            Bone::simple("root".to_string(), None, Vec3::ZERO, Quat::IDENTITY, Vec3::ONE),
-            Bone::simple("child".to_string(), Some(0), Vec3::new(0.0, 1.0, 0.0), Quat::IDENTITY, Vec3::ONE),
+            Bone::simple(
+                "root".to_string(),
+                None,
+                Vec3::ZERO,
+                Quat::IDENTITY,
+                Vec3::ONE,
+            ),
+            Bone::simple(
+                "child".to_string(),
+                Some(0),
+                Vec3::new(0.0, 1.0, 0.0),
+                Quat::IDENTITY,
+                Vec3::ONE,
+            ),
         ];
         let skeleton = Skeleton::with_bind_pose(bones);
-        
+
         // Use bind pose as the pose
         let pose = skeleton.bind_pose().clone();
         let world_matrices = pose.local_to_world(&skeleton);
-        
+
         // Root should be at origin
         assert!((world_matrices[0].cols[3][0] - 0.0).abs() < EPSILON);
         assert!((world_matrices[0].cols[3][1] - 0.0).abs() < EPSILON);
-        
+
         // Child should be at Y=1 (root at origin + child local Y=1)
         assert!((world_matrices[1].cols[3][1] - 1.0).abs() < EPSILON);
     }
@@ -2445,7 +2670,7 @@ mod tests {
         curve.insert_sorted(Keyframe::new(0.0, 0.0));
         curve.insert_sorted(Keyframe::new(2.0, 20.0));
         curve.insert_sorted(Keyframe::new(0.5, 5.0));
-        
+
         assert_eq!(curve.keyframes()[0].time(), 0.0);
         assert_eq!(curve.keyframes()[1].time(), 0.5);
         assert_eq!(curve.keyframes()[2].time(), 1.0);
@@ -2457,7 +2682,7 @@ mod tests {
         let mut curve: Curve<f32> = Curve::new();
         curve.push(Keyframe::with_interpolation(0.0, 0.0, Interpolation::Step));
         curve.push(Keyframe::with_interpolation(1.0, 10.0, Interpolation::Step));
-        
+
         // Step interpolation should hold previous value
         assert_eq!(curve.sample_with_wrap(0.0, WrapMode::Once), 0.0);
         assert_eq!(curve.sample_with_wrap(0.5, WrapMode::Once), 0.0); // Still 0 until we hit 1.0

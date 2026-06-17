@@ -11,8 +11,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 /// Transport type enumeration
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum TransportType {
     /// TCP transport (reliable, ordered)
     #[default]
@@ -60,7 +59,10 @@ pub struct TcpTransport {
 impl TcpTransport {
     /// Create a TCP transport by connecting to an address
     pub fn connect(addr: SocketAddr) -> NetResult<Self> {
-        let socket = TcpStream::connect_timeout(&addr, Duration::from_millis(crate::DEFAULT_RPC_TIMEOUT_MS))?;
+        let socket = TcpStream::connect_timeout(
+            &addr,
+            Duration::from_millis(crate::DEFAULT_RPC_TIMEOUT_MS),
+        )?;
         let local_addr = socket.local_addr()?;
         let peer_addr = socket.peer_addr()?;
 
@@ -114,7 +116,8 @@ impl NetChannel for TcpTransport {
             use std::io::Write;
             stream.write_all(data)?;
             stream.flush()?;
-            self.bytes_out.fetch_add(data.len() as u64, Ordering::SeqCst);
+            self.bytes_out
+                .fetch_add(data.len() as u64, Ordering::SeqCst);
             self.msg_out.fetch_add(1, Ordering::SeqCst);
             Ok(())
         } else {
@@ -260,7 +263,12 @@ impl UdpTransport {
     }
 
     /// Send data to a specific address with reliability setting
-    pub fn send_to(&self, addr: SocketAddr, data: &[u8], reliability: Reliability) -> NetResult<()> {
+    pub fn send_to(
+        &self,
+        addr: SocketAddr,
+        data: &[u8],
+        reliability: Reliability,
+    ) -> NetResult<()> {
         if !self.connected.load(Ordering::SeqCst) {
             return Err(NetError::ConnectionClosed);
         }
@@ -268,7 +276,8 @@ impl UdpTransport {
         let mut socket = self.socket.lock();
         if let Some(sock) = socket.as_ref() {
             sock.send_to(data, addr)?;
-            self.bytes_out.fetch_add(data.len() as u64, Ordering::SeqCst);
+            self.bytes_out
+                .fetch_add(data.len() as u64, Ordering::SeqCst);
             self.msg_out.fetch_add(1, Ordering::SeqCst);
             Ok(())
         } else {
@@ -422,7 +431,8 @@ impl NetChannel for WebSocketTransport {
 
         let mut queue = self.send_queue.lock();
         queue.push_back(data.to_vec());
-        self.bytes_out.fetch_add(data.len() as u64, Ordering::SeqCst);
+        self.bytes_out
+            .fetch_add(data.len() as u64, Ordering::SeqCst);
         self.msg_out.fetch_add(1, Ordering::SeqCst);
         Ok(())
     }
@@ -561,9 +571,7 @@ impl TransportBuilder {
                 })?;
                 Ok(Arc::new(WebSocketTransport::connect(&url)?))
             }
-            TransportType::Memory => {
-                Err(NetError::NotImplemented)
-            }
+            TransportType::Memory => Err(NetError::NotImplemented),
         }
     }
 }

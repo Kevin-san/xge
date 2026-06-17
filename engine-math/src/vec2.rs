@@ -280,13 +280,13 @@ mod tests {
     fn test_lerp_extreme_values() {
         let a = Vec2::new(-100.0, -100.0);
         let b = Vec2::new(100.0, 100.0);
-        
+
         // t = 0 should return a
         assert_eq!(a.lerp(b, 0.0), a);
-        
+
         // t = 1 should return b
         assert_eq!(a.lerp(b, 1.0), b);
-        
+
         // t = 0.5 should return midpoint
         assert_eq!(a.lerp(b, 0.5), Vec2::ZERO);
     }
