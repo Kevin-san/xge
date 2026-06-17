@@ -25,6 +25,11 @@ pub trait NetMessage: Serialize + DeserializeOwned + Send + Sync + 'static {
 
     /// Deserialize message from bytes
     fn decode(data: &[u8]) -> NetResult<Self> {
+        // 限制反序列化大小以防止 DoS 攻击
+        const MAX_MESSAGE_SIZE: usize = 10 * 1024 * 1024; // 10MB
+        if data.len() > MAX_MESSAGE_SIZE {
+            return Err(NetError::Deserialization("Message too large".to_string()));
+        }
         bincode::deserialize(data).map_err(|e| NetError::Deserialization(e.to_string()))
     }
 }
@@ -93,6 +98,11 @@ impl Message {
 
     /// Deserialize message wrapper from bytes
     pub fn from_bytes(data: &[u8]) -> NetResult<Self> {
+        // 限制反序列化大小以防止 DoS 攻击
+        const MAX_MESSAGE_SIZE: usize = 10 * 1024 * 1024; // 10MB
+        if data.len() > MAX_MESSAGE_SIZE {
+            return Err(NetError::Deserialization("Message too large".to_string()));
+        }
         bincode::deserialize(data).map_err(|e| NetError::Deserialization(e.to_string()))
     }
 

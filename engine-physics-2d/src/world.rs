@@ -107,21 +107,18 @@ impl PhysicsWorld2D {
             return;
         }
 
-        // 获取要移除的刚体的碰撞体索引
-        let collider_indices = self.bodies[index].collider_indices().to_vec();
+        // 首先收集所有要移除的碰撞体索引（按降序排列避免索引偏移问题）
+        let mut collider_indices = self.bodies[index].collider_indices().to_vec();
+        collider_indices.sort_by(|a, b| b.cmp(a)); // 降序: [2, 1, 0]
 
-        // 移除所有关联的碰撞体
-        for collider_idx in &collider_indices {
-            if *collider_idx < self.colliders.len() {
-                self.colliders.remove(*collider_idx);
+        // 从高索引到低索引移除，避免索引偏移
+        for collider_idx in collider_indices {
+            if collider_idx < self.colliders.len() {
+                self.colliders.remove(collider_idx);
             }
         }
 
-        // 移除刚体
         self.bodies.remove(index);
-
-        // 更新所有其他刚体的碰撞体索引（因为移除操作会改变索引）
-        // 同时从 collision_pairs 中移除涉及该刚体的碰撞对
         self.reindex_colliders_and_pairs();
     }
 
@@ -164,16 +161,15 @@ impl PhysicsWorld2D {
             return;
         }
 
-        // 找到拥有此碰撞体的刚体并移除其索引引用
+        // 首先从所有刚体中移除此碰撞体的索引引用
         for body in &mut self.bodies {
             body.remove_collider_index(index);
         }
 
-        // 移除碰撞体
+        // 然后再实际移除碰撞体
         self.colliders.remove(index);
 
-        // 更新所有刚体的碰撞体索引（移除后索引会变化）
-        // 索引大于被移除索引的需要减1
+        // 最后更新所有刚体的索引（将大于被移除索引的减1）
         for body in &mut self.bodies {
             body.update_collider_indices_after_remove(index);
         }

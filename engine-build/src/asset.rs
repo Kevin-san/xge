@@ -35,8 +35,12 @@ impl AssetPipeline {
             return Ok(());
         }
 
-        for entry in WalkDir::new(&self.asset_dir) {
+        for entry in WalkDir::new(&self.asset_dir).follow_links(false) {
             let entry = entry?;
+            // 跳过符号链接以防止符号链接穿越攻击
+            if entry.path_is_symlink() {
+                continue;
+            }
             if entry.file_type().is_file() {
                 let rel_path = entry.path().strip_prefix(&self.asset_dir)?;
                 let path = rel_path.to_path_buf();
@@ -109,6 +113,10 @@ impl AssetPipeline {
 
         for entry in &self.entries {
             let src_path = self.asset_dir.join(&entry.path);
+            // 跳过符号链接以防止符号链接穿越攻击
+            if src_path.is_symlink() {
+                continue;
+            }
             let dest_path = out_path.join(&entry.path);
             if src_path.exists() {
                 if let Some(parent) = dest_path.parent() {

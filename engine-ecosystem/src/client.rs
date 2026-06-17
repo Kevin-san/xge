@@ -38,8 +38,10 @@ impl AssetStoreClient {
     }
 
     /// 登录
+    /// 注意：此为模拟实现，仅用于测试。实际部署时应实现真实的HTTP认证请求。
     pub fn login(&mut self, username: &str, _password: &str) -> Result<(), AssetStoreError> {
         // 简化实现，实际需要 HTTP 请求
+        // 仅用于本地测试和开发环境
         self.auth_token = Some(AuthToken::new("mock_token".to_string()));
         self.user_profile = Some(UserProfile {
             username: username.to_string(),
@@ -325,7 +327,10 @@ impl AssetStoreClient {
     }
 
     /// 结账
+    /// 注意：此为模拟实现，仅用于测试。实际部署时应实现真实的支付网关集成。
     pub fn checkout(&mut self, _payment_method: PaymentMethod) -> Result<Order, AssetStoreError> {
+        // 模拟支付处理，实际需要调用支付网关
+        // 仅用于本地测试和开发环境
         let items = self.cart.read().items().to_vec();
         let total = self.cart.read().total();
 
