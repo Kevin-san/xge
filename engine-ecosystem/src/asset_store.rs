@@ -47,8 +47,21 @@ impl AssetStore {
     }
 
     pub fn has_updates(&self) -> Vec<AssetId> {
-        // 简化实现，实际需要检查远程版本
-        Vec::new()
+        // 收集本地已安装资源的ID和版本
+        let local_versions: Vec<(AssetId, AssetVersion)> = self
+            .installed_assets
+            .read()
+            .iter()
+            .map(|(id, asset)| (id.clone(), asset.version.clone()))
+            .collect();
+
+        if local_versions.is_empty() {
+            return Vec::new();
+        }
+
+        // 使用 RemoteAssetClient 检查更新
+        let client = RemoteAssetClient::new(self.config.server_url.clone());
+        client.check_updates(&local_versions).unwrap_or_default()
     }
 
     /// 创建快照
@@ -373,5 +386,137 @@ impl CommentSystem {
 impl Default for CommentSystem {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+// ============================================================================
+// Remote Asset Client (HTTP)
+// ============================================================================
+
+/// HTTP 客户端，用于与资源商店服务端通信。
+/// 使用同步HTTP请求（ureq）获取资源列表、检查更新和下载资源。
+pub struct RemoteAssetClient {
+    base_url: String,
+    /// 连接超时（毫秒）
+    timeout_ms: u64,
+    /// API 密钥（可选）
+    api_key: Option<String>,
+}
+
+impl RemoteAssetClient {
+    /// 创建新的远程资源客户端
+    pub fn new(base_url: String) -> Self {
+        Self {
+            base_url,
+            timeout_ms: 10000,
+            api_key: None,
+        }
+    }
+
+    /// 设置超时
+    pub fn with_timeout_ms(mut self, timeout_ms: u64) -> Self {
+        self.timeout_ms = timeout_ms;
+        self
+    }
+
+    /// 设置 API 密钥
+    pub fn with_api_key(mut self, api_key: String) -> Self {
+        self.api_key = Some(api_key);
+        self
+    }
+
+    /// 检查服务端是否可达
+    pub fn ping(&self) -> anyhow::Result<()> {
+        let client = ureq::Agent::new();
+        let url = format!("{}/ping", self.base_url);
+        let mut req = client.get(&url).timeout(std::time::Duration::from_millis(self.timeout_ms));
+        if let Some(ref key) = self.api_key {
+            req = req.set("Authorization", &format!("Bearer {}", key));
+        }
+        let response = req.call()?;
+        if response.status() < 400 {
+            Ok(())
+        } else {
+            Err(anyhow::anyhow!(
+                "Server returned {}",
+                response.status()
+            ))
+        }
+    }
+
+    /// 获取资源列表
+    pub fn list_assets(&self) -> anyhow::Result<Vec<AssetSummary>> {
+        let client = ureq::Agent::new();
+        let url = format!("{}/api/v1/assets", self.base_url);
+        let mut req = client.get(&url).timeout(std::time::Duration::from_millis(self.timeout_ms));
+        if let Some(ref key) = self.api_key {
+            req = req.set("Authorization", &format!("Bearer {}", key));
+        }
+        let response = req.call()?;
+        if response.status() >= 400 {
+            return Err(anyhow::anyhow!(
+                "Server returned {}",
+                response.status()
+            ));
+        }
+        let assets: Vec<AssetSummary> = response.into_json()?;
+        Ok(assets)
+    }
+
+    /// 检查资源是否有更新
+    pub fn check_updates(&self, local_versions: &[(AssetId, AssetVersion)]) -> anyhow::Result<Vec<AssetId>> {
+        let client = ureq::Agent::new();
+        let url = format!("{}/api/v1/updates", self.base_url);
+        let mut req = client
+            .post(&url)
+            .timeout(std::time::Duration::from_millis(self.timeout_ms));
+        if let Some(ref key) = self.api_key {
+            req = req.set("Authorization", &format!("Bearer {}", key));
+        }
+        let response = req.send_json(local_versions)?;
+        if response.status() >= 400 {
+            return Err(anyhow::anyhow!(
+                "Server returned {}",
+                response.status()
+            ));
+        }
+        let updates: Vec<AssetId> = response.into_json()?;
+        Ok(updates)
+    }
+
+    /// 下载资源到指定目录
+    pub fn download_asset(&self, asset_id: &AssetId, dest_dir: &std::path::Path) -> anyhow::Result<()> {
+        let client = ureq::Agent::new();
+        let url = format!("{}/api/v1/assets/{}/download", self.base_url, asset_id);
+        let mut req = client.get(&url).timeout(std::time::Duration::from_millis(self.timeout_ms * 10)); // 下载超时更长
+        if let Some(ref key) = self.api_key {
+            req = req.set("Authorization", &format!("Bearer {}", key));
+        }
+        let response = req.call()?;
+        if response.status() >= 400 {
+            return Err(anyhow::anyhow!(
+                "Download failed: {}",
+                response.status()
+            ));
+        }
+
+        // 确保目标目录存在
+        if let Some(parent) = dest_dir.parent() {
+            if !parent.exists() {
+                std::fs::create_dir_all(parent)?;
+            }
+        }
+
+        // 将响应体写入文件
+        let mut dest_path = PathBuf::from(dest_dir);
+        dest_path.push(format!("{}.rgepkg", asset_id));
+        let mut file = std::fs::File::create(&dest_path)?;
+        std::io::copy(&mut response.into_reader(), &mut file)?;
+        Ok(())
+    }
+
+    /// 获取服务端点
+    pub fn base_url(&self) -> &str {
+        &self.base_url
     }
 }

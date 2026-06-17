@@ -1,14 +1,36 @@
-//! Transport layer implementations (TCP, UDP, WebSocket).
+//! Transport layer implementations (TCP, UDP, WebSocket, TLS).
+//!
+//! TLS transport uses rustls for encrypted TCP connections.
+//! Note: UDP does not support native TLS; DTLS would require a separate
+//! datagram-oriented TLS implementation at the application layer.
 
 use crate::channel::{ChannelConfig, NetChannel, Reliability};
 use crate::error::{NetError, NetResult};
 use crate::stats::NetStats;
 use parking_lot::Mutex;
+use rustls::{ClientConfig, RootCertStore};
 use std::collections::VecDeque;
+use std::fs;
+use std::io::{Read, Write as IoWrite};
 use std::net::{SocketAddr, TcpStream, UdpSocket};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
+
+/// Helper to capture TLS write output into a byte vector.
+struct TlsWriteCapture<'a> {
+    buf: &'a mut Vec<u8>,
+}
+
+impl<'a> IoWrite for TlsWriteCapture<'a> {
+    fn write(&mut self, data: &[u8]) -> std::io::Result<usize> {
+        self.buf.extend_from_slice(data);
+        Ok(data.len())
+    }
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
 
 /// Transport type enumeration
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
@@ -18,6 +40,8 @@ pub enum TransportType {
     Tcp,
     /// UDP transport (unreliable, can be configured)
     Udp,
+    /// TLS transport (encrypted TCP)
+    Tls,
     /// WebSocket transport
     WebSocket,
     /// In-memory transport (for testing)
@@ -513,12 +537,400 @@ impl NetworkTransport for WebSocketTransport {
     }
 }
 
+// ============================================================================
+// TLS Transport (rustls 0.23)
+// ============================================================================
+
+/// TLS (encrypted TCP) transport configuration.
+#[derive(Debug, Clone)]
+pub struct TlsConfig {
+    /// Domain name for certificate verification (SNI).
+    domain: String,
+    /// Path to a custom CA certificate (PEM format).
+    ca_file: Option<String>,
+    /// Path to a client certificate (PEM format).
+    client_cert_file: Option<String>,
+    /// Path to a client private key (PEM format).
+    client_key_file: Option<String>,
+}
+
+impl TlsConfig {
+    /// Create a new TLS config for a domain.
+    pub fn new(domain: String) -> Self {
+        Self {
+            domain,
+            ca_file: None,
+            client_cert_file: None,
+            client_key_file: None,
+        }
+    }
+
+    /// Add a custom CA certificate file (PEM format).
+    pub fn with_ca_file(mut self, path: String) -> Self {
+        self.ca_file = Some(path);
+        self
+    }
+
+    /// Add a client certificate for mTLS.
+    pub fn with_client_cert(mut self, cert_path: String, key_path: String) -> Self {
+        self.client_cert_file = Some(cert_path);
+        self.client_key_file = Some(key_path);
+        self
+    }
+
+    /// Get domain name.
+    pub fn domain(&self) -> &str {
+        &self.domain
+    }
+
+    /// Build a rustls ClientConfig from this configuration.
+    /// Uses Mozilla's webpki-roots for CA verification by default.
+    pub fn build_client_config(&self) -> NetResult<ClientConfig> {
+        let mut root_store = RootCertStore::empty();
+        // Add Mozilla's root CAs
+        root_store.extend(
+            webpki_roots::TLS_SERVER_ROOTS
+                .iter()
+                .cloned(),
+        );
+
+        // Load custom CA if provided
+        if let Some(ca_path) = &self.ca_file {
+            let ca_pem = fs::read(ca_path)
+                .map_err(|e| NetError::Tls(format!("Failed to read CA file: {}", e)))?;
+            for item in rustls_pemfile::certs(&mut ca_pem.as_slice())
+                .map_err(|e| NetError::Tls(format!("Failed to parse CA cert: {}", e)))?
+            {
+                let der = rustls::pki_types::CertificateDer::from(item);
+                root_store.add(der)
+                    .map_err(|e| NetError::Tls(format!("Failed to add CA cert: {}", e)))?;
+            }
+        }
+
+        let config = ClientConfig::builder()
+            .with_root_certificates(root_store)
+            .with_no_client_auth();
+
+        Ok(config)
+    }
+}
+
+impl Default for TlsConfig {
+    fn default() -> Self {
+        Self::new("localhost".to_string())
+    }
+}
+
+/// TLS-over-TCP transport using rustls.
+/// Encrypts all data using TLS. Note: UDP does not support native TLS (DTLS
+/// would require a separate datagram-oriented TLS implementation).
+///
+/// This transport uses the rustls `ClientConnection` with a synchronous wrapper
+/// for blocking I/O. The underlying socket is set to blocking mode.
+pub struct TlsTcpTransport {
+    /// TLS client connection.
+    conn: Arc<Mutex<rustls::client::ClientConnection>>,
+    /// Raw underlying TCP stream.
+    stream: Arc<Mutex<TcpStream>>,
+    local_addr: Option<SocketAddr>,
+    peer_addr: Option<SocketAddr>,
+    connected: AtomicBool,
+    send_queue: Mutex<VecDeque<Vec<u8>>>,
+    recv_queue: Mutex<VecDeque<Vec<u8>>>,
+    bytes_in: AtomicU64,
+    bytes_out: AtomicU64,
+    msg_in: AtomicU64,
+    msg_out: AtomicU64,
+}
+
+impl TlsTcpTransport {
+    /// Connect to a TLS server at the given address.
+    pub fn connect(addr: SocketAddr, config: TlsConfig) -> NetResult<Self> {
+        let tcp = TcpStream::connect_timeout(
+            &addr,
+            Duration::from_millis(crate::DEFAULT_RPC_TIMEOUT_MS),
+        )?;
+        tcp.set_nonblocking(false)?;
+        let local_addr = tcp.local_addr()?;
+        let peer_addr = tcp.peer_addr()?;
+
+        let client_config = config.build_client_config()?;
+        let domain = rustls::pki_types::ServerName::try_from(config.domain.as_str())
+            .map_err(|e| NetError::Tls(format!("Invalid domain: {}", e)))?
+            .to_owned();
+
+        let conn = rustls::client::ClientConnection::new(
+            Arc::new(client_config),
+            domain,
+        )
+        .map_err(|e| NetError::Tls(format!("Failed to create TLS session: {}", e)))?;
+
+        let conn_arc = Arc::new(Mutex::new(conn));
+        let stream_arc = Arc::new(Mutex::new(tcp));
+
+        let transport = Self {
+            conn: Arc::clone(&conn_arc),
+            stream: Arc::clone(&stream_arc),
+            local_addr: Some(local_addr),
+            peer_addr: Some(peer_addr),
+            connected: AtomicBool::new(true),
+            send_queue: Mutex::new(VecDeque::new()),
+            recv_queue: Mutex::new(VecDeque::new()),
+            bytes_in: AtomicU64::new(0),
+            bytes_out: AtomicU64::new(0),
+            msg_in: AtomicU64::new(0),
+            msg_out: AtomicU64::new(0),
+        };
+
+        // Complete TLS handshake
+        transport.perform_handshake()?;
+
+        Ok(transport)
+    }
+
+    /// Perform TLS handshake.
+    fn perform_handshake(&self) -> NetResult<()> {
+        let mut conn = self.conn.lock();
+        let mut stream = self.stream.lock();
+
+        loop {
+            // Process any pending packets
+            if let Err(e) = conn.process_new_packets() {
+                return Err(NetError::Tls(format!("TLS handshake error: {}", e)));
+            }
+
+            if !conn.is_handshaking() {
+                break;
+            }
+
+            // Write any pending TLS output to socket
+            if conn.wants_write() {
+                let mut out = Vec::new();
+                {
+                    let mut capturer = TlsWriteCapture { buf: &mut out };
+                    conn.write_tls(&mut capturer)?;
+                }
+                if !out.is_empty() {
+                    stream.write_all(&out)?;
+                    stream.flush()?;
+                }
+            }
+
+            // Read from socket into TLS connection
+            if conn.wants_read() {
+                let mut read_buf = [0u8; 8192];
+                match stream.read(&mut read_buf) {
+                    Ok(0) => break,
+                    Ok(n) => {
+                        conn.read_tls(&mut &read_buf[..n])?;
+                    }
+                    Err(e) => {
+                        if e.kind() == std::io::ErrorKind::WouldBlock {
+                            continue;
+                        }
+                        return Err(NetError::Tls(format!("Socket read error: {}", e)));
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Read pending TLS data from the socket and process it.
+    fn do_io(&self) -> NetResult<()> {
+        let mut conn = self.conn.lock();
+        let mut stream = self.stream.lock();
+
+        // Read from socket into TLS connection
+        if conn.wants_read() {
+            let mut buf = [0u8; 16384];
+            match stream.read(&mut buf) {
+                Ok(0) => {}
+                Ok(n) => {
+                    conn.read_tls(&mut &buf[..n])?;
+                }
+                Err(e) => {
+                    if e.kind() != std::io::ErrorKind::WouldBlock {
+                        return Err(NetError::Tls(format!("Socket read error: {}", e)));
+                    }
+                }
+            }
+        }
+
+        // Process any new packets
+        conn.process_new_packets()
+            .map_err(|e| NetError::Tls(format!("TLS process error: {}", e)))?;
+
+        // Write any pending TLS data to socket
+        if conn.wants_write() {
+            let mut out = Vec::new();
+            {
+                let mut capturer = TlsWriteCapture { buf: &mut out };
+                conn.write_tls(&mut capturer)?;
+            }
+            if !out.is_empty() {
+                stream.write_all(&out)?;
+                stream.flush()?;
+            }
+        }
+
+        Ok(())
+    }
+}
+
+impl NetChannel for TlsTcpTransport {
+    fn send(&self, data: &[u8]) -> NetResult<()> {
+        if !self.connected.load(Ordering::SeqCst) {
+            return Err(NetError::ConnectionClosed);
+        }
+
+        {
+            let mut queue = self.send_queue.lock();
+            queue.push_back(data.to_vec());
+        }
+
+        // Write all queued data through TLS
+        let mut queue = self.send_queue.lock();
+        while let Some(chunk) = queue.pop_front() {
+            let mut conn = self.conn.lock();
+            let mut stream = self.stream.lock();
+
+            // Write to TLS connection's write buffer
+            conn.writer().write_all(&chunk)
+                .map_err(|e| NetError::Tls(format!("TLS write error: {}", e)))?;
+            self.bytes_out.fetch_add(chunk.len() as u64, Ordering::SeqCst);
+            self.msg_out.fetch_add(1, Ordering::SeqCst);
+
+            // Write pending TLS data to socket
+            let mut out = Vec::new();
+            {
+                let mut capturer = TlsWriteCapture { buf: &mut out };
+                conn.write_tls(&mut capturer)?;
+            }
+            if !out.is_empty() {
+                stream.write_all(&out)?;
+                stream.flush()?;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn recv(&self) -> NetResult<Option<Vec<u8>>> {
+        if !self.connected.load(Ordering::SeqCst) {
+            return Err(NetError::ConnectionClosed);
+        }
+
+        // Try to read more data
+        let _ = self.do_io();
+
+        // Read from TLS connection
+        let mut conn = self.conn.lock();
+        let mut reader = conn.reader();
+
+        let mut buf = Vec::new();
+        match reader.read_to_end(&mut buf) {
+            Ok(0) => {}
+            Ok(n) => {
+                self.bytes_in.fetch_add(n as u64, Ordering::SeqCst);
+                self.msg_in.fetch_add(1, Ordering::SeqCst);
+            }
+            Err(e) => {
+                if e.kind() != std::io::ErrorKind::WouldBlock {
+                    return Err(NetError::Tls(format!("TLS read error: {}", e)));
+                }
+            }
+        }
+        drop(reader);
+
+        if buf.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(buf))
+        }
+    }
+
+    fn is_connected(&self) -> bool {
+        self.connected.load(Ordering::SeqCst)
+    }
+
+    fn peer_addr(&self) -> Option<SocketAddr> {
+        self.peer_addr
+    }
+
+    fn local_addr(&self) -> Option<SocketAddr> {
+        self.local_addr
+    }
+
+    fn close(&self) -> NetResult<()> {
+        self.connected.store(false, Ordering::SeqCst);
+        let mut conn = self.conn.lock();
+        conn.send_close_notify();
+        let mut stream = self.stream.lock();
+        let mut out = Vec::new();
+        {
+            let mut capturer = TlsWriteCapture { buf: &mut out };
+            let _ = conn.write_tls(&mut capturer);
+        }
+        if !out.is_empty() {
+            let _ = stream.write_all(&out);
+            let _ = stream.flush();
+        }
+        Ok(())
+    }
+
+    fn stats(&self) -> NetStats {
+        NetStats {
+            bytes_in: self.bytes_in.load(Ordering::SeqCst),
+            bytes_out: self.bytes_out.load(Ordering::SeqCst),
+            msg_in: self.msg_in.load(Ordering::SeqCst),
+            msg_out: self.msg_out.load(Ordering::SeqCst),
+            rtt_ms: 0,
+        }
+    }
+}
+
+impl NetworkTransport for TlsTcpTransport {
+    fn transport_type(&self) -> TransportType {
+        TransportType::Tls
+    }
+
+    fn create_channel(&self, config: ChannelConfig) -> NetResult<Arc<dyn NetChannel>> {
+        Ok(Arc::new(Self {
+            conn: Arc::clone(&self.conn),
+            stream: Arc::clone(&self.stream),
+            local_addr: self.local_addr,
+            peer_addr: self.peer_addr,
+            connected: AtomicBool::new(self.connected.load(Ordering::SeqCst)),
+            send_queue: Mutex::new(VecDeque::with_capacity(config.max_send_queue)),
+            recv_queue: Mutex::new(VecDeque::with_capacity(config.max_recv_queue)),
+            bytes_in: AtomicU64::new(0),
+            bytes_out: AtomicU64::new(0),
+            msg_in: AtomicU64::new(0),
+            msg_out: AtomicU64::new(0),
+        }))
+    }
+
+    fn is_active(&self) -> bool {
+        self.connected.load(Ordering::SeqCst)
+    }
+
+    fn local_addr(&self) -> Option<SocketAddr> {
+        self.local_addr
+    }
+
+    fn shutdown(&self) -> NetResult<()> {
+        self.close()
+    }
+}
+
 /// Transport builder for creating transports with configuration
 pub struct TransportBuilder {
     transport_type: TransportType,
     address: Option<SocketAddr>,
     url: Option<String>,
     config: ChannelConfig,
+    tls_config: Option<TlsConfig>,
 }
 
 impl TransportBuilder {
@@ -529,6 +941,7 @@ impl TransportBuilder {
             address: None,
             url: None,
             config: ChannelConfig::default(),
+            tls_config: None,
         }
     }
 
@@ -550,6 +963,12 @@ impl TransportBuilder {
         self
     }
 
+    /// Set TLS configuration
+    pub fn tls_config(mut self, tls_config: TlsConfig) -> Self {
+        self.tls_config = Some(tls_config);
+        self
+    }
+
     /// Build the transport
     pub fn build(self) -> NetResult<Arc<dyn NetworkTransport>> {
         match self.transport_type {
@@ -564,6 +983,13 @@ impl TransportBuilder {
                     NetError::InvalidState("Address required for UDP transport".to_string())
                 })?;
                 Ok(Arc::new(UdpTransport::bind(addr)?))
+            }
+            TransportType::Tls => {
+                let addr = self.address.ok_or_else(|| {
+                    NetError::InvalidState("Address required for TLS transport".to_string())
+                })?;
+                let tls_cfg = self.tls_config.unwrap_or_default();
+                Ok(Arc::new(TlsTcpTransport::connect(addr, tls_cfg)?))
             }
             TransportType::WebSocket => {
                 let url = self.url.ok_or_else(|| {

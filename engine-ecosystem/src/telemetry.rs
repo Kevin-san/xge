@@ -13,6 +13,8 @@ pub struct TelemetryConfig {
     enabled: bool,
     sample_interval_ms: u64,
     max_buffer_size: usize,
+    /// 连接超时（毫秒）
+    timeout_ms: u64,
 }
 
 impl TelemetryConfig {
@@ -22,6 +24,7 @@ impl TelemetryConfig {
             enabled,
             sample_interval_ms: 1000,
             max_buffer_size: 1000,
+            timeout_ms: 5000,
         }
     }
 
@@ -39,6 +42,12 @@ impl TelemetryConfig {
 
     pub fn max_buffer_size(&self) -> usize {
         self.max_buffer_size
+    }
+
+    /// 设置超时
+    pub fn with_timeout_ms(mut self, timeout_ms: u64) -> Self {
+        self.timeout_ms = timeout_ms;
+        self
     }
 }
 
@@ -152,15 +161,35 @@ impl Telemetry {
         &self.session_id
     }
 
-    /// 刷新事件到远程服务器（模拟）
+    /// 刷新事件到远程服务器。
+    /// 使用同步HTTP POST将事件发送到配置的endpoint。
     pub fn flush(&mut self) -> anyhow::Result<()> {
         if !self.config.enabled {
             return Ok(());
         }
 
-        // 简化实现，实际需要发送 HTTP 请求
-        self.clear_buffer();
-        Ok(())
+        let events = self.events();
+        if events.is_empty() {
+            return Ok(());
+        }
+
+        let client = ureq::Agent::new();
+        let url = format!("{}/events", self.config.endpoint);
+        let response = client
+            .post(&url)
+            .timeout(std::time::Duration::from_millis(self.config.timeout_ms))
+            .send_json(&events)?;
+
+        if response.status() >= 200 && response.status() < 300 {
+            self.clear_buffer();
+            Ok(())
+        } else {
+            Err(anyhow::anyhow!(
+                "Server returned error: {} {}",
+                response.status(),
+                response.status_text()
+            ))
+        }
     }
 
     /// 生成遥测报告
@@ -439,43 +468,91 @@ impl Default for TelemetryAggregator {
 
 /// 远程遥测客户端
 pub struct RemoteTelemetryClient {
-    #[allow(dead_code)]
     endpoint: String,
     connected: bool,
+    /// 连接超时（毫秒）
+    timeout_ms: u64,
 }
 
 impl RemoteTelemetryClient {
+    /// 创建新的遥测客户端
     pub fn new(endpoint: String) -> Self {
         Self {
             endpoint,
             connected: false,
+            timeout_ms: 5000,
         }
     }
 
-    pub fn connect(&mut self) -> anyhow::Result<()> {
-        // 简化实现
-        self.connected = true;
-        Ok(())
+    /// 设置连接超时
+    pub fn with_timeout_ms(mut self, timeout_ms: u64) -> Self {
+        self.timeout_ms = timeout_ms;
+        self
     }
 
+    /// 连接到遥测服务器（验证连接）
+    pub fn connect(&mut self) -> anyhow::Result<()> {
+        let client = ureq::Agent::new();
+        // 发送 HEAD 请求验证服务器可达性
+        let response = client
+            .head(&self.endpoint)
+            .timeout(std::time::Duration::from_millis(self.timeout_ms))
+            .call()?;
+        if response.status() < 400 {
+            self.connected = true;
+            Ok(())
+        } else {
+            Err(anyhow::anyhow!(
+                "Server returned {} {}",
+                response.status(),
+                response.status_text()
+            ))
+        }
+    }
+
+    /// 断开连接
     pub fn disconnect(&mut self) {
         self.connected = false;
     }
 
+    /// 是否已连接
     pub fn is_connected(&self) -> bool {
         self.connected
     }
 
-    pub fn send(&mut self, _events: &[TelemetryEvent]) -> anyhow::Result<()> {
+    /// 发送遥测事件到服务器。
+    /// 使用同步HTTP POST。
+    pub fn send(&mut self, events: &[TelemetryEvent]) -> anyhow::Result<()> {
         if !self.connected {
             return Err(anyhow::anyhow!("Not connected"));
         }
-        // 简化实现，实际需要 HTTP POST
-        Ok(())
+
+        let client = ureq::Agent::new();
+        let response = client
+            .post(&self.endpoint)
+            .timeout(std::time::Duration::from_millis(self.timeout_ms))
+            .send_json(events)?;
+
+        if response.status() < 400 {
+            Ok(())
+        } else {
+            Err(anyhow::anyhow!(
+                "Server returned {} {}",
+                response.status(),
+                response.status_text()
+            ))
+        }
+    }
+
+    /// 获取服务端点
+    pub fn endpoint(&self) -> &str {
+        &self.endpoint
     }
 }
 
 /// 远程遥测服务器（模拟）
+/// 注意：这是一个测试用的模拟服务器，用于本地验证协议格式。
+/// 生产环境应使用专门的遥测服务（如 Prometheus + Grafana, Jaeger 等）。
 pub struct RemoteTelemetryServer {
     #[allow(dead_code)]
     port: u16,
@@ -509,6 +586,7 @@ impl RemoteTelemetryServer {
         &self.received_events
     }
 
+    /// 接收事件（用于测试）
     pub fn receive(&mut self, events: Vec<TelemetryEvent>) {
         self.received_events.extend(events);
     }

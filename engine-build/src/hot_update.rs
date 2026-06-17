@@ -1,11 +1,25 @@
 //! Hot update and differential patching
 //!
 //! Provides differential update capability for incremental asset updates.
+//! Includes Ed25519 signature verification to ensure patch authenticity.
 
 use crate::{AssetManifest, BuildResult, DiffResult};
+use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
+use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
+use rand_core::OsRng;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
+
+/// Encode bytes to base64.
+fn base64_encode(data: impl AsRef<[u8]>) -> String {
+    BASE64.encode(data)
+}
+
+/// Decode base64 string to bytes.
+fn base64_decode(data: &str) -> Result<Vec<u8>, base64::DecodeError> {
+    BASE64.decode(data)
+}
 
 /// Hot update manager
 pub struct HotUpdate;
@@ -22,11 +36,24 @@ impl HotUpdate {
             new_manifest: new_manifest.clone(),
             file_changes,
             size_bytes: total_size,
+            signature: None,
         }
     }
 
-    /// Apply patch to current directory
-    pub fn apply(current_dir: impl AsRef<Path>, patch: &HotUpdatePatch) -> BuildResult<()> {
+    /// Apply patch to current directory.
+    /// If `public_key` is provided, the patch signature is verified before applying.
+    pub fn apply(
+        current_dir: impl AsRef<Path>,
+        patch: &HotUpdatePatch,
+        public_key: Option<&VerifyingKey>,
+    ) -> BuildResult<()> {
+        // Verify signature if a public key is provided
+        if let Some(key) = public_key {
+            if let Some(result) = patch.verify_opt(key) {
+                result?;
+            }
+        }
+
         let dir = current_dir.as_ref();
 
         for change in &patch.file_changes {
@@ -113,6 +140,9 @@ pub struct HotUpdatePatch {
     pub file_changes: Vec<FileChange>,
     /// Total size in bytes
     pub size_bytes: u64,
+    /// Ed25519 signature over the canonical patch payload (base64 encoded)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub signature: Option<String>,
 }
 
 impl HotUpdatePatch {
@@ -128,6 +158,7 @@ impl HotUpdatePatch {
             new_manifest,
             file_changes,
             size_bytes,
+            signature: None,
         }
     }
 
@@ -149,6 +180,81 @@ impl HotUpdatePatch {
     /// Get total size
     pub fn size_bytes(&self) -> u64 {
         self.size_bytes
+    }
+
+    /// Check if patch is signed
+    pub fn is_signed(&self) -> bool {
+        self.signature.is_some()
+    }
+
+    /// Get signature (base64 encoded)
+    pub fn signature(&self) -> Option<&str> {
+        self.signature.as_deref()
+    }
+
+    /// Get the canonical signing payload for this patch.
+    /// Excludes the signature field itself to avoid self-referential signatures.
+    fn signing_payload(&self) -> BuildResult<Vec<u8>> {
+        #[derive(Serialize)]
+        struct SignablePatch<'a> {
+            version: &'a str,
+            new_manifest: &'a AssetManifest,
+            file_changes: &'a [FileChange],
+            size_bytes: u64,
+        }
+        let payload = SignablePatch {
+            version: &self.version,
+            new_manifest: &self.new_manifest,
+            file_changes: &self.file_changes,
+            size_bytes: self.size_bytes,
+        };
+        serde_json::to_vec(&payload).map_err(|e| crate::BuildError::parse_error(e.to_string()))
+    }
+
+    /// Sign this patch with an Ed25519 signing key.
+    /// Stores the signature (base64 encoded) in the patch.
+    pub fn sign(&mut self, signing_key: &SigningKey) -> BuildResult<()> {
+        let payload = self.signing_payload()?;
+        let sig = signing_key.sign(&payload);
+        self.signature = Some(base64_encode(sig.to_bytes()));
+        Ok(())
+    }
+
+    /// Verify the patch signature against a public key.
+    /// Returns Ok(()) if signature is valid, Err if missing or invalid.
+    pub fn verify(&self, public_key: &VerifyingKey) -> BuildResult<()> {
+        let sig_str = self.signature.as_ref()
+            .ok_or_else(|| crate::BuildError::signature_error("Patch has no signature".to_string()))?;
+
+        let sig_bytes = base64_decode(sig_str)
+            .map_err(|e| crate::BuildError::signature_error(format!("Invalid base64: {}", e)))?;
+
+        let sig = Signature::from_slice(&sig_bytes)
+            .map_err(|_| crate::BuildError::signature_error("Signature has wrong length".to_string()))?;
+
+        let payload = self.signing_payload()?;
+        public_key
+            .verify(&payload, &sig)
+            .map_err(|_| crate::BuildError::signature_error("Signature verification failed".to_string()))
+    }
+
+    /// Verify the patch signature, returning None if unsigned, Some(Ok) if valid, Some(Err) if invalid.
+    pub fn verify_opt(&self, public_key: &VerifyingKey) -> Option<BuildResult<()>> {
+        if let Some(sig_str) = &self.signature {
+            let result = (|| {
+                let sig_bytes = base64_decode(sig_str)
+                    .map_err(|e| crate::BuildError::signature_error(format!("Invalid base64: {}", e)))?;
+                let sig = Signature::from_slice(&sig_bytes)
+                    .map_err(|_| crate::BuildError::signature_error("Signature has wrong length".to_string()))?;
+                let payload = self.signing_payload()?;
+                public_key
+                    .verify(&payload, &sig)
+                    .map_err(|_| crate::BuildError::signature_error("Signature verification failed".to_string()))
+            })();
+            Some(result)
+        } else {
+            None
+        }
     }
 
     /// Serialize to bytes (JSON)
@@ -174,6 +280,14 @@ impl HotUpdatePatch {
         let bytes = fs::read(path.as_ref())?;
         Self::from_bytes(&bytes)
     }
+}
+
+/// Generate a new Ed25519 key pair for patch signing.
+#[allow(dead_code)]
+pub fn generate_signing_keypair() -> (SigningKey, VerifyingKey) {
+    let signing_key = SigningKey::generate(&mut OsRng);
+    let verifying_key = signing_key.verifying_key();
+    (signing_key, verifying_key)
 }
 
 /// File change type
@@ -324,7 +438,83 @@ mod tests {
                 hash: "".to_string(),
             }],
         );
-        HotUpdate::apply(dir.path(), &patch).unwrap();
+        // Apply without signature verification (no key provided)
+        HotUpdate::apply(dir.path(), &patch, None).unwrap();
         assert!(dir.path().join("assets.manifest").exists());
+    }
+
+    #[test]
+    fn test_patch_sign_and_verify() {
+        let (signing_key, verifying_key) = generate_signing_keypair();
+
+        let mut patch = HotUpdatePatch::new(
+            "2.0.0".to_string(),
+            create_test_manifest("2.0.0", vec![]),
+            vec![FileChange::Added {
+                path: PathBuf::from("new.png"),
+                size: 100,
+                hash: "abc".to_string(),
+            }],
+        );
+        assert!(!patch.is_signed());
+
+        // Sign the patch
+        patch.sign(&signing_key).unwrap();
+        assert!(patch.is_signed());
+        assert!(patch.signature().is_some());
+
+        // Verify with correct key
+        patch.verify(&verifying_key).unwrap();
+
+        // Verify fails with wrong key
+        let (_, wrong_key) = generate_signing_keypair();
+        assert!(patch.verify(&wrong_key).is_err());
+    }
+
+    #[test]
+    fn test_patch_verify_unsigned() {
+        let (_, verifying_key) = generate_signing_keypair();
+        let patch = HotUpdatePatch::new(
+            "1.0.0".to_string(),
+            create_test_manifest("1.0.0", vec![]),
+            vec![],
+        );
+
+        // verify_opt returns None for unsigned patch
+        assert!(patch.verify_opt(&verifying_key).is_none());
+
+        // verify returns Err for unsigned patch
+        assert!(patch.verify(&verifying_key).is_err());
+    }
+
+    #[test]
+    fn test_patch_apply_requires_valid_signature() {
+        let (signing_key, verifying_key) = generate_signing_keypair();
+        let dir = tempdir().unwrap();
+
+        let mut patch = HotUpdatePatch::new(
+            "2.0.0".to_string(),
+            create_test_manifest("2.0.0", vec![]),
+            vec![FileChange::Added {
+                path: PathBuf::from("signed_file.txt"),
+                size: 10,
+                hash: "xyz".to_string(),
+            }],
+        );
+
+        // Unsigned patch can be applied with no key
+        HotUpdate::apply(dir.path(), &patch, None).unwrap();
+
+        // Sign patch
+        patch.sign(&signing_key).unwrap();
+
+        // Apply with correct key succeeds
+        let dir2 = tempdir().unwrap();
+        HotUpdate::apply(dir2.path(), &patch, Some(&verifying_key)).unwrap();
+
+        // Apply with wrong key fails
+        let (_, wrong_key) = generate_signing_keypair();
+        let dir3 = tempdir().unwrap();
+        assert!(HotUpdate::apply(dir3.path(), &patch, Some(&wrong_key)).is_err());
     }
 }
