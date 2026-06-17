@@ -17,6 +17,10 @@ pub struct Contact {
     pub normal_impulse: f32,
     /// 切向冲量
     pub tangent_impulse: f32,
+    /// 恢复系数
+    pub restitution: f32,
+    /// 摩擦系数
+    pub friction: f32,
 }
 
 impl Contact {
@@ -28,6 +32,8 @@ impl Contact {
             penetration,
             normal_impulse: 0.0,
             tangent_impulse: 0.0,
+            restitution: 0.2,
+            friction: 0.4,
         }
     }
 }

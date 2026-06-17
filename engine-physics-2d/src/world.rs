@@ -226,11 +226,15 @@ impl PhysicsWorld2D {
                     continue;
                 }
 
-                if self.check_aabb_overlap(i, j) {
+                let overlap = self.check_aabb_overlap(i, j);
+                eprintln!("broad_phase: body {} pos={:?} body {} pos={:?} overlap={}",
+                    i, self.bodies[i].position(), j, self.bodies[j].position(), overlap);
+                if overlap {
                     self.collision_pairs.push((i, j));
                 }
             }
         }
+        eprintln!("broad_phase produced {} pairs", self.collision_pairs.len());
     }
 
     fn check_aabb_overlap(&self, body_a: usize, body_b: usize) -> bool {
@@ -278,8 +282,10 @@ impl PhysicsWorld2D {
             let body_a = &self.bodies[body_a_idx];
             let body_b = &self.bodies[body_b_idx];
 
+            eprintln!("narrow_phase: bodies {} and {}", body_a_idx, body_b_idx);
             for &collider_a_idx in body_a.collider_indices() {
                 for &collider_b_idx in body_b.collider_indices() {
+                    eprintln!("  colliders {} vs {}", collider_a_idx, collider_b_idx);
                     let collider_a = &self.colliders[collider_a_idx];
                     let collider_b = &self.colliders[collider_b_idx];
 
@@ -289,6 +295,7 @@ impl PhysicsWorld2D {
                         collider_b, 
                         body_b
                     ) {
+                        eprintln!("  -> collision! normal={:?} pen={}", manifold.normal, manifold.penetration);
                         let key = (collider_a_idx.min(collider_b_idx), collider_a_idx.max(collider_b_idx));
                         
                         let prev_manifold = previous_manifolds.get(&key);
@@ -301,6 +308,8 @@ impl PhysicsWorld2D {
                         }
 
                         self.manifolds.insert(key, manifold);
+                    } else {
+                        eprintln!("  -> no collision");
                     }
                 }
             }
@@ -345,10 +354,10 @@ impl PhysicsWorld2D {
                 self.circle_circle_collision(pos_a, *r1, pos_b, *r2)
             }
             (crate::ColliderShape::Circle { radius }, crate::ColliderShape::Rectangle { half_extents }) => {
-                self.circle_rectangle_collision(pos_a, *radius, pos_b, half_extents, rot_b)
+                self.circle_rectangle_collision(pos_a, *radius, pos_b, *half_extents, rot_b)
             }
             (crate::ColliderShape::Rectangle { half_extents }, crate::ColliderShape::Circle { radius }) => {
-                let manifold = self.circle_rectangle_collision(pos_b, *radius, pos_a, half_extents, rot_a);
+                let manifold = self.circle_rectangle_collision(pos_b, *radius, pos_a, *half_extents, rot_a);
                 manifold.map(|mut m| {
                     m.normal = -m.normal;
                     m
@@ -381,6 +390,8 @@ impl PhysicsWorld2D {
             position: pos_a + normal * r1,
             normal,
             penetration,
+            normal_impulse: 0.0,
+            tangent_impulse: 0.0,
             restitution: self.config.default_restitution,
             friction: self.config.default_friction,
         };
@@ -389,6 +400,8 @@ impl PhysicsWorld2D {
             contacts: vec![contact],
             body_a: 0,
             body_b: 0,
+            normal,
+            penetration,
         })
     }
 
@@ -432,6 +445,8 @@ impl PhysicsWorld2D {
             position: closest_point,
             normal,
             penetration,
+            normal_impulse: 0.0,
+            tangent_impulse: 0.0,
             restitution: self.config.default_restitution,
             friction: self.config.default_friction,
         };
@@ -440,6 +455,8 @@ impl PhysicsWorld2D {
             contacts: vec![contact],
             body_a: 0,
             body_b: 0,
+            normal,
+            penetration,
         })
     }
 
@@ -464,6 +481,8 @@ impl PhysicsWorld2D {
             position: pos_a + normal * penetration,
             normal,
             penetration,
+            normal_impulse: 0.0,
+            tangent_impulse: 0.0,
             restitution: self.config.default_restitution,
             friction: self.config.default_friction,
         };
@@ -472,6 +491,8 @@ impl PhysicsWorld2D {
             contacts: vec![contact],
             body_a: 0,
             body_b: 0,
+            normal,
+            penetration,
         })
     }
 
@@ -614,6 +635,8 @@ impl PhysicsWorld2D {
                     position: Vec2::ZERO,
                     normal,
                     penetration: min_dist,
+                    normal_impulse: 0.0,
+                    tangent_impulse: 0.0,
                     restitution: self.config.default_restitution,
                     friction: self.config.default_friction,
                 };
@@ -622,6 +645,8 @@ impl PhysicsWorld2D {
                     contacts: vec![contact],
                     body_a: 0,
                     body_b: 0,
+                    normal,
+                    penetration: min_dist,
                 });
             }
 
@@ -632,6 +657,8 @@ impl PhysicsWorld2D {
                     position: Vec2::ZERO,
                     normal,
                     penetration: min_dist,
+                    normal_impulse: 0.0,
+                    tangent_impulse: 0.0,
                     restitution: self.config.default_restitution,
                     friction: self.config.default_friction,
                 };
@@ -640,6 +667,8 @@ impl PhysicsWorld2D {
                     contacts: vec![contact],
                     body_a: 0,
                     body_b: 0,
+                    normal,
+                    penetration: min_dist,
                 });
             }
 
@@ -681,26 +710,43 @@ impl PhysicsWorld2D {
     }
 
     fn resolve_collisions(&mut self) {
-        for ((collider_a_idx, collider_b_idx), manifold) in &mut self.manifolds {
-            let body_a_idx = self.find_body_for_collider(*collider_a_idx);
-            let body_b_idx = self.find_body_for_collider(*collider_b_idx);
+        // Collect manifold info outside of the mutable borrow of self
+        let manifolds: Vec<((usize, usize), Manifold)> = self
+            .manifolds
+            .drain()
+            .collect();
 
-            if let (Some(body_a_idx), Some(body_b_idx)) = (body_a_idx, body_b_idx) {
-                let body_a = &mut self.bodies[body_a_idx];
-                let body_b = &mut self.bodies[body_b_idx];
+        for ((collider_a_idx, collider_b_idx), manifold) in manifolds {
+            let body_a_idx = self.find_body_for_collider(collider_a_idx);
+            let body_b_idx = self.find_body_for_collider(collider_b_idx);
 
-                if body_a.is_static() && body_b.is_static() {
+            if let (Some(a), Some(b)) = (body_a_idx, body_b_idx) {
+                if a == b {
                     continue;
                 }
-
+                let use_bodies = a < b;
                 for contact in &manifold.contacts {
-                    self.resolve_single_contact(body_a, body_b, contact);
+                    if use_bodies {
+                        let (left, right) = self.bodies.split_at_mut(b);
+                        let body_a = &mut left[a];
+                        let body_b = &mut right[0];
+                        if !(body_a.is_static() && body_b.is_static()) {
+                            Self::apply_contact(body_a, body_b, contact);
+                        }
+                    } else {
+                        let (left, right) = self.bodies.split_at_mut(a);
+                        let body_b = &mut left[b];
+                        let body_a = &mut right[0];
+                        if !(body_a.is_static() && body_b.is_static()) {
+                            Self::apply_contact(body_b, body_a, contact);
+                        }
+                    }
                 }
             }
         }
     }
 
-    fn resolve_single_contact(&mut self, body_a: &mut RigidBody2D, body_b: &mut RigidBody2D, contact: &Contact) {
+    fn apply_contact(body_a: &mut RigidBody2D, body_b: &mut RigidBody2D, contact: &Contact) {
         let relative_vel = body_b.linear_velocity() - body_a.linear_velocity();
         let vel_along_normal = relative_vel.dot(contact.normal);
 
@@ -751,26 +797,51 @@ impl PhysicsWorld2D {
         let slop = 0.005;
         let baumgarte = 0.2;
 
-        for ((collider_a_idx, collider_b_idx), manifold) in &mut self.manifolds {
-            let body_a_idx = self.find_body_for_collider(*collider_a_idx);
-            let body_b_idx = self.find_body_for_collider(*collider_b_idx);
+        let manifolds: Vec<((usize, usize), Manifold)> = self
+            .manifolds
+            .drain()
+            .collect();
 
-            if let (Some(body_a_idx), Some(body_b_idx)) = (body_a_idx, body_b_idx) {
-                let body_a = &mut self.bodies[body_a_idx];
-                let body_b = &mut self.bodies[body_b_idx];
+        for ((collider_a_idx, collider_b_idx), manifold) in manifolds {
+            let body_a_idx = self.find_body_for_collider(collider_a_idx);
+            let body_b_idx = self.find_body_for_collider(collider_b_idx);
 
-                let inv_mass_a = if body_a.is_static() { 0.0 } else { 1.0 / body_a.mass() };
-                let inv_mass_b = if body_b.is_static() { 0.0 } else { 1.0 / body_b.mass() };
-
+            if let (Some(a), Some(b)) = (body_a_idx, body_b_idx) {
+                if a == b {
+                    continue;
+                }
                 for contact in &manifold.contacts {
-                    let correction = contact.normal * contact.penetration.clamp(0.0, slop) * baumgarte;
-
-                    if !body_a.is_static() {
-                        body_a.set_position(body_a.position() - correction * inv_mass_a);
-                    }
-                    if !body_b.is_static() {
-                        body_b.set_position(body_b.position() + correction * inv_mass_b);
-                    }
+                    let use_bodies = a < b;
+                    let (inv_mass_a, inv_mass_b) = if use_bodies {
+                        let (left, right) = self.bodies.split_at_mut(b);
+                        let body_a = &mut left[a];
+                        let body_b = &mut right[0];
+                        let inv_mass_a = if body_a.is_static() { 0.0 } else { 1.0 / body_a.mass() };
+                        let inv_mass_b = if body_b.is_static() { 0.0 } else { 1.0 / body_b.mass() };
+                        let correction = contact.normal * contact.penetration.clamp(0.0, slop) * baumgarte;
+                        if !body_a.is_static() {
+                            body_a.set_position(body_a.position() - correction * inv_mass_a);
+                        }
+                        if !body_b.is_static() {
+                            body_b.set_position(body_b.position() + correction * inv_mass_b);
+                        }
+                        (inv_mass_a, inv_mass_b)
+                    } else {
+                        let (left, right) = self.bodies.split_at_mut(a);
+                        let body_b = &mut left[b];
+                        let body_a = &mut right[0];
+                        let inv_mass_a = if body_a.is_static() { 0.0 } else { 1.0 / body_a.mass() };
+                        let inv_mass_b = if body_b.is_static() { 0.0 } else { 1.0 / body_b.mass() };
+                        let correction = contact.normal * contact.penetration.clamp(0.0, slop) * baumgarte;
+                        if !body_a.is_static() {
+                            body_a.set_position(body_a.position() - correction * inv_mass_a);
+                        }
+                        if !body_b.is_static() {
+                            body_b.set_position(body_b.position() + correction * inv_mass_b);
+                        }
+                        (inv_mass_a, inv_mass_b)
+                    };
+                    let _ = (inv_mass_a, inv_mass_b);
                 }
             }
         }

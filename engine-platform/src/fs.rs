@@ -226,13 +226,23 @@ pub fn join_paths(base: &Path, path: &str) -> PathBuf {
 mod tests {
     use super::*;
     use std::fs;
-    use tempfile::tempdir;
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    static TEST_COUNTER: AtomicU64 = AtomicU64::new(0);
+
+    fn test_dir(name: &str) -> std::path::PathBuf {
+        let id = TEST_COUNTER.fetch_add(1, Ordering::SeqCst);
+        let dir = std::env::temp_dir().join(format!("engine-platform-{}-{}-{}", name, id, std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        dir
+    }
 
     #[test]
     fn test_read_write() {
         let fs = StandardFileSystem;
-        let dir = tempdir().unwrap();
-        let path = dir.path().join("test.txt");
+        let dir = test_dir("t");
+        let path = &dir.join("test.txt");
 
         fs.write_string(&path, "Hello World").unwrap();
         let content = fs.read_string(&path).unwrap();
@@ -242,30 +252,30 @@ mod tests {
     #[test]
     fn test_exists() {
         let fs = StandardFileSystem;
-        let dir = tempdir().unwrap();
-        let existing = dir.path().join("existing.txt");
+        let dir = test_dir("t");
+        let existing = &dir.join("existing.txt");
         fs.write_string(&existing, "test").unwrap();
 
         assert!(fs.exists(&existing));
-        assert!(!fs.exists(&dir.path().join("nonexistent.txt")));
+        assert!(!fs.exists(&dir.join("nonexistent.txt")));
     }
 
     #[test]
     fn test_list_dir() {
         let fs = StandardFileSystem;
-        let dir = tempdir().unwrap();
-        fs.write_string(&dir.path().join("a.txt"), "a").unwrap();
-        fs.write_string(&dir.path().join("b.txt"), "b").unwrap();
+        let dir = test_dir("t");
+        fs.write_string(&dir.join("a.txt"), "a").unwrap();
+        fs.write_string(&dir.join("b.txt"), "b").unwrap();
 
-        let entries = fs.list_dir(dir.path()).unwrap();
+        let entries = fs.list_dir(&dir).unwrap();
         assert_eq!(entries.len(), 2);
     }
 
     #[test]
     fn test_create_dir_all() {
         let fs = StandardFileSystem;
-        let dir = tempdir().unwrap();
-        let nested = dir.path().join("a").join("b").join("c");
+        let dir = test_dir("t");
+        let nested = &dir.join("a").join("b").join("c");
 
         fs.create_dir_all(&nested).unwrap();
         assert!(fs.is_dir(&nested));
@@ -274,8 +284,8 @@ mod tests {
     #[test]
     fn test_remove_file() {
         let fs = StandardFileSystem;
-        let dir = tempdir().unwrap();
-        let path = dir.path().join("to_remove.txt");
+        let dir = test_dir("t");
+        let path = &dir.join("to_remove.txt");
         fs.write_string(&path, "test").unwrap();
 
         assert!(fs.exists(&path));
@@ -286,8 +296,8 @@ mod tests {
     #[test]
     fn test_file_size() {
         let fs = StandardFileSystem;
-        let dir = tempdir().unwrap();
-        let path = dir.path().join("size_test.txt");
+        let dir = test_dir("t");
+        let path = &dir.join("size_test.txt");
         fs.write_string(&path, "12345").unwrap();
 
         let size = fs.file_size(&path).unwrap();
@@ -304,8 +314,8 @@ mod tests {
     #[test]
     fn test_is_dir() {
         let fs = StandardFileSystem;
-        let dir = tempdir().unwrap();
-        assert!(fs.is_dir(dir.path()));
-        assert!(!fs.is_dir(&dir.path().join("file.txt")));
+        let dir = test_dir("t");
+        assert!(fs.is_dir(&dir));
+        assert!(!fs.is_dir(&dir.join("file.txt")));
     }
 }

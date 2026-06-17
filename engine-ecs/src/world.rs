@@ -9,19 +9,23 @@ use std::collections::HashMap;
 use super::bundle::Bundle;
 use super::{Component, Entity, Event, EventReader, Resource, Resources};
 
-trait ComponentStorage: Any + Send + Sync {
+trait ComponentStorage: Send + Sync {
+    fn as_any(&self) -> &dyn Any;
+    fn as_any_mut(&mut self) -> &mut dyn Any;
     fn remove_entity(&mut self, entity_id: u32);
     fn clear(&mut self);
 }
 
-impl<T: Any + Send + Sync> ComponentStorage for T
-where
-    T: for<'a> ComponentStorageImpl<'a>,
-{
+impl<T: Any + Send + Sync + for<'a> ComponentStorageImpl<'a>> ComponentStorage for T {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
     fn remove_entity(&mut self, entity_id: u32) {
         <Self as ComponentStorageImpl>::remove_entity(self, entity_id);
     }
-
     fn clear(&mut self) {
         <Self as ComponentStorageImpl>::clear(self);
     }
@@ -153,9 +157,9 @@ impl ComponentStorages {
         let storage = self
             .storages
             .entry(type_id)
-            .or_insert_with(|| Box::new(DenseStorage::<C>::new()) as Box<dyn ComponentStorage>);
+            .or_insert_with(|| Box::new(DenseStorage::<C>::new()));
 
-        if let Some(storage) = storage.downcast_mut::<DenseStorage<C>>() {
+        if let Some(storage) = storage.as_any_mut().downcast_mut::<DenseStorage<C>>() {
             storage.insert(entity.id(), component)
         } else {
             None
@@ -166,6 +170,7 @@ impl ComponentStorages {
         let type_id = TypeId::of::<C>();
         self.storages.get_mut(&type_id).and_then(|storage| {
             storage
+                .as_any_mut()
                 .downcast_mut::<DenseStorage<C>>()
                 .and_then(|s| s.remove(entity.id()))
         })
@@ -175,6 +180,7 @@ impl ComponentStorages {
         let type_id = TypeId::of::<C>();
         self.storages.get(&type_id).and_then(|storage| {
             storage
+                .as_any()
                 .downcast_ref::<DenseStorage<C>>()
                 .and_then(|s| s.get(entity.id()))
         })
@@ -184,6 +190,7 @@ impl ComponentStorages {
         let type_id = TypeId::of::<C>();
         self.storages.get_mut(&type_id).and_then(|storage| {
             storage
+                .as_any_mut()
                 .downcast_mut::<DenseStorage<C>>()
                 .and_then(|s| s.get_mut(entity.id()))
         })
@@ -242,7 +249,7 @@ impl<C: Component> DenseStorage<C> {
     fn remove(&mut self, entity_id: u32) -> Option<C> {
         if let Some(dense_index) = self.sparse.remove(&entity_id) {
             self.reverse.remove(&dense_index);
-            
+
             let last_index = self.data.len() - 1;
             if dense_index != last_index {
                 if let Some(last_entity_id) = self.reverse.remove(&last_index) {
@@ -251,8 +258,8 @@ impl<C: Component> DenseStorage<C> {
                     self.data.swap(dense_index, last_index);
                 }
             }
-            
-            self.data.pop()
+
+            self.data.pop().flatten()
         } else {
             None
         }

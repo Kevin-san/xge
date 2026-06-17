@@ -180,18 +180,21 @@ impl LogWriter {
             let _ = writer.flush();
         }
 
+        let needs_rotate = self.should_rotate(file_line.len() as u64);
         if let Some(writer) = &mut self.file_writer {
-            if self.should_rotate(file_line.len() as u64) {
+            if needs_rotate {
                 let _ = writer.flush();
-                self.rotate();
             }
+        }
+        if needs_rotate {
+            self.rotate();
+        }
 
-            if let Some(writer) = &mut self.file_writer {
-                let bytes_written = file_line.len() as u64;
-                let _ = writer.write_all(file_line.as_bytes());
-                let _ = writer.flush();
-                self.current_file_size += bytes_written;
-            }
+        if let Some(writer) = &mut self.file_writer {
+            let bytes_written = file_line.len() as u64;
+            let _ = writer.write_all(file_line.as_bytes());
+            let _ = writer.flush();
+            self.current_file_size += bytes_written;
         }
     }
 }

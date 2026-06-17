@@ -33,7 +33,7 @@ impl ScopeData {
         if self.call_count == 0 {
             std::time::Duration::new(0, 0)
         } else {
-            self.total_time / self.call_count
+            self.total_time / self.call_count.max(1) as u32
         }
     }
 
@@ -104,7 +104,7 @@ impl Profiler {
         self.active_scopes.push(ActiveScope {
             name: name.to_string(),
             start_time: Instant::now(),
-            parent,
+            parent: parent_index,
         });
     }
 

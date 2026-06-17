@@ -68,6 +68,10 @@ pub struct RigidBody2D {
     collider_indices: Vec<usize>,
     /// 变换是否需要更新
     transform_dirty: bool,
+    /// 恢复系数（弹性）
+    restitution: f32,
+    /// 摩擦系数
+    friction: f32,
 }
 
 impl RigidBody2D {
@@ -102,6 +106,8 @@ impl RigidBody2D {
             enabled: true,
             collider_indices: Vec::new(),
             transform_dirty: true,
+            restitution: 0.2,
+            friction: 0.4,
         }
     }
 
@@ -280,6 +286,26 @@ impl RigidBody2D {
     /// 设置启用状态
     pub fn set_enabled(&mut self, enabled: bool) {
         self.enabled = enabled;
+    }
+
+    /// 获取恢复系数
+    pub fn restitution(&self) -> f32 {
+        self.restitution
+    }
+
+    /// 设置恢复系数
+    pub fn set_restitution(&mut self, restitution: f32) {
+        self.restitution = restitution;
+    }
+
+    /// 获取摩擦系数
+    pub fn friction(&self) -> f32 {
+        self.friction
+    }
+
+    /// 设置摩擦系数
+    pub fn set_friction(&mut self, friction: f32) {
+        self.friction = friction;
     }
 
     /// 获取变换矩阵 (cos, sin, tx, -sin, cos, ty)
