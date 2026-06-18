@@ -56,6 +56,7 @@ impl VertexLayout {
 }
 
 /// Extended vertex with tangent and color
+#[allow(dead_code)]
 #[derive(Clone, Copy, Debug, Default)]
 #[repr(C)]
 pub struct VertexExt {
@@ -66,6 +67,7 @@ pub struct VertexExt {
     pub color: [f32; 4],
 }
 
+#[allow(dead_code)]
 impl VertexExt {
     #[inline]
     pub fn new(position: Vec3, normal: Vec3, texcoord: Vec2) -> Self {
@@ -92,8 +94,10 @@ impl VertexExt {
 }
 
 /// Extended vertex layout
+#[allow(dead_code)]
 pub struct VertexLayoutExt;
 
+#[allow(dead_code)]
 impl VertexLayoutExt {
     pub const POS_OFFSET: usize = 0;
     pub const NORMAL_OFFSET: usize = 12;

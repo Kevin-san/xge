@@ -4,6 +4,7 @@
 
 use engine_math::{Quat, Vec3};
 
+#[allow(unused_imports)]
 use crate::constants::{DEFAULT_ANGULAR_DAMPING, DEFAULT_GRAVITY, DEFAULT_LINEAR_DAMPING};
 
 /// 刚体类型
@@ -512,8 +513,8 @@ impl RigidBody3D {
         self.angular_velocity += angular_acceleration * dt;
 
         // 应用阻尼
-        self.linear_velocity = self.linear_velocity * (1.0 - self.linear_damping * dt);
-        self.angular_velocity = self.angular_velocity * (1.0 - self.angular_damping * dt);
+        self.linear_velocity *= 1.0 - self.linear_damping * dt;
+        self.angular_velocity *= 1.0 - self.angular_damping * dt;
 
         // 应用锁定
         let (lx, ly, lz) = self.locked_translations;

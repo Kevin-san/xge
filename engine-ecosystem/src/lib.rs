@@ -370,7 +370,7 @@ mod tests {
             scope_name: "test".to_string(),
             thread_id: 0,
             start_ns: 0,
-            duration_ns: 2000,
+            duration_ns: 1000, // 相同持续时间，无回归
             parent_index: None,
             data: None,
         }];

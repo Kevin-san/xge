@@ -4,8 +4,7 @@
 
 use engine_math::Vec3;
 
-use crate::constants::DEFAULT_FRICTION;
-use crate::{Collider3D, CollisionGroups, QueryFilter, RigidBody3D};
+use crate::{Collider3D, QueryFilter, RigidBody3D};
 
 /// 角色移动结果
 #[derive(Debug, Clone)]

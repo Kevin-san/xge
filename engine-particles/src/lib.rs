@@ -192,7 +192,7 @@ impl Particle {
     /// 更新粒子状态
     #[inline]
     pub fn update(&mut self, dt: f32) {
-        self.position = self.position + self.velocity * dt;
+        self.position += self.velocity * dt;
         self.age += dt;
     }
 }
@@ -321,8 +321,10 @@ pub enum ConeEmitMode {
 
 /// 发射形状
 #[derive(Clone, Debug)]
+#[derive(Default)]
 pub enum EmitShape {
     /// 点发射
+    #[default]
     Point,
     /// 盒子发射 (size)
     Box(Vec3),
@@ -338,11 +340,6 @@ pub enum EmitShape {
     Edge(Vec3, Vec3),
 }
 
-impl Default for EmitShape {
-    fn default() -> Self {
-        Self::Point
-    }
-}
 
 /// 简单随机数生成器trait
 pub trait Rng {
@@ -564,8 +561,10 @@ impl Default for EmissionMode {
 
 /// 粒子渲染模式
 #[derive(Clone, Debug, PartialEq)]
+#[derive(Default)]
 pub enum ParticleRenderMode {
     /// Sprite Billboard（始终面向相机）
+    #[default]
     SpriteBillboard,
     /// Mesh Billboard（使用mesh，整体朝向相机）
     MeshBillboard,
@@ -577,26 +576,18 @@ pub enum ParticleRenderMode {
     VerticalBillboard,
 }
 
-impl Default for ParticleRenderMode {
-    fn default() -> Self {
-        Self::SpriteBillboard
-    }
-}
 
 /// 粒子材质混合模式
 #[derive(Clone, Debug, PartialEq)]
+#[derive(Default)]
 pub enum ParticleBlendMode {
     Opaque,
     Masked,
+    #[default]
     Translucent,
     Additive,
 }
 
-impl Default for ParticleBlendMode {
-    fn default() -> Self {
-        Self::Translucent
-    }
-}
 
 // ============================================================================
 // 模块系统
@@ -708,7 +699,7 @@ impl ParticleModule for VelocityOverLifeModule {
     fn apply(&self, particle: &mut Particle, _dt: f32, _ctx: &mut ModuleContext) {
         let t = particle.normalized_age();
         let multiplier = self.sample(t);
-        particle.velocity = particle.velocity * multiplier;
+        particle.velocity *= multiplier;
     }
 }
 
@@ -842,7 +833,7 @@ impl ParticleModule for ForceModule {
         50
     }
     fn apply(&self, particle: &mut Particle, dt: f32, _ctx: &mut ModuleContext) {
-        particle.velocity = particle.velocity + self.force * dt;
+        particle.velocity += self.force * dt;
     }
 }
 
@@ -899,7 +890,7 @@ impl ParticleModule for DragModule {
     }
     fn apply(&self, particle: &mut Particle, dt: f32, _ctx: &mut ModuleContext) {
         let drag_factor = 1.0 - self.drag * dt;
-        particle.velocity = particle.velocity * drag_factor.max(0.0);
+        particle.velocity *= drag_factor.max(0.0);
     }
 }
 
@@ -928,7 +919,7 @@ impl ParticleModule for TurbulenceModule {
         let noise_y = ctx.rng.range(-1.0, 1.0) * self.intensity;
         let noise_z = ctx.rng.range(-1.0, 1.0) * self.intensity;
         let noise = Vec3::new(noise_x, noise_y, noise_z) * self.frequency;
-        particle.velocity = particle.velocity + noise * dt;
+        particle.velocity += noise * dt;
     }
 }
 
@@ -970,7 +961,7 @@ impl ParticleModule for AttractorModule {
     }
     fn apply(&self, particle: &mut Particle, dt: f32, _ctx: &mut ModuleContext) {
         let force = self.attract(particle.position);
-        particle.velocity = particle.velocity + force * dt;
+        particle.velocity += force * dt;
     }
 }
 
@@ -1011,11 +1002,11 @@ impl CollisionModule {
         if dist < 0.0 {
             let dot = particle.velocity.dot(normal);
             if dot < 0.0 {
-                particle.velocity = particle.velocity - normal * (2.0 * dot);
-                particle.velocity = particle.velocity * self.bounce;
+                particle.velocity -= normal * (2.0 * dot);
+                particle.velocity *= self.bounce;
                 let tangent_vel = particle.velocity - normal * particle.velocity.dot(normal);
-                particle.velocity = particle.velocity - tangent_vel * self.friction;
-                particle.position = particle.position + normal * (-dist);
+                particle.velocity -= tangent_vel * self.friction;
+                particle.position += normal * (-dist);
                 return true;
             }
         }
@@ -1029,8 +1020,8 @@ impl CollisionModule {
             let normal = dist_vec.normalize();
             let dot = particle.velocity.dot(normal);
             if dot < 0.0 {
-                particle.velocity = particle.velocity - normal * (2.0 * dot);
-                particle.velocity = particle.velocity * self.bounce;
+                particle.velocity -= normal * (2.0 * dot);
+                particle.velocity *= self.bounce;
                 particle.position = center + normal * radius;
                 return true;
             }
@@ -1075,8 +1066,8 @@ impl ParticleModule for CollisionModule {
                         let collision_normal = *normal * sign;
                         let dot = particle.velocity.dot(collision_normal);
                         if dot < 0.0 {
-                            particle.velocity = particle.velocity - collision_normal * (2.0 * dot);
-                            particle.velocity = particle.velocity * self.bounce;
+                            particle.velocity -= collision_normal * (2.0 * dot);
+                            particle.velocity *= self.bounce;
                         }
                     }
                 }
@@ -1151,30 +1142,24 @@ impl ParticleModule for KillModule {
 
 /// 模拟空间
 #[derive(Clone, Debug, PartialEq)]
+#[derive(Default)]
 pub enum SimulationSpace {
     Local,
+    #[default]
     World,
 }
 
-impl Default for SimulationSpace {
-    fn default() -> Self {
-        Self::World
-    }
-}
 
 /// 缩放模式
 #[derive(Clone, Debug, PartialEq)]
+#[derive(Default)]
 pub enum ScalingMode {
     Hierarchy,
+    #[default]
     Local,
     ShapeOnly,
 }
 
-impl Default for ScalingMode {
-    fn default() -> Self {
-        Self::Local
-    }
-}
 
 /// 发射器句柄
 pub type EmitterHandle = u32;
@@ -1386,10 +1371,12 @@ impl ParticleEmitter {
         let direction = self.shape.sample_direction(&mut self.rng, position);
         let world_pos = position + emitter_position;
 
-        let mut particle = Particle::default();
-        particle.position = world_pos;
-        particle.velocity = direction;
-        particle.lifetime = DEFAULT_LIFETIME;
+        let mut particle = Particle {
+            position: world_pos,
+            velocity: direction,
+            lifetime: DEFAULT_LIFETIME,
+            ..Default::default()
+        };
 
         let mut ctx = ModuleContext::new(0.0, self.time, emitter_position);
         for module in &self.modules {
@@ -1743,6 +1730,10 @@ impl ParticleEventQueue {
 
     pub fn len(&self) -> usize {
         self.events.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.events.is_empty()
     }
 
     pub fn drain(&mut self) -> impl Iterator<Item = ParticleEvent> + '_ {
@@ -2150,20 +2141,17 @@ impl IPostProcessPass for SSRPass {
 
 /// 色调映射模式
 #[derive(Clone, Debug, PartialEq)]
+#[derive(Default)]
 pub enum ToneMappingMode {
     Linear,
     Reinhard,
     ReinhardExtended(f32),
+    #[default]
     ACES,
     Neutral,
     Filmic,
 }
 
-impl Default for ToneMappingMode {
-    fn default() -> Self {
-        Self::ACES
-    }
-}
 
 /// 色调映射Pass
 #[derive(Clone, Debug)]
@@ -2490,7 +2478,9 @@ impl IPostProcessPass for FXAAPass {
 
 /// 调试视图模式
 #[derive(Clone, Debug, PartialEq)]
+#[derive(Default)]
 pub enum DebugViewMode {
+    #[default]
     None,
     Depth,
     Normal,
@@ -2500,11 +2490,6 @@ pub enum DebugViewMode {
     ColorGradingOnly,
 }
 
-impl Default for DebugViewMode {
-    fn default() -> Self {
-        Self::None
-    }
-}
 
 /// 调试视图Pass
 #[derive(Clone, Debug)]

@@ -104,7 +104,7 @@ impl Transform3D {
 
     #[inline]
     pub fn translate(&mut self, v: Vec3) {
-        self.translation = self.translation + v;
+        self.translation += v;
     }
 
     #[inline]
