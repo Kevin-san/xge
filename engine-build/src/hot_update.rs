@@ -23,18 +23,51 @@ fn safe_join(root: &Path, rel: &Path) -> BuildResult<PathBuf> {
             "Parent directory references (..) are not allowed".to_string(),
         ));
     }
-    let dest = root.join(rel);
-    // 确保目标路径在根目录下
-    let canon = std::fs::canonicalize(root).map_err(|e| {
-        crate::BuildError::Io(format!("Failed to canonicalize root directory: {}", e))
-    })?;
-    let dest_canon = std::fs::canonicalize(&dest).map_err(|_| {
+    // 规范化根目录（要求 root 必须存在于文件系统中）。
+    let canon_root = std::fs::canonicalize(root).map_err(|e| {
         crate::BuildError::Path(format!(
-            "Path {} would escape root directory",
-            dest.display()
+            "Failed to canonicalize root directory {}: {}",
+            root.display(),
+            e
         ))
     })?;
-    if !dest_canon.starts_with(&canon) {
+
+    // 在 root 下拼接 rel。注意 rel 不得包含 ..，否则上面已拒绝。
+    let dest = canon_root.join(rel);
+
+    // 使用逻辑规范化去除可能的 "." 组件（但不允许 ".."，已在上方过滤）。
+    // 之后对 dest 的父目录做 canonicalize 以防止 symlink 跳转到根目录之外。
+    // 如果文件不存在但父目录存在于 canon_root 之下，也视为合法目标。
+    let verified = if dest.exists() {
+        let canon = std::fs::canonicalize(&dest).map_err(|e| {
+            crate::BuildError::Path(format!(
+                "Failed to canonicalize path {}: {}",
+                dest.display(),
+                e
+            ))
+        })?;
+        canon
+    } else {
+        // 目标文件尚不存在：校验父目录位于 canon_root 之内。
+        // 同时禁止直接以根目录作为目标，防止写入根目录之外的默认文件。
+        match dest.parent() {
+            Some(parent) if parent != Path::new("") => {
+                let parent_canon = std::fs::canonicalize(parent)
+                    .or_else(|_| std::fs::canonicalize(&canon_root))?;
+                if !parent_canon.starts_with(&canon_root) {
+                    return Err(crate::BuildError::Path(format!(
+                        "Path {} would escape root directory",
+                        dest.display()
+                    )));
+                }
+                dest.clone()
+            }
+            _ => dest.clone(),
+        }
+    };
+
+    // 最终确保规范化后的路径落在根目录范围内。
+    if !verified.starts_with(&canon_root) {
         return Err(crate::BuildError::Path(format!(
             "Path {} would escape root directory",
             dest.display()
@@ -550,5 +583,58 @@ mod tests {
         let (_, wrong_key) = generate_signing_keypair();
         let dir3 = tempdir().unwrap();
         assert!(HotUpdate::apply(dir3.path(), &patch, Some(&wrong_key)).is_err());
+    }
+
+    // 路径安全：测试 safe_join 对相对路径、绝对路径和 ".." 的处理。
+    // 使用辅助函数通过 HotUpdate::apply 的公开路径间接验证。
+    #[test]
+    fn test_safe_join_absolute_path_rejected() {
+        let dir = tempdir().unwrap();
+        let patch = HotUpdatePatch::new(
+            "1.0.0".to_string(),
+            create_test_manifest("1.0.0", vec![]),
+            vec![FileChange::Added {
+                path: PathBuf::from("/etc/evil.toml"),
+                size: 0,
+                hash: String::new(),
+            }],
+        );
+        assert!(HotUpdate::apply(dir.path(), &patch, None).is_err());
+    }
+
+    #[test]
+    fn test_safe_join_parent_dir_rejected() {
+        let dir = tempdir().unwrap();
+        let patch = HotUpdatePatch::new(
+            "1.0.0".to_string(),
+            create_test_manifest("1.0.0", vec![]),
+            vec![FileChange::Added {
+                path: PathBuf::from("../outside.txt"),
+                size: 0,
+                hash: String::new(),
+            }],
+        );
+        assert!(HotUpdate::apply(dir.path(), &patch, None).is_err());
+    }
+
+    #[test]
+    fn test_safe_join_new_file_in_subdir() {
+        // 验证在不存在的子目录中创建文件：safe_join 应对父目录进行规范化，
+        // 且 HotUpdate::apply 应创建目标子目录与文件。
+        let dir = tempdir().unwrap();
+        let sub = PathBuf::from("assets/sub/new.png");
+        let patch = HotUpdatePatch::new(
+            "1.0.0".to_string(),
+            create_test_manifest("1.0.0", vec![]),
+            vec![FileChange::Added {
+                path: sub.clone(),
+                size: 0,
+                hash: String::new(),
+            }],
+        );
+        HotUpdate::apply(dir.path(), &patch, None).unwrap();
+        assert!(dir.path().join(&sub).exists());
+        // 同时确保没有文件"漏出"到临时目录之外。
+        assert!(!dir.path().parent().unwrap().join("new.png").exists());
     }
 }

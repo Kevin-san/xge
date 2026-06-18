@@ -120,7 +120,23 @@ impl Packet {
 
     /// Deserialize packet from bytes
     pub fn deserialize(data: &[u8]) -> NetResult<Self> {
-        bincode::deserialize(data).map_err(|e| NetError::Deserialization(e.to_string()))
+        // 防止反序列化无界分配导致的 DoS：上限 2 * MAX_PACKET_SIZE 以容纳
+        // 额外的头部序列化开销。恶意报文明文声明的 payload_len 不受信任，
+        // 但这里以输入缓冲区长度为硬限制，bincode 无法分配超出该长度的 Vec。
+        if data.len() > crate::MAX_PACKET_SIZE.saturating_mul(2) {
+            return Err(NetError::Deserialization("Packet too large".to_string()));
+        }
+        let packet: Self = bincode::deserialize(data)
+            .map_err(|e| NetError::Deserialization(e.to_string()))?;
+        // 再次校验 payload 长度，使反序列化路径与 Packet::new 保持一致的
+        // 约束，防止精心构造的 bincode payload 绕过长度检查。
+        if packet.payload.len() > crate::MAX_PACKET_SIZE {
+            return Err(NetError::PacketTooLarge(
+                packet.payload.len(),
+                crate::MAX_PACKET_SIZE,
+            ));
+        }
+        Ok(packet)
     }
 
     /// Check if packet is reliable
@@ -288,5 +304,23 @@ mod tests {
         assert!(packet.is_ordered());
         assert_eq!(packet.header.sequence, 5);
         assert_eq!(packet.header.ack, 3);
+    }
+
+    #[test]
+    fn test_packet_deserialize_rejects_oversize_input() {
+        // 构造超过 2 * MAX_PACKET_SIZE 长度的输入缓冲区，直接作为字节流传入
+        // deserialize，验证会被拒绝，而不会触发无界内存分配。
+        let oversize = vec![0u8; crate::MAX_PACKET_SIZE.saturating_mul(2) + 1];
+        assert!(Packet::deserialize(&oversize).is_err());
+    }
+
+    #[test]
+    fn test_packet_deserialize_valid_input_round_trip() {
+        // 正常合法的 packet 可成功往返。
+        let packet = Packet::new(7, vec![0xAA, 0xBB, 0xCC]).unwrap();
+        let bytes = packet.serialize().unwrap();
+        let parsed = Packet::deserialize(&bytes).unwrap();
+        assert_eq!(parsed.header.message_type, 7);
+        assert_eq!(parsed.payload, vec![0xAA, 0xBB, 0xCC]);
     }
 }
