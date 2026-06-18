@@ -314,16 +314,292 @@ impl PhysicsWorld2D {
     }
 
     /// 生成接触流形
-    fn generate_contact(&self, _index_a: usize, _index_b: usize) -> Option<Manifold> {
-        // 简化的碰撞检测实现
-        // 实际实现需要根据碰撞体形状计算
-        None
+    fn generate_contact(&self, index_a: usize, index_b: usize) -> Option<Manifold> {
+        let body_a = self.bodies.get(index_a)?;
+        let body_b = self.bodies.get(index_b)?;
+
+        // 获取碰撞体（假设每个刚体最多有一个碰撞体）
+        let collider_a_idx = body_a.collider_indices().first()?;
+        let collider_b_idx = body_b.collider_indices().first()?;
+        let collider_a = self.colliders.get(*collider_a_idx)?;
+        let collider_b = self.colliders.get(*collider_b_idx)?;
+
+        let pos_a = body_a.position();
+        let pos_b = body_b.position();
+        let rot_a = body_a.rotation();
+        let rot_b = body_b.rotation();
+
+        let world_pos_a = collider_a.world_position(pos_a, rot_a);
+        let world_pos_b = collider_b.world_position(pos_b, rot_b);
+
+        // 根据形状类型进行碰撞检测
+        match (collider_a.shape(), collider_b.shape()) {
+            (ColliderShape::Circle { radius: r1 }, ColliderShape::Circle { radius: r2 }) => {
+                self.circle_circle_collision(
+                    index_a,
+                    index_b,
+                    world_pos_a,
+                    world_pos_b,
+                    *r1,
+                    *r2,
+                )
+            }
+            (
+                ColliderShape::Circle { radius },
+                ColliderShape::Aabb { half_extents } | ColliderShape::Rectangle { half_extents },
+            ) => self.circle_box_collision(
+                index_a,
+                index_b,
+                world_pos_a,
+                world_pos_b,
+                *radius,
+                *half_extents,
+                collider_b.shape(),
+                rot_b,
+            ),
+            (
+                ColliderShape::Aabb { half_extents } | ColliderShape::Rectangle { half_extents },
+                ColliderShape::Circle { radius },
+            ) => {
+                let manifold = self.circle_box_collision(
+                    index_b,
+                    index_a,
+                    world_pos_b,
+                    world_pos_a,
+                    *radius,
+                    *half_extents,
+                    collider_a.shape(),
+                    rot_a,
+                );
+                // 反转法线方向
+                manifold.map(|m| {
+                    let mut reversed = m;
+                    reversed.normal = -reversed.normal;
+                    reversed
+                })
+            }
+            (
+                ColliderShape::Aabb { half_extents: h1 },
+                ColliderShape::Aabb { half_extents: h2 },
+            ) => self.aabb_aabb_collision(index_a, index_b, world_pos_a, world_pos_b, *h1, *h2),
+            _ => None, // 其他形状组合暂不支持
+        }
+    }
+
+    /// 圆形-圆形碰撞检测
+    fn circle_circle_collision(
+        &self,
+        index_a: usize,
+        index_b: usize,
+        pos_a: Vec2,
+        pos_b: Vec2,
+        radius_a: f32,
+        radius_b: f32,
+    ) -> Option<Manifold> {
+        let diff = pos_b - pos_a;
+        let dist_sq = diff.length_squared();
+        let min_dist = radius_a + radius_b;
+
+        if dist_sq >= min_dist * min_dist {
+            return None;
+        }
+
+        let dist = dist_sq.sqrt();
+        let normal = if dist > 0.0 {
+            diff / dist
+        } else {
+            Vec2::new(1.0, 0.0) // 圆心重合时的默认法线
+        };
+        let penetration = min_dist - dist;
+        let contact_point = pos_a + normal * radius_a;
+
+        let mut manifold = Manifold::new(index_a, index_b);
+        manifold.normal = normal;
+        manifold.penetration = penetration;
+        manifold.add_contact(Contact::new(contact_point, normal, penetration));
+        Some(manifold)
+    }
+
+    /// 圆形-矩形碰撞检测
+    fn circle_box_collision(
+        &self,
+        circle_index: usize,
+        box_index: usize,
+        circle_pos: Vec2,
+        box_pos: Vec2,
+        radius: f32,
+        half_extents: Vec2,
+        box_shape: &ColliderShape,
+        box_rotation: f32,
+    ) -> Option<Manifold> {
+        // 对于 AABB，直接计算
+        // 对于旋转矩形，需要将圆转换到矩形的局部坐标系
+        let (local_circle_pos, is_rotated) = match box_shape {
+            ColliderShape::Aabb { .. } => (circle_pos - box_pos, false),
+            ColliderShape::Rectangle { .. } => {
+                let cos = box_rotation.cos();
+                let sin = box_rotation.sin();
+                let rel = circle_pos - box_pos;
+                (
+                    Vec2::new(rel.x * cos + rel.y * sin, -rel.x * sin + rel.y * cos),
+                    true,
+                )
+            }
+            _ => (circle_pos - box_pos, false),
+        };
+
+        // 找到矩形上离圆心最近的点
+        let closest_x = local_circle_pos.x.clamp(-half_extents.x, half_extents.x);
+        let closest_y = local_circle_pos.y.clamp(-half_extents.y, half_extents.y);
+        let closest_point = Vec2::new(closest_x, closest_y);
+
+        // 检查圆心是否在矩形内
+        let inside = local_circle_pos.x.abs() <= half_extents.x
+            && local_circle_pos.y.abs() <= half_extents.y;
+
+        let diff = local_circle_pos - closest_point;
+        let dist_sq = diff.length_squared();
+
+        if inside {
+            // 圆心在矩形内，需要找出最近的边
+            let dx = half_extents.x - local_circle_pos.x.abs();
+            let dy = half_extents.y - local_circle_pos.y.abs();
+
+            let (penetration, normal_local) = if dx < dy {
+                (dx, Vec2::new(local_circle_pos.x.signum(), 0.0))
+            } else {
+                (dy, Vec2::new(0.0, local_circle_pos.y.signum()))
+            };
+
+            // 将法线转换回世界坐标系
+            let normal = if is_rotated {
+                let cos = box_rotation.cos();
+                let sin = box_rotation.sin();
+                Vec2::new(
+                    normal_local.x * cos - normal_local.y * sin,
+                    normal_local.x * sin + normal_local.y * cos,
+                )
+            } else {
+                normal_local
+            };
+
+            let contact_point = box_pos + normal * half_extents;
+
+            let mut manifold = Manifold::new(circle_index, box_index);
+            manifold.normal = normal;
+            manifold.penetration = penetration + radius;
+            manifold.add_contact(Contact::new(contact_point, normal, manifold.penetration));
+            Some(manifold)
+        } else if dist_sq < radius * radius {
+            let dist = dist_sq.sqrt();
+            let normal_local = if dist > 0.0 {
+                diff / dist
+            } else {
+                Vec2::new(1.0, 0.0)
+            };
+
+            // 将法线转换回世界坐标系
+            let normal = if is_rotated {
+                let cos = box_rotation.cos();
+                let sin = box_rotation.sin();
+                Vec2::new(
+                    normal_local.x * cos - normal_local.y * sin,
+                    normal_local.x * sin + normal_local.y * cos,
+                )
+            } else {
+                normal_local
+            };
+
+            let penetration = radius - dist;
+            let contact_point_world = if is_rotated {
+                let cos = box_rotation.cos();
+                let sin = box_rotation.sin();
+                box_pos + Vec2::new(
+                    closest_point.x * cos - closest_point.y * sin,
+                    closest_point.x * sin + closest_point.y * cos,
+                )
+            } else {
+                box_pos + closest_point
+            };
+
+            let mut manifold = Manifold::new(circle_index, box_index);
+            manifold.normal = normal;
+            manifold.penetration = penetration;
+            manifold.add_contact(Contact::new(contact_point_world, normal, penetration));
+            Some(manifold)
+        } else {
+            None
+        }
+    }
+
+    /// AABB-AABB 碰撞检测
+    fn aabb_aabb_collision(
+        &self,
+        index_a: usize,
+        index_b: usize,
+        pos_a: Vec2,
+        pos_b: Vec2,
+        half_extents_a: Vec2,
+        half_extents_b: Vec2,
+    ) -> Option<Manifold> {
+        let diff = pos_b - pos_a;
+        let overlap_x = half_extents_a.x + half_extents_b.x - diff.x.abs();
+        let overlap_y = half_extents_a.y + half_extents_b.y - diff.y.abs();
+
+        if overlap_x <= 0.0 || overlap_y <= 0.0 {
+            return None;
+        }
+
+        // 选择穿透最小的轴作为碰撞法线
+        let (penetration, normal) = if overlap_x < overlap_y {
+            (overlap_x, Vec2::new(diff.x.signum(), 0.0))
+        } else {
+            (overlap_y, Vec2::new(0.0, diff.y.signum()))
+        };
+
+        let contact_point = pos_a + normal * half_extents_a;
+
+        let mut manifold = Manifold::new(index_a, index_b);
+        manifold.normal = normal;
+        manifold.penetration = penetration;
+        manifold.add_contact(Contact::new(contact_point, normal, penetration));
+        Some(manifold)
     }
 
     /// 检查 AABB 重叠
-    fn check_aabb_overlap(&self, _index_a: usize, _index_b: usize) -> bool {
-        // 简化实现
-        true
+    fn check_aabb_overlap(&self, index_a: usize, index_b: usize) -> bool {
+        let body_a = self.bodies.get(index_a);
+        let body_b = self.bodies.get(index_b);
+
+        if body_a.is_none() || body_b.is_none() {
+            return false;
+        }
+
+        let body_a = body_a.unwrap();
+        let body_b = body_b.unwrap();
+
+        // 获取碰撞体 AABB
+        let collider_a_idx = body_a.collider_indices().first();
+        let collider_b_idx = body_b.collider_indices().first();
+
+        if collider_a_idx.is_none() || collider_b_idx.is_none() {
+            return false;
+        }
+
+        let collider_a = self.colliders.get(*collider_a_idx.unwrap());
+        let collider_b = self.colliders.get(*collider_b_idx.unwrap());
+
+        if collider_a.is_none() || collider_b.is_none() {
+            return false;
+        }
+
+        let collider_a = collider_a.unwrap();
+        let collider_b = collider_b.unwrap();
+
+        let aabb_a = collider_a.shape().compute_aabb(body_a.position(), body_a.rotation());
+        let aabb_b = collider_b.shape().compute_aabb(body_b.position(), body_b.rotation());
+
+        aabb_a.intersects(&aabb_b)
     }
 
     /// 碰撞响应
