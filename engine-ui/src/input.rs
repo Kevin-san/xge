@@ -2,7 +2,7 @@
 //!
 //! 处理 UI 输入事件。
 
-use engine_ecs::{Component, Entity, Event, EventWriter, World};
+use engine_ecs::{Component, Entity, Event, Events, World};
 use engine_math::Vec2;
 use engine_window::{KeyCode, MouseButton};
 
@@ -33,6 +33,10 @@ pub struct UiEvent {
     button: Option<MouseButton>,
     delta: Vec2,
 }
+
+// SAFETY: UiEvent only contains Send + Sync fields
+unsafe impl Send for UiEvent {}
+unsafe impl Sync for UiEvent {}
 
 impl UiEvent {
     pub fn new(event_type: UiEventType, target: Entity) -> Self {
@@ -117,11 +121,7 @@ impl UiEvent {
     }
 }
 
-impl Event for UiEvent {
-    fn event_name() -> &'static str {
-        "UiEvent"
-    }
-}
+impl Event for UiEvent {}
 
 pub struct UiInput {
     mouse_position: Vec2,
@@ -165,7 +165,7 @@ impl UiInput {
         world: &World,
         position: Vec2,
         root_entity: Entity,
-        events: &mut EventWriter<UiEvent>,
+        events: &mut Events<UiEvent>,
     ) {
         self.mouse_position = position;
 
@@ -206,7 +206,7 @@ impl UiInput {
         position: Vec2,
         button: MouseButton,
         root_entity: Entity,
-        events: &mut EventWriter<UiEvent>,
+        events: &mut Events<UiEvent>,
     ) {
         self.mouse_position = position;
 
@@ -232,7 +232,7 @@ impl UiInput {
         position: Vec2,
         button: MouseButton,
         root_entity: Entity,
-        events: &mut EventWriter<UiEvent>,
+        events: &mut Events<UiEvent>,
         current_time: f64,
     ) {
         self.mouse_position = position;
@@ -265,7 +265,7 @@ impl UiInput {
         }
     }
 
-    pub fn process_key_down(&mut self, key_code: KeyCode, events: &mut EventWriter<UiEvent>) {
+    pub fn process_key_down(&mut self, key_code: KeyCode, events: &mut Events<UiEvent>) {
         if let Some(focused) = self.focused_entity {
             let mut event = UiEvent::new(UiEventType::KeyDown, focused);
             event.set_key_code(key_code);
@@ -273,7 +273,7 @@ impl UiInput {
         }
     }
 
-    pub fn process_key_up(&mut self, key_code: KeyCode, events: &mut EventWriter<UiEvent>) {
+    pub fn process_key_up(&mut self, key_code: KeyCode, events: &mut Events<UiEvent>) {
         if let Some(focused) = self.focused_entity {
             let mut event = UiEvent::new(UiEventType::KeyUp, focused);
             event.set_key_code(key_code);
@@ -281,7 +281,7 @@ impl UiInput {
         }
     }
 
-    pub fn process_text_input(&mut self, text: &str, events: &mut EventWriter<UiEvent>) {
+    pub fn process_text_input(&mut self, text: &str, events: &mut Events<UiEvent>) {
         if let Some(focused) = self.focused_entity {
             let mut event = UiEvent::new(UiEventType::TextInput, focused);
             event.set_text(text);
