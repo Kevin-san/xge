@@ -18,8 +18,10 @@ use engine_math::{Mat4, Quat, Vec2, Vec3};
 // ============================================================================
 
 /// Default tolerance for IK convergence
+#[allow(dead_code)]
 const IK_TOLERANCE: f32 = 0.001;
 /// Default max iterations for IK
+#[allow(dead_code)]
 const IK_MAX_ITERATIONS: u32 = 10;
 /// Small epsilon for float comparisons
 const EPSILON: f32 = 1e-6;
@@ -238,6 +240,7 @@ impl Interpolate for Quat {
 // ============================================================================
 
 /// A curve of keyframes for animation
+#[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub struct Curve<T: Interpolate> {
     keyframes: Vec<Keyframe<T>>,
@@ -1337,6 +1340,7 @@ impl Condition {
     }
 
     /// Create NOT condition
+    #[allow(clippy::should_implement_trait)]
     pub fn not(c: Condition) -> Self {
         Condition::Not(Box::new(c))
     }
@@ -2070,6 +2074,7 @@ impl AimIK {
 }
 
 /// Look-at IK: make a bone look at target
+#[allow(dead_code)]
 pub struct LookAtIK {
     bone_index: usize,
     up: Vec3,

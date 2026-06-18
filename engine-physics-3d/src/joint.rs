@@ -447,6 +447,7 @@ impl RevoluteJointBuilder {
 /// 滑块关节
 ///
 /// 两个刚体沿指定轴相对滑动。
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct PrismaticJoint {
     /// 基类
@@ -640,6 +641,7 @@ impl BallJointBuilder {
 /// 距离关节
 ///
 /// 保持两个锚点之间的距离不变。
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct DistanceJoint {
     /// 基类
@@ -724,6 +726,7 @@ impl DistanceJointBuilder {
 /// 绳索关节
 ///
 /// 限制两个锚点之间的最大距离。
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct RopeJoint {
     /// 基类
@@ -807,6 +810,7 @@ impl RopeJointBuilder {
 /// 球面关节
 ///
 /// 允许围绕锚点自由旋转，但可以设置锥形限制。
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct SphericalJoint {
     /// 埐类

@@ -15,8 +15,9 @@ use crate::{
     },
     joint::{Joint3D, JointHandle},
     query::{Query3D, QueryPipeline},
-    rigidbody::{RigidBody3D, RigidBodyHandle, RigidBodyType3D},
 };
+#[allow(unused_imports)]
+use crate::rigidbody::{RigidBody3D, RigidBodyHandle, RigidBodyType3D};
 
 /// 物理世界配置
 #[derive(Debug, Clone)]

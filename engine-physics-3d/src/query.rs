@@ -743,7 +743,7 @@ fn ray_intersects_triangle(
     let s = local_origin - a;
     let u = f * s.dot(h);
 
-    if u < 0.0 || u > 1.0 {
+    if !(0.0..=1.0).contains(&u) {
         return None;
     }
 

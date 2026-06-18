@@ -184,7 +184,7 @@ impl ColliderShape3D {
                 axis,
             } => {
                 let axis_vec = axis.vector();
-                let half_height_vec = axis_vec * *half_height;
+                let _half_height_vec = axis_vec * *half_height;
                 let radius_vec = Vec3::splat(*radius);
                 // 旋转胶囊的轴
                 let rotated_axis = rotation * axis_vec;
