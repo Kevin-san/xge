@@ -247,7 +247,7 @@ impl Camera3D {
     }
 
     /// Convert screen coordinates to world ray
-    pub fn screen_to_world_ray(&self, screen_pos: Vec2, screen_size: Vec2) -> Ray3 {
+    pub fn screen_to_world_ray(&self, screen_pos: Vec2, screen_size: Vec2) -> Option<Ray3> {
         // Convert to normalized device coordinates [-1, 1]
         let ndc_x = (2.0 * screen_pos.x / screen_size.x) - 1.0;
         let ndc_y = 1.0 - (2.0 * screen_pos.y / screen_size.y);
@@ -255,12 +255,19 @@ impl Camera3D {
         // Clip space coordinates
         let clip = Vec4::new(ndc_x, ndc_y, -1.0, 1.0);
 
-        // Transform to view space
-        let inv_proj = self.inverse_projection().unwrap_or(Mat4::IDENTITY);
+        // Transform to view space - inverse projection must succeed
+        let inv_proj = self.inverse_projection()?;
         let view = inv_proj.mul_vec4(clip);
-        let view_dir = Vec3::new(view.x, view.y, -1.0).normalize();
+        
+        // Perspective division to get view space direction
+        // view.w should be non-zero for valid projection
+        if view.w.abs() < 1e-6 {
+            return None;
+        }
+        
+        let view_dir = Vec3::new(view.x / view.w, view.y / view.w, -1.0).normalize();
 
-        // Transform to world space
+        // Transform to world space using inverse view matrix
         let inv_view = self.inverse_view();
         let world_dir = Vec3::new(
             inv_view.cols[0][0] * view_dir.x
@@ -275,7 +282,7 @@ impl Camera3D {
         )
         .normalize();
 
-        Ray3::new(self.position, world_dir)
+        Some(Ray3::new(self.position, world_dir))
     }
 
     /// Convert world position to screen coordinates
