@@ -4,7 +4,7 @@
 //! 热重载允许在不重启程序的情况下更新着色器代码。
 
 use engine_core::{Engine, EngineConfig};
-use engine_render::{RenderContext, ShaderModule};
+use engine_render::ShaderModule;
 
 fn main() {
     println!("Hot Shader Reload Example");
@@ -18,7 +18,6 @@ fn main() {
     };
 
     let _engine = Engine::new(config);
-    let _ctx = RenderContext::new();
 
     // Define shader source strings
     let vertex_shader = r#"

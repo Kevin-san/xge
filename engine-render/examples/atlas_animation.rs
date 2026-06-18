@@ -2,17 +2,15 @@
 //!
 //! 本示例演示如何使用 TextureAtlas 创建帧动画。
 
-use engine_math::Vec2;
 use engine_render::{
-    AnimatedSprite, Color, Image, LoopMode, PackAlgorithm, Rect, RenderContext, TextureAtlas,
-    TextureAtlasBuilder,
+    AnimatedSprite, Color, Image, LoopMode, PackAlgorithm, Rect, RenderContext, TextureAtlasBuilder,
 };
 
 fn main() {
     println!("Atlas Animation Example");
     println!("=======================");
 
-    let ctx = RenderContext::new();
+    let _ctx = RenderContext::new();
 
     // Create a simple sprite sheet (4 frames in a row)
     let frame_width = 64;
@@ -23,7 +21,7 @@ fn main() {
     println!("Creating sprite sheet: {}x{}", sheet_width, frame_height);
 
     // Create sprite sheet image with different colored frames
-    let mut sheet_image = create_sprite_sheet(frame_width, frame_height, num_frames);
+    let sheet_image = create_sprite_sheet(frame_width, frame_height, num_frames);
 
     // Save the sprite sheet (for debugging)
     if let Err(e) = sheet_image.save("/tmp/sprite_sheet.png") {

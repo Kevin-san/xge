@@ -16,12 +16,12 @@ fn main() {
     let green_image = create_color_image(32, 32, Color::GREEN);
     let blue_image = create_color_image(32, 32, Color::BLUE);
 
-    let red_tex = Texture2D::from_image(&red_image);
-    let green_tex = Texture2D::from_image(&green_image);
-    let blue_tex = Texture2D::from_image(&blue_image);
+    let _red_tex = Texture2D::from_image(&red_image);
+    let _green_tex = Texture2D::from_image(&green_image);
+    let _blue_tex = Texture2D::from_image(&blue_image);
 
     // Create sprites with different textures
-    let sprites = vec![
+    let sprites = [
         Sprite::from_texture(TextureHandle::null()).with_color(Color::RED),
         Sprite::from_texture(TextureHandle::null()).with_color(Color::GREEN),
         Sprite::from_texture(TextureHandle::null()).with_color(Color::BLUE),

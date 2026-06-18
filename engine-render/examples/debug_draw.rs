@@ -4,7 +4,7 @@
 
 use engine_core::{Engine, EngineConfig};
 use engine_math::Vec2;
-use engine_render::{Camera2D, Color, DebugRenderer, Rect};
+use engine_render::{Color, DebugRenderer, Rect};
 
 fn main() {
     println!("Debug Draw Example");
@@ -20,7 +20,6 @@ fn main() {
     let _engine = Engine::new(config);
 
     let mut debug_renderer = DebugRenderer::new();
-    let _camera = Camera2D::new();
 
     // Draw some lines
     debug_renderer.line(Vec2::new(100.0, 100.0), Vec2::new(400.0, 100.0), Color::RED);

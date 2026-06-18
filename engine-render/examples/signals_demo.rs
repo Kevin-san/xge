@@ -53,7 +53,6 @@ fn main() {
     println!("7. Simulated signal flow:");
 
     let mut handler_called = 0;
-    let mut last_arg_value = 0;
 
     // 模拟信号连接
     println!("   // 模拟: 连接一个 handler");
@@ -65,7 +64,6 @@ fn main() {
     for i in 1..=3 {
         println!("   - Emit #{}: calling handler", i);
         handler_called += 1;
-        last_arg_value = i;
     }
     println!("   - Total handler calls: {}", handler_called);
     println!();

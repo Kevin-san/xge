@@ -111,7 +111,7 @@ mod tests {
         signal.emit(&[&5i32]);
         assert_eq!(*received.borrow(), vec![5]);
 
-        drop(id);
+        let _ = id;
     }
 
     #[test]

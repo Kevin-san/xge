@@ -1,5 +1,4 @@
 use engine_core::{Engine, EngineConfig};
-use engine_window::{Fullscreen, KeyCode};
 
 fn main() {
     let config = EngineConfig {

@@ -19,6 +19,7 @@ impl Event for CollisionEvent {}
 struct DamageEvent {
     target: engine_ecs::Entity,
     amount: f32,
+    #[allow(dead_code)]
     source: engine_ecs::Entity,
 }
 
@@ -41,7 +42,7 @@ impl Component for Health {}
 
 /// 位置组件
 #[derive(Debug, Clone)]
-struct Position([f32; 2]);
+struct Position(#[allow(dead_code)] [f32; 2]);
 
 impl Component for Position {}
 

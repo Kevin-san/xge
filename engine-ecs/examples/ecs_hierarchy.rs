@@ -3,12 +3,13 @@
 //! 演示如何使用 Parent/Children 组件构建实体层级。
 
 use engine_ecs::{
-    hierarchy::{Children, Parent, WorldHierarchyExt},
+    hierarchy::WorldHierarchyExt,
     Component, World,
 };
 
 /// 变换组件（简化版）
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 struct Transform {
     translation: [f32; 3],
     rotation: [f32; 3],
@@ -18,6 +19,7 @@ struct Transform {
 impl Component for Transform {}
 
 impl Transform {
+    #[allow(dead_code)]
     fn new() -> Self {
         Self {
             translation: [0.0, 0.0, 0.0],
@@ -26,6 +28,7 @@ impl Transform {
         }
     }
 
+    #[allow(dead_code)]
     fn with_translation(x: f32, y: f32, z: f32) -> Self {
         Self {
             translation: [x, y, z],

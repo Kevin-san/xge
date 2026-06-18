@@ -205,6 +205,7 @@ mod tests {
     impl Component for Name {}
 
     #[derive(Debug, Clone, PartialEq)]
+    #[allow(dead_code)]
     struct Active {
         flag: bool,
     }
