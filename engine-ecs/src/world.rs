@@ -9,6 +9,18 @@ use std::collections::HashMap;
 use super::bundle::Bundle;
 use super::{Component, Entity, Event, EventReader, Resource, Resources};
 
+/// 资源访问错误
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ResourceError;
+
+impl std::fmt::Display for ResourceError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Resource not found")
+    }
+}
+
+impl std::error::Error for ResourceError {}
+
 /// 实体表
 pub(crate) struct EntityTable {
     /// 实体数据
@@ -390,18 +402,43 @@ impl World {
     }
 
     /// 获取资源只读引用
+    /// 
+    /// # Panics
+    /// 如果资源不存在则 panic
     pub fn resource<R: Resource>(&self) -> &R {
         self.resources.get::<R>().expect("Resource not found")
     }
 
+    /// 安全获取资源只读引用（推荐使用）
+    /// 
+    /// 返回 `Ok(&R)` 如果资源存在，否则返回 `Err`
+    pub fn try_resource<R: Resource>(&self) -> Result<&R, ResourceError> {
+        self.resources.get::<R>().ok_or(ResourceError)
+    }
+
     /// 获取资源可变引用
+    /// 
+    /// # Panics
+    /// 如果资源不存在则 panic
     pub fn resource_mut<R: Resource>(&mut self) -> &mut R {
         self.resources.get_mut::<R>().expect("Resource not found")
+    }
+
+    /// 安全获取资源可变引用（推荐使用）
+    /// 
+    /// 返回 `Ok(&mut R)` 如果资源存在，否则返回 `Err`
+    pub fn try_resource_mut<R: Resource>(&mut self) -> Result<&mut R, ResourceError> {
+        self.resources.get_mut::<R>().ok_or(ResourceError)
     }
 
     /// 获取资源（可选）
     pub fn get_resource<R: Resource>(&self) -> Option<&R> {
         self.resources.get::<R>()
+    }
+
+    /// 安全获取可变资源引用
+    pub fn get_resource_mut<R: Resource>(&mut self) -> Option<&mut R> {
+        self.resources.get_mut::<R>()
     }
 
     /// 移除资源

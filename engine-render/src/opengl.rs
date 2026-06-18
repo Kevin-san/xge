@@ -13,6 +13,32 @@ use crate::{
 };
 use engine_math::{Mat4, Vec2, Vec3};
 
+/// OpenGL 着色器错误
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ShaderError {
+    /// 顶点着色器编译失败
+    VertexCompile(String),
+    /// 片段着色器编译失败
+    FragmentCompile(String),
+    /// 程序链接失败
+    ProgramLink(String),
+    /// 资源创建失败
+    ResourceCreation(String),
+}
+
+impl std::fmt::Display for ShaderError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ShaderError::VertexCompile(msg) => write!(f, "Vertex shader compile error: {}", msg),
+            ShaderError::FragmentCompile(msg) => write!(f, "Fragment shader compile error: {}", msg),
+            ShaderError::ProgramLink(msg) => write!(f, "Program link error: {}", msg),
+            ShaderError::ResourceCreation(msg) => write!(f, "Resource creation error: {}", msg),
+        }
+    }
+}
+
+impl std::error::Error for ShaderError {}
+
 /// 精灵顶点格式
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -94,15 +120,46 @@ struct SpriteUniforms {
 
 impl GlRenderer {
     /// 创建 OpenGL 渲染器
+    /// 
+    /// # Panics
+    /// 如果着色器编译失败则 panic，推荐使用 `try_new()` 替代
     pub fn new(gl: glow::Context, width: u32, height: u32) -> Self {
+        Self::try_new(gl, width, height).expect("Failed to create OpenGL renderer")
+    }
+
+    /// 初始化 OpenGL 状态
+    fn init_gl_state(&mut self) {
+        unsafe {
+            // 启用混合
+            self.gl.enable(glow::BLEND);
+            self.apply_blend_mode(self.current_blend_mode);
+
+            // 禁用深度测试（2D渲染不需要）
+            self.gl.disable(glow::DEPTH_TEST);
+
+            // 设置视口
+            self.gl
+                .viewport(0, 0, self.window_size.0 as i32, self.window_size.1 as i32);
+
+            // 设置清除颜色
+            self.set_clear_color(self.clear_color);
+        }
+    }
+
+    /// 尝试创建 OpenGL 渲染器（推荐使用）
+    /// 
+    /// 返回 `Result<GlRenderer, ShaderError>` 如果初始化成功，否则返回着色器编译/链接错误
+    pub fn try_new(gl: glow::Context, width: u32, height: u32) -> Result<Self, ShaderError> {
         unsafe {
             // 创建着色器程序
-            let sprite_program = Self::create_sprite_program(&gl);
-            let color_program = Self::create_color_program(&gl);
+            let sprite_program = Self::create_sprite_program(&gl)?;
+            let color_program = Self::create_color_program(&gl)?;
 
             // 创建缓冲区
-            let vertex_buffer = gl.create_buffer().expect("Failed to create vertex buffer");
-            let index_buffer = gl.create_buffer().expect("Failed to create index buffer");
+            let vertex_buffer = gl.create_buffer()
+                .map_err(|e| ShaderError::ResourceCreation(e.to_string()))?;
+            let index_buffer = gl.create_buffer()
+                .map_err(|e| ShaderError::ResourceCreation(e.to_string()))?;
 
             // 获取 uniform 位置
             let sprite_uniforms = SpriteUniforms {
@@ -143,35 +200,16 @@ impl GlRenderer {
             // 初始化 OpenGL 状态
             renderer.init_gl_state();
 
-            renderer
-        }
-    }
-
-    /// 初始化 OpenGL 状态
-    fn init_gl_state(&mut self) {
-        unsafe {
-            // 启用混合
-            self.gl.enable(glow::BLEND);
-            self.apply_blend_mode(self.current_blend_mode);
-
-            // 禁用深度测试（2D渲染不需要）
-            self.gl.disable(glow::DEPTH_TEST);
-
-            // 设置视口
-            self.gl
-                .viewport(0, 0, self.window_size.0 as i32, self.window_size.1 as i32);
-
-            // 设置清除颜色
-            self.set_clear_color(self.clear_color);
+            Ok(renderer)
         }
     }
 
     /// 创建精灵着色器程序
-    fn create_sprite_program(gl: &glow::Context) -> NativeProgram {
+    fn create_sprite_program(gl: &glow::Context) -> Result<NativeProgram, ShaderError> {
         unsafe {
             let vertex_shader = gl
                 .create_shader(glow::VERTEX_SHADER)
-                .expect("Failed to create vertex shader");
+                .map_err(|e| ShaderError::ResourceCreation(e.to_string()))?;
 
             gl.shader_source(
                 vertex_shader,
@@ -199,12 +237,12 @@ impl GlRenderer {
 
             if !gl.get_shader_compile_status(vertex_shader) {
                 let msg = gl.get_shader_info_log(vertex_shader);
-                panic!("Vertex shader compile error: {}", msg);
+                return Err(ShaderError::VertexCompile(msg));
             }
 
             let fragment_shader = gl
                 .create_shader(glow::FRAGMENT_SHADER)
-                .expect("Failed to create fragment shader");
+                .map_err(|e| ShaderError::ResourceCreation(e.to_string()))?;
 
             gl.shader_source(
                 fragment_shader,
@@ -233,10 +271,11 @@ impl GlRenderer {
 
             if !gl.get_shader_compile_status(fragment_shader) {
                 let msg = gl.get_shader_info_log(fragment_shader);
-                panic!("Fragment shader compile error: {}", msg);
+                return Err(ShaderError::FragmentCompile(msg));
             }
 
-            let program = gl.create_program().expect("Failed to create program");
+            let program = gl.create_program()
+                .map_err(|e| ShaderError::ResourceCreation(e.to_string()))?;
 
             gl.attach_shader(program, vertex_shader);
             gl.attach_shader(program, fragment_shader);
@@ -244,23 +283,23 @@ impl GlRenderer {
 
             if !gl.get_program_link_status(program) {
                 let msg = gl.get_program_info_log(program);
-                panic!("Program link error: {}", msg);
+                return Err(ShaderError::ProgramLink(msg));
             }
 
             // 删除着色器（已链接到程序，不再需要）
             gl.delete_shader(vertex_shader);
             gl.delete_shader(fragment_shader);
 
-            program
+            Ok(program)
         }
     }
 
     /// 创建纯色着色器程序
-    fn create_color_program(gl: &glow::Context) -> NativeProgram {
+    fn create_color_program(gl: &glow::Context) -> Result<NativeProgram, ShaderError> {
         unsafe {
             let vertex_shader = gl
                 .create_shader(glow::VERTEX_SHADER)
-                .expect("Failed to create vertex shader");
+                .map_err(|e| ShaderError::ResourceCreation(e.to_string()))?;
 
             gl.shader_source(
                 vertex_shader,
@@ -283,9 +322,14 @@ impl GlRenderer {
             );
             gl.compile_shader(vertex_shader);
 
+            if !gl.get_shader_compile_status(vertex_shader) {
+                let msg = gl.get_shader_info_log(vertex_shader);
+                return Err(ShaderError::VertexCompile(msg));
+            }
+
             let fragment_shader = gl
                 .create_shader(glow::FRAGMENT_SHADER)
-                .expect("Failed to create fragment shader");
+                .map_err(|e| ShaderError::ResourceCreation(e.to_string()))?;
 
             gl.shader_source(
                 fragment_shader,
@@ -301,16 +345,27 @@ impl GlRenderer {
             );
             gl.compile_shader(fragment_shader);
 
-            let program = gl.create_program().expect("Failed to create program");
+            if !gl.get_shader_compile_status(fragment_shader) {
+                let msg = gl.get_shader_info_log(fragment_shader);
+                return Err(ShaderError::FragmentCompile(msg));
+            }
+
+            let program = gl.create_program()
+                .map_err(|e| ShaderError::ResourceCreation(e.to_string()))?;
 
             gl.attach_shader(program, vertex_shader);
             gl.attach_shader(program, fragment_shader);
             gl.link_program(program);
 
+            if !gl.get_program_link_status(program) {
+                let msg = gl.get_program_info_log(program);
+                return Err(ShaderError::ProgramLink(msg));
+            }
+
             gl.delete_shader(vertex_shader);
             gl.delete_shader(fragment_shader);
 
-            program
+            Ok(program)
         }
     }
 
