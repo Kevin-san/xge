@@ -28,17 +28,37 @@ fn safe_join(root: &Path, rel: &Path) -> BuildResult<PathBuf> {
     let canon = std::fs::canonicalize(root).map_err(|e| {
         crate::BuildError::Io(format!("Failed to canonicalize root directory: {}", e))
     })?;
-    let dest_canon = std::fs::canonicalize(&dest).map_err(|_| {
-        crate::BuildError::Path(format!(
-            "Path {} would escape root directory",
-            dest.display()
-        ))
-    })?;
-    if !dest_canon.starts_with(&canon) {
-        return Err(crate::BuildError::Path(format!(
-            "Path {} would escape root directory",
-            dest.display()
-        )));
+    // 对于已存在的文件/目录，canonicalize 会成功
+    // 对于新文件（不存在），我们检查父目录是否在根目录下
+    if dest.exists() {
+        let dest_canon = std::fs::canonicalize(&dest).map_err(|_| {
+            crate::BuildError::Path(format!(
+                "Path {} would escape root directory",
+                dest.display()
+            ))
+        })?;
+        if !dest_canon.starts_with(&canon) {
+            return Err(crate::BuildError::Path(format!(
+                "Path {} would escape root directory",
+                dest.display()
+            )));
+        }
+    } else {
+        // 新文件：确保父目录在根目录下
+        if let Some(parent) = dest.parent() {
+            let parent_canon = std::fs::canonicalize(parent).map_err(|_| {
+                crate::BuildError::Path(format!(
+                    "Path {} would escape root directory",
+                    dest.display()
+                ))
+            })?;
+            if !parent_canon.starts_with(&canon) {
+                return Err(crate::BuildError::Path(format!(
+                    "Path {} would escape root directory",
+                    dest.display()
+                )));
+            }
+        }
     }
     Ok(dest)
 }

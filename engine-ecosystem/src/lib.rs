@@ -223,7 +223,7 @@ mod tests {
     /// 测试 Telemetry
     #[test]
     fn test_telemetry() {
-        let config = TelemetryConfig::default();
+        let config = TelemetryConfig::new("http://localhost".to_string(), true);
         let mut telemetry = Telemetry::new(config);
 
         assert!(telemetry.is_enabled());
@@ -241,7 +241,8 @@ mod tests {
     /// 测试 TelemetryEvent
     #[test]
     fn test_telemetry_event() {
-        let mut telemetry = Telemetry::default();
+        let config = TelemetryConfig::new("http://localhost".to_string(), true);
+        let mut telemetry = Telemetry::new(config);
 
         let error = ErrorEvent::new("TestError".to_string(), "Test message".to_string());
         telemetry.record_error(error);
