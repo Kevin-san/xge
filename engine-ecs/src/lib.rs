@@ -35,4 +35,4 @@ pub use schedule::{FnSystem, Schedule, System, SystemStage};
 pub use storage::{HashMapStorage, SparseSet, StorageLabel, StorageType};
 pub use system::{IntoSystem, System as SystemTrait, SystemParam};
 pub use system_param::{Commands, Res, ResMut};
-pub use world::World;
+pub use world::{ResourceError, World};
