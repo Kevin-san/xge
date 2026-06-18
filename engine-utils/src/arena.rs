@@ -227,9 +227,9 @@ mod tests {
     #[test]
     fn test_free_list() {
         let mut arena = Arena::new();
-        let h1 = arena.insert(1);
+        let _h1 = arena.insert(1);
         let h2 = arena.insert(2);
-        let h3 = arena.insert(3);
+        let _h3 = arena.insert(3);
 
         arena.remove(h2);
 

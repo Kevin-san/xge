@@ -145,10 +145,6 @@ mod tests {
     fn test_schedule_run() {
         let mut world = World::new();
         let mut resources = Resources::new();
-        let mut schedule = Schedule::new();
-
-        // 创建一个跟踪标志
-        std::sync::atomic::AtomicU32::new(0);
 
         let mut schedule = Schedule::new();
         schedule.add_stage("test", SystemStage::single_threaded("test"));

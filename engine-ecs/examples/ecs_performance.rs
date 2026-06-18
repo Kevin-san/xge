@@ -18,13 +18,13 @@ impl Component for Velocity {}
 
 /// 质量组件
 #[derive(Debug, Clone)]
-struct Mass(f32);
+struct Mass(#[allow(dead_code)] f32);
 
 impl Component for Mass {}
 
 /// 标识组件
 #[derive(Debug, Clone)]
-struct Id(u32);
+struct Id(#[allow(dead_code)] u32);
 
 impl Component for Id {}
 

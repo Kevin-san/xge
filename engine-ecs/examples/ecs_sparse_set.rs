@@ -18,7 +18,7 @@ impl Component for Velocity {}
 
 /// 标识组件
 #[derive(Debug, Clone)]
-struct Identifier(u32);
+struct Identifier(#[allow(dead_code)] u32);
 
 impl Component for Identifier {}
 
@@ -61,15 +61,9 @@ fn main() {
     let test_indices = [0, 100, 1000, 5000, 9999];
     for idx in test_indices {
         // 找到第 idx 个实体
-        let mut target_entity = None;
-        let mut current = 0;
-        for entity in &entities {
-            if current == idx {
-                target_entity = Some(*entity);
-                break;
-            }
-            current += 1;
-        }
+        let target_entity = entities.iter().enumerate().find_map(|(i, e)| {
+            if i == idx { Some(*e) } else { None }
+        });
 
         if let Some(entity) = target_entity {
             let pos = world.get_component::<Position>(entity);
@@ -116,15 +110,9 @@ fn main() {
     // 1000 次随机查询
     for _ in 0..1000 {
         let idx = ((rand_simple() * count as f32) as usize) % (count as usize);
-        let mut target_entity = None;
-        let mut current = 0;
-        for entity in &entities {
-            if current == idx {
-                target_entity = Some(*entity);
-                break;
-            }
-            current += 1;
-        }
+        let target_entity = entities.iter().enumerate().find_map(|(i, e)| {
+            if i == idx { Some(*e) } else { None }
+        });
         if let Some(entity) = target_entity {
             let _ = world.get_component::<Position>(entity);
             let _ = world.get_component::<Velocity>(entity);

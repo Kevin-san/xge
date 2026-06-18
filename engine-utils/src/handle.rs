@@ -98,7 +98,6 @@ mod tests {
 
     #[test]
     fn test_hash() {
-        use core::hash::{Hash, Hasher};
         use std::collections::HashSet;
 
         let h1 = Handle::<i32>::new(1, 1);

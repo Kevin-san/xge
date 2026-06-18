@@ -198,7 +198,7 @@ impl<C: Component> ComponentAccess<C> for (&C, &mut C) {
 
 #[cfg(test)]
 mod tests {
-    use crate::query::{NoneFilter, Query, QueryFilter, QueryItem};
+    use crate::query::{NoneFilter, Query};
     use crate::{Component, World};
 
     #[derive(Debug, Clone, PartialEq)]

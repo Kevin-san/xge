@@ -3,13 +3,11 @@
 //! 本示例演示如何使用 Camera2D 的目标跟随功能。
 
 use engine_math::Vec2;
-use engine_render::{Camera2D, Color, OrthographicCamera, RenderContext};
+use engine_render::{Camera2D, OrthographicCamera};
 
 fn main() {
     println!("Camera Follow Example");
     println!("=====================");
-
-    let mut _ctx = RenderContext::new();
 
     // Create a 2D camera
     let mut camera = Camera2D::from_window(1280, 720, 1.0);
@@ -25,8 +23,7 @@ fn main() {
     println!("\nSet target to: {:?}", target_pos);
 
     // Simulate entity movement (target moves)
-    let mut target_position = target_pos;
-
+    let mut target_position;
     println!("\nSimulating camera follow...");
     println!("Frame | Target Pos    | Camera Pos    | Delta");
     println!("------|---------------|---------------|-------");

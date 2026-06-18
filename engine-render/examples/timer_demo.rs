@@ -46,16 +46,10 @@ fn main() {
     let duration = 1.0;
     let mut elapsed = 0.0;
     let dt = 0.2;
-    let mut triggered_count = 0;
 
     while elapsed <= 2.0 {
         let remaining: f32 = f32::max(duration - elapsed, 0.0);
-        let triggered = if elapsed >= duration && elapsed - dt < duration {
-            triggered_count += 1;
-            true
-        } else {
-            false
-        };
+        let triggered = elapsed >= duration && elapsed - dt < duration;
 
         println!(
             "   {:8.2} | {:10.2} | {:10.2} | {:^8}",
@@ -80,7 +74,7 @@ fn main() {
     let repeat_dt = 0.1;
     let mut repeat_count = 0;
 
-    for step in 0..8 {
+    for _step in 0..8 {
         let triggered = if repeat_elapsed >= repeat_duration {
             repeat_elapsed -= repeat_duration;
             repeat_count += 1;

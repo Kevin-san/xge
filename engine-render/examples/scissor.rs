@@ -3,7 +3,6 @@
 //! 本示例演示如何使用 push_scissor_rect 和 pop_scissor_rect 来限制渲染区域。
 
 use engine_core::{Engine, EngineConfig};
-use engine_math::Vec2;
 use engine_render::{Rect, RenderContext};
 
 fn main() {

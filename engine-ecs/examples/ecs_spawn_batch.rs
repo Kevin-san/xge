@@ -18,7 +18,7 @@ impl Component for Velocity {}
 
 /// 标识组件
 #[derive(Debug, Clone)]
-struct PlayerId(u32);
+struct PlayerId(#[allow(dead_code)] u32);
 
 impl Component for PlayerId {}
 

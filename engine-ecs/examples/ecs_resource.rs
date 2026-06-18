@@ -2,13 +2,16 @@
 //!
 //! 演示如何使用 Resources 存储全局数据。
 
-use engine_ecs::{Resource, World};
+use engine_ecs::World;
 
 /// 游戏配置
 #[derive(Debug, Clone)]
 struct GameConfig {
+    #[allow(dead_code)]
     gravity: f32,
+    #[allow(dead_code)]
     time_scale: f32,
+    #[allow(dead_code)]
     max_entities: u32,
 }
 
@@ -57,14 +60,14 @@ fn main() {
 
     // 可变访问资源
     {
-        let mut time = world.resource_mut::<GameTime>();
+        let time = world.resource_mut::<GameTime>();
         time.total_seconds += time.delta_seconds;
         println!("Game time updated: {:.3}s", time.total_seconds);
     }
 
     // 使用资源
     {
-        let mut score = world.resource_mut::<Score>();
+        let score = world.resource_mut::<Score>();
         score.player1 += 100;
         score.player2 += 50;
     }
