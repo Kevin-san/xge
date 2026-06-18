@@ -32,11 +32,6 @@ const ASSET_STORE_ENDPOINT: &str = "https://store.engine.example.com";
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::asset_store::*;
-    use crate::client::*;
-    use crate::common::*;
-    use crate::profiler::*;
-    use crate::telemetry::*;
 
     /// 测试 AssetId
     #[test]
@@ -149,7 +144,7 @@ mod tests {
         }
         // 在 end_frame 之前检查样本
         let cpu_samples_before = profiler.cpu_samples();
-        assert!(cpu_samples_before.len() > 0);
+        assert!(!cpu_samples_before.is_empty());
         assert!(cpu_samples_before
             .iter()
             .any(|s| s.scope_name == "test_scope"));
@@ -183,7 +178,7 @@ mod tests {
         ];
 
         let flame = FlameGraph::from_samples(&samples);
-        assert!(flame.root().children.len() > 0);
+        assert!(!flame.root().children.is_empty());
     }
 
     /// 测试 Histogram
@@ -276,7 +271,7 @@ mod tests {
         let client = AssetStoreClient::default();
 
         let results = client.search("test", SearchFilters::default()).unwrap();
-        assert!(results.len() > 0);
+        assert!(!results.is_empty());
         assert!(results[0].name.contains("test"));
     }
 
@@ -316,7 +311,7 @@ mod tests {
         assert!(!installed.name.is_empty());
 
         let installed_list = client.list_installed();
-        assert!(installed_list.len() > 0);
+        assert!(!installed_list.is_empty());
 
         client.uninstall(&installed.id).unwrap();
         assert_eq!(client.list_installed().len(), 0);
@@ -353,7 +348,7 @@ mod tests {
         let profiler = PerformanceProfiler::default();
 
         let warnings = engine.run(&profiler);
-        assert!(warnings.len() >= 0);
+        assert!(warnings.is_empty());
     }
 
     /// 测试 BaselineProfile
@@ -381,7 +376,7 @@ mod tests {
         }];
 
         let report = baseline.compare(&new_samples);
-        assert!(report.regression_count() >= 0);
+        assert_eq!(report.regression_count(), 0);
     }
 
     /// 测试 AssetRating

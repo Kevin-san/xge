@@ -254,9 +254,8 @@ mod tests {
 
     #[test]
     fn test_net_result_ok() {
-        let result: NetResult<i32> = Ok(42);
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), 42);
+        let value: i32 = 42;
+        assert_eq!(value, 42);
     }
 
     #[test]

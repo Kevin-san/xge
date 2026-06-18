@@ -1,12 +1,10 @@
 //! Network manager for coordinating connections.
 
-use crate::channel::{Channel, ChannelConfig, ChannelId, MemoryChannel, NetChannel};
+use crate::channel::{ChannelConfig, ChannelId, MemoryChannel, NetChannel};
 use crate::error::{NetError, NetResult};
-use crate::message::{ConnectRequest, ConnectResponse, DisconnectMessage, Message, NetMessage};
-use crate::packet::Packet;
+use crate::message::{ConnectRequest, DisconnectMessage, Message, NetMessage};
 use crate::stats::{AtomicNetStats, NetStats};
-use crate::transport::{NetworkTransport, TransportType};
-use crate::{ClientId, NetRole, ENGINE_VERSION};
+use crate::{ClientId, NetRole};
 use parking_lot::Mutex;
 use std::collections::HashMap;
 use std::net::SocketAddr;
@@ -437,22 +435,19 @@ mod tests {
         assert_eq!(manager.channel_count(), 2);
 
         // Send data through channel A
-        manager.send(id_a, &vec![1, 2, 3]).unwrap();
+        manager.send(id_a, &[1, 2, 3]).unwrap();
 
         // For memory channel testing, we need to manually transfer data
         // Get the underlying MemoryChannel objects and use transfer_to
         let channel_a = manager.get_channel(id_a).unwrap();
-        let channel_b = manager.get_channel(id_b).unwrap();
+        let _channel_b = manager.get_channel(id_b).unwrap();
 
         // Downcast to MemoryChannel for testing purposes
         // Note: In real usage, this would be handled by the network loop
         // For testing, we simulate by directly putting data in recv queue
         {
             // Get data from send queue of channel_a
-            let send_data = channel_a.recv().unwrap(); // This reads from recv_queue, but we need to access send_queue
-                                                       // Actually, MemoryChannel's recv() reads from recv_queue, not send_queue
-                                                       // So we need to use transfer_to method, but that requires MemoryChannel type
-                                                       // Let's just directly test the send functionality
+            let _send_data = channel_a.recv().unwrap();
         }
 
         // Simplified test: just verify send works

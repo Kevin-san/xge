@@ -61,14 +61,27 @@ fn main() {
     println!("\nVerifying components:");
     let entities: Vec<_> = world.entities_iter().collect();
     for entity in entities {
-        let has_pos = world.get_component::<Position>(entity).is_some();
-        let has_vel = world.get_component::<Velocity>(entity).is_some();
-        let has_mass = world.get_component::<Mass>(entity).is_some();
-        let has_rot = world.get_component::<Rotation>(entity).is_some();
-        println!(
-            "  {:?}: pos={}, vel={}, mass={}, rot={}",
-            entity, has_pos, has_vel, has_mass, has_rot
-        );
+        if let Some(pos) = world.get_component::<Position>(entity) {
+            print!("  pos=({:.1}, {:.1})", pos.0[0], pos.0[1]);
+        } else {
+            print!("  pos=false");
+        }
+        if let Some(vel) = world.get_component::<Velocity>(entity) {
+            print!("  vel=({:.1}, {:.1})", vel.0[0], vel.0[1]);
+        } else {
+            print!("  vel=false");
+        }
+        if let Some(mass) = world.get_component::<Mass>(entity) {
+            print!("  mass={:.1}", mass.0);
+        } else {
+            print!("  mass=false");
+        }
+        if let Some(rot) = world.get_component::<Rotation>(entity) {
+            print!("  rot={:.1}", rot.0);
+        } else {
+            print!("  rot=false");
+        }
+        println!();
     }
 
     // 测试移除 Bundle

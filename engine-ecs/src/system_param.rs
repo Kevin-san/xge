@@ -46,6 +46,7 @@ pub struct Commands {
     queue: Vec<Command>,
 }
 
+#[allow(dead_code)]
 enum Command {
     Spawn {
         bundle: Box<dyn std::any::Any + Send + Sync>,
@@ -99,18 +100,12 @@ impl Commands {
     pub fn apply(&mut self, world: &mut World) {
         for cmd in self.queue.drain(..) {
             match cmd {
-                Command::Spawn { bundle: _ } => {}
+                Command::Spawn { .. } => {}
                 Command::Despawn { entity } => {
                     world.despawn(entity);
                 }
-                Command::Insert {
-                    entity: _,
-                    component: _,
-                } => {}
-                Command::Remove {
-                    entity: _,
-                    type_id: _,
-                } => {}
+                Command::Insert { .. } => {}
+                Command::Remove { .. } => {}
             }
         }
     }

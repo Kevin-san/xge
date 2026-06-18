@@ -24,9 +24,13 @@ impl<'w, E: Event> EventReader<'w, E> {
     pub fn iter(&self) -> impl Iterator<Item = &E> {
         self.events.iter()
     }
+}
 
-    /// 获取所有事件（消耗）
-    pub fn into_iter(self) -> impl Iterator<Item = E> {
+impl<'w, E: Event> IntoIterator for EventReader<'w, E> {
+    type Item = E;
+    type IntoIter = std::vec::IntoIter<E>;
+
+    fn into_iter(self) -> Self::IntoIter {
         self.events.into_iter()
     }
 }

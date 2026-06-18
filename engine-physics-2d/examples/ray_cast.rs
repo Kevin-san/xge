@@ -4,7 +4,7 @@
 
 use engine_math::Vec2;
 use engine_physics_2d::{
-    Collider2DBuilder, ColliderShape, PhysicsWorld2D, RayCast2D, RigidBody2DBuilder,
+    Collider2DBuilder, PhysicsWorld2D, RayCast2D, RigidBody2DBuilder,
 };
 
 fn main() {
@@ -63,6 +63,8 @@ fn main() {
     );
     println!("   Ray: origin=(-8, 3), direction=(1, 0), max_dist=20");
     println!("   Expected hits: ground, wall (behind), circle");
+    println!("   Origin: ({}, {}), direction: ({}, {})",
+        ray1.origin.x, ray1.origin.y, ray1.direction.x, ray1.direction.y);
 
     // 简化实现：由于 ray_intersects_shape 是 pub(crate)，我们演示 API 用法
     println!("   (Note: Full ray cast requires internal collision query)");
@@ -73,6 +75,7 @@ fn main() {
     let ray2 = RayCast2D::new(Vec2::new(0.0, 8.0), Vec2::new(0.0, -1.0), 15.0);
     println!("   Ray: origin=(0, 8), direction=(0, -1), max_dist=15");
     println!("   Expected hits: ground at y=0");
+    println!("   Endpoint: ({:.2}, {:.2})", ray2.endpoint().x, ray2.endpoint().y);
     println!();
 
     // 测试 3：对角线射线
@@ -80,6 +83,7 @@ fn main() {
     let ray3 = RayCast2D::new(Vec2::new(-5.0, 8.0), Vec2::new(1.0, -1.0).normalize(), 20.0);
     println!("   Ray: origin=(-5, 8), direction=(0.707, -0.707), max_dist=20");
     println!("   Expected hits: ground");
+    println!("   Endpoint: ({:.2}, {:.2})", ray3.endpoint().x, ray3.endpoint().y);
     println!();
 
     // 测试 4：圆形障碍物射线检测
@@ -87,11 +91,12 @@ fn main() {
     let ray4 = RayCast2D::new(Vec2::new(0.0, 3.0), Vec2::new(1.0, 0.0), 10.0);
     println!("   Ray: origin=(0, 3), direction=(1, 0), max_dist=10");
     println!("   Expected hits: circle at x~1.5 (first contact)");
+    println!("   Max distance: {}", ray4.max_distance);
     println!();
 
     // 3. 演示 RayCast2D 配置选项
     println!("3. RayCast2D configuration options...");
-    let mut configured_ray = RayCast2D::new(Vec2::new(0.0, 5.0), Vec2::new(0.0, -1.0), 10.0)
+    let configured_ray = RayCast2D::new(Vec2::new(0.0, 5.0), Vec2::new(0.0, -1.0), 10.0)
         .with_collision_group(0x00000001) // 只检测组 1
         .with_collision_mask(0x00000003); // 只检测组 0 和 1
     println!("   - Collision group: 0x00000001");
@@ -129,9 +134,9 @@ fn main() {
 
     for i in 0..5 {
         let x = -8.0 + (i as f32) * 4.0;
-        let ray = RayCast2D::new(Vec2::new(x, 8.0), Vec2::new(0.0, -1.0), 15.0);
+        let _ray = RayCast2D::new(Vec2::new(x, 8.0), Vec2::new(0.0, -1.0), 15.0);
         // 模拟命中检测逻辑
-        let hit_point = if x >= -1.0 && x <= 4.5 {
+        let hit_point = if (-1.0..=4.5).contains(&x) {
             // 射线穿过圆形
             let t = (16.0 - (3.0 - x).powi(2)).sqrt();
             Vec2::new(x, 3.0 - (1.5 + t))
@@ -147,6 +152,14 @@ fn main() {
             hit_point.y
         );
     }
+    println!();
+
+    // 验证距离计算
+    let test_ray = RayCast2D::new(Vec2::new(0.0, 5.0), Vec2::new(0.0, -1.0), 10.0);
+    let end = test_ray.endpoint();
+    println!("   Test ray origin=(0, 5), endpoint=({}, {})", end.x, end.y);
+    let in_range = (-0.01..=0.01).contains(&end.x) && (-5.01..=-4.99).contains(&end.y);
+    println!("   Endpoint within expected range: {}", in_range);
     println!();
 
     println!("Ray cast demo completed successfully!");

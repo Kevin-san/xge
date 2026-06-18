@@ -352,7 +352,6 @@ impl Component for UiRoot {}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use engine_ecs::World;
 
     #[test]
     fn test_ui_node_creation() {
@@ -439,7 +438,7 @@ mod tests {
 
         let mut pos = Vec2::new(padding_left, padding_top);
         for &child_entity in &children {
-            if let Some(mut child_node) = world.get_component_mut::<UiNode>(child_entity) {
+            if let Some(child_node) = world.get_component_mut::<UiNode>(child_entity) {
                 if layout_dir == LayoutDirection::Horizontal {
                     child_node.rect.x = pos.x + child_node.layout_props.margin.left;
                     child_node.rect.y = padding_top + child_node.layout_props.margin.top;
