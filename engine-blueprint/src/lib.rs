@@ -1014,21 +1014,19 @@ impl BlueprintIR {
         self.entry_point
     }
 
-    /// Serialize to binary (bincode)
-    pub fn serialize(&self) -> Result<Vec<u8>, bincode::Error> {
-        bincode::serialize(self)
+    /// Serialize to binary (postcard)
+    pub fn serialize(&self) -> Result<Vec<u8>, postcard::Error> {
+        postcard::to_allocvec(self)
     }
 
     /// Deserialize from binary with size limit to prevent DoS attacks
-    pub fn deserialize(bytes: &[u8]) -> Result<Self, bincode::Error> {
+    pub fn deserialize(bytes: &[u8]) -> Result<Self, postcard::Error> {
         // 限制大小为 10MB
-        const MAX_IR_SIZE: u64 = 10 * 1024 * 1024;
-        if bytes.len() as u64 > MAX_IR_SIZE {
-            return Err(bincode::Error::new(bincode::ErrorKind::Custom(
-                "IR too large".to_string(),
-            )));
+        const MAX_IR_SIZE: usize = 10 * 1024 * 1024;
+        if bytes.len() > MAX_IR_SIZE {
+            return Err(postcard::Error::WontImplement);
         }
-        bincode::deserialize(bytes)
+        postcard::from_bytes(bytes)
     }
 }
 
@@ -2511,5 +2509,32 @@ mod tests {
 
         // sum should be 45 (0+1+2+...+9)
         assert_eq!(interpreter.variables()[0], PinValue::Int(45));
+    }
+
+    #[test]
+    fn test_blueprint_ir_serialize_roundtrip() {
+        let mut ir = BlueprintIR::new();
+        ir.entry_point = InstrOffset(0);
+        ir.instructions.push(BlueprintIRInstruction::PushConst(ConstId(7)));
+        ir.instructions.push(BlueprintIRInstruction::Halt);
+        ir.constants.push(PinValue::Int(7));
+
+        let bytes = ir.serialize().expect("serialize should succeed");
+        assert!(!bytes.is_empty());
+        let restored = BlueprintIR::deserialize(&bytes).expect("deserialize should succeed");
+        assert_eq!(restored.entry_point, ir.entry_point);
+        assert_eq!(restored.instructions.len(), ir.instructions.len());
+        assert_eq!(restored.constants, ir.constants);
+    }
+
+    #[test]
+    fn test_blueprint_ir_size_limit_defense() {
+        // 超过 10MB 的随机 payload 应被拒绝
+        let too_large = vec![0u8; 11 * 1024 * 1024];
+        let result = BlueprintIR::deserialize(&too_large);
+        assert!(
+            result.is_err(),
+            "over-sized payload must be rejected to prevent DoS"
+        );
     }
 }

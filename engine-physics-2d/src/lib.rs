@@ -3,6 +3,7 @@
 //! 提供 2D 物理仿真，包括刚体、碰撞检测、关节等。
 
 #![warn(missing_docs)]
+#![allow(clippy::too_many_arguments)]
 
 pub mod collider;
 pub mod collision;

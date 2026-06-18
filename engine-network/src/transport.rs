@@ -585,6 +585,11 @@ impl TlsConfig {
         &self.domain
     }
 
+    /// Get optional custom CA file path.
+    pub fn ca_file(&self) -> Option<&str> {
+        self.ca_file.as_deref()
+    }
+
     /// Build a rustls ClientConfig from this configuration.
     /// Uses Mozilla's webpki-roots for CA verification by default.
     pub fn build_client_config(&self) -> NetResult<ClientConfig> {
@@ -600,11 +605,10 @@ impl TlsConfig {
         if let Some(ca_path) = &self.ca_file {
             let ca_pem = fs::read(ca_path)
                 .map_err(|e| NetError::Tls(format!("Failed to read CA file: {}", e)))?;
-            for item in rustls_pemfile::certs(&mut ca_pem.as_slice())
-                .map_err(|e| NetError::Tls(format!("Failed to parse CA cert: {}", e)))?
-            {
-                let der = rustls::pki_types::CertificateDer::from(item);
-                root_store.add(der)
+            use rustls_pki_types::pem::PemObject;
+            for cert in rustls_pki_types::CertificateDer::pem_slice_iter(&ca_pem) {
+                let cert = cert.map_err(|e| NetError::Tls(format!("Failed to parse CA cert: {}", e)))?;
+                root_store.add(cert)
                     .map_err(|e| NetError::Tls(format!("Failed to add CA cert: {}", e)))?;
             }
         }
@@ -1042,5 +1046,21 @@ mod tests {
 
         assert_eq!(transport.transport_type(), TransportType::Udp);
         assert!(transport.is_active());
+    }
+
+    #[test]
+    fn test_tls_config_default_and_accessors() {
+        let config = TlsConfig::new("example.com".to_string());
+        assert_eq!(config.domain(), "example.com");
+        assert!(config.ca_file().is_none());
+    }
+
+    #[test]
+    fn test_tls_config_with_ca_file_returns_error_when_missing() {
+        let mut config = TlsConfig::new("example.com".to_string());
+        config = config.with_ca_file("/tmp/nonexistent-XXXXXX.pem".to_string());
+        // 缺少文件应当引发错误（不是 panic）
+        let result = config.build_client_config();
+        assert!(result.is_err());
     }
 }

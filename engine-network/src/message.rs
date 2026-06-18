@@ -20,7 +20,7 @@ pub trait NetMessage: Serialize + DeserializeOwned + Send + Sync + 'static {
 
     /// Serialize message to bytes
     fn encode(&self) -> NetResult<Vec<u8>> {
-        bincode::serialize(self).map_err(|e| NetError::Serialization(e.to_string()))
+        postcard::to_allocvec(self).map_err(|e| NetError::Serialization(e.to_string()))
     }
 
     /// Deserialize message from bytes
@@ -30,7 +30,7 @@ pub trait NetMessage: Serialize + DeserializeOwned + Send + Sync + 'static {
         if data.len() > MAX_MESSAGE_SIZE {
             return Err(NetError::Deserialization("Message too large".to_string()));
         }
-        bincode::deserialize(data).map_err(|e| NetError::Deserialization(e.to_string()))
+        postcard::from_bytes(data).map_err(|e| NetError::Deserialization(e.to_string()))
     }
 }
 
@@ -88,7 +88,7 @@ impl Message {
 
     /// Serialize the message wrapper to bytes
     pub fn encode(&self) -> NetResult<Vec<u8>> {
-        bincode::serialize(self).map_err(|e| NetError::Serialization(e.to_string()))
+        postcard::to_allocvec(self).map_err(|e| NetError::Serialization(e.to_string()))
     }
 
     /// Deserialize message wrapper from bytes
@@ -98,7 +98,7 @@ impl Message {
         if data.len() > MAX_MESSAGE_SIZE {
             return Err(NetError::Deserialization("Message too large".to_string()));
         }
-        bincode::deserialize(data).map_err(|e| NetError::Deserialization(e.to_string()))
+        postcard::from_bytes(data).map_err(|e| NetError::Deserialization(e.to_string()))
     }
 
     /// Get message size
@@ -305,5 +305,40 @@ mod tests {
         let decoded: PongMessage = PongMessage::decode(&encoded).unwrap();
         assert_eq!(pong.client_time, decoded.client_time);
         assert_eq!(pong.server_time, decoded.server_time);
+    }
+
+    #[test]
+    fn test_message_size_limit_defense() {
+        // 超过 10MB 的 payload 应当被拒绝，防止 DoS
+        let too_large = vec![0u8; 11 * 1024 * 1024];
+        let result = Message::from_bytes(&too_large);
+        assert!(
+            result.is_err(),
+            "over-sized payload must be rejected to prevent DoS"
+        );
+    }
+
+    #[test]
+    fn test_message_wrapper_roundtrip() {
+        let inner = TestMessage {
+            value: 123,
+            text: "roundtrip".to_string(),
+        };
+        let wrapped = Message::new(42, &inner).unwrap();
+        let bytes = wrapped.encode().unwrap();
+        let parsed = Message::from_bytes(&bytes).unwrap();
+        assert_eq!(wrapped.id, parsed.id);
+        assert_eq!(wrapped.type_id, parsed.type_id);
+        assert_eq!(wrapped.payload, parsed.payload);
+    }
+
+    #[test]
+    fn test_generate_message_id_unique() {
+        // 连续生成的 id 必须不同（至少对大多数样本成立）
+        let a = generate_message_id();
+        // 简单 sleep 以确保时间差异
+        std::thread::sleep(std::time::Duration::from_millis(1));
+        let b = generate_message_id();
+        assert_ne!(a, b);
     }
 }
