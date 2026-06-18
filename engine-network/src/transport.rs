@@ -72,6 +72,7 @@ pub struct TcpTransport {
     local_addr: Option<SocketAddr>,
     peer_addr: Option<SocketAddr>,
     connected: AtomicBool,
+    #[allow(dead_code)]
     send_queue: Mutex<VecDeque<Vec<u8>>>,
     recv_queue: Mutex<VecDeque<Vec<u8>>>,
     bytes_in: AtomicU64,
@@ -237,6 +238,7 @@ pub struct UdpTransport {
     socket: Mutex<Option<UdpSocket>>,
     local_addr: Option<SocketAddr>,
     connected_addr: Mutex<Option<SocketAddr>>,
+    #[allow(dead_code)]
     send_queue: Mutex<VecDeque<(SocketAddr, Vec<u8>, Reliability)>>,
     recv_queue: Mutex<VecDeque<(SocketAddr, Vec<u8>)>>,
     connected: AtomicBool,
@@ -291,13 +293,13 @@ impl UdpTransport {
         &self,
         addr: SocketAddr,
         data: &[u8],
-        reliability: Reliability,
+        _reliability: Reliability,
     ) -> NetResult<()> {
         if !self.connected.load(Ordering::SeqCst) {
             return Err(NetError::ConnectionClosed);
         }
 
-        let mut socket = self.socket.lock();
+        let socket = self.socket.lock();
         if let Some(sock) = socket.as_ref() {
             sock.send_to(data, addr)?;
             self.bytes_out
@@ -636,6 +638,7 @@ pub struct TlsTcpTransport {
     peer_addr: Option<SocketAddr>,
     connected: AtomicBool,
     send_queue: Mutex<VecDeque<Vec<u8>>>,
+    #[allow(dead_code)]
     recv_queue: Mutex<VecDeque<Vec<u8>>>,
     bytes_in: AtomicU64,
     bytes_out: AtomicU64,
@@ -825,23 +828,23 @@ impl NetChannel for TlsTcpTransport {
         let _ = self.do_io();
 
         // Read from TLS connection
-        let mut conn = self.conn.lock();
-        let mut reader = conn.reader();
-
         let mut buf = Vec::new();
-        match reader.read_to_end(&mut buf) {
-            Ok(0) => {}
-            Ok(n) => {
-                self.bytes_in.fetch_add(n as u64, Ordering::SeqCst);
-                self.msg_in.fetch_add(1, Ordering::SeqCst);
-            }
-            Err(e) => {
-                if e.kind() != std::io::ErrorKind::WouldBlock {
-                    return Err(NetError::Tls(format!("TLS read error: {}", e)));
+        {
+            let mut conn = self.conn.lock();
+            let mut reader = conn.reader();
+            match reader.read_to_end(&mut buf) {
+                Ok(0) => {}
+                Ok(n) => {
+                    self.bytes_in.fetch_add(n as u64, Ordering::SeqCst);
+                    self.msg_in.fetch_add(1, Ordering::SeqCst);
+                }
+                Err(e) => {
+                    if e.kind() != std::io::ErrorKind::WouldBlock {
+                        return Err(NetError::Tls(format!("TLS read error: {}", e)));
+                    }
                 }
             }
         }
-        drop(reader);
 
         if buf.is_empty() {
             Ok(None)
@@ -1024,7 +1027,7 @@ mod tests {
     fn test_websocket_transport_stub() {
         let transport = WebSocketTransport::connect("ws://localhost:8080").unwrap();
         assert!(transport.is_connected());
-        transport.send(&vec![1, 2, 3]).unwrap();
+        transport.send(&[1, 2, 3]).unwrap();
         let stats = transport.stats();
         assert_eq!(stats.bytes_out, 3);
     }

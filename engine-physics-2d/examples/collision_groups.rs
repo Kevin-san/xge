@@ -68,8 +68,8 @@ fn main() {
     // 3. 分组交互检测
     println!("3. Group Interaction Tests...");
 
-    let player_and_enemy = CollisionGroup::new(0b0011, 0b0011); // memberships=3, filters=3
-    let walls = CollisionGroup::new(0b1100, 0b1100); // memberships=12, filters=12
+    let _player_and_enemy = CollisionGroup::new(0b0011, 0b0011); // memberships=3, filters=3
+    let _walls = CollisionGroup::new(0b1100, 0b1100); // memberships=12, filters=12
 
     println!(
         "   - Player can interact with Enemy: {}",

@@ -103,7 +103,7 @@ impl MemoryChannel {
 
     /// Create a pair of connected memory channels
     pub fn create_pair(config: ChannelConfig) -> (Self, Self) {
-        let channel_a = Self::new(1, config.clone());
+        let channel_a = Self::new(1, config);
         let channel_b = Self::new(2, config);
 
         // Link the channels
@@ -229,14 +229,14 @@ impl Channel {
     }
 
     /// Send data with timeout
-    pub fn send_timeout(&self, data: &[u8], timeout_ms: u64) -> NetResult<()> {
+    pub fn send_timeout(&self, data: &[u8], _timeout_ms: u64) -> NetResult<()> {
         // For now, just call send directly
         // In a full implementation, this would use async with timeout
         self.inner.send(data)
     }
 
     /// Receive data with timeout
-    pub fn recv_timeout(&self, timeout_ms: u64) -> NetResult<Option<Vec<u8>>> {
+    pub fn recv_timeout(&self, _timeout_ms: u64) -> NetResult<Option<Vec<u8>>> {
         // For now, just call recv directly
         self.inner.recv()
     }
@@ -326,7 +326,7 @@ mod tests {
         assert!(channel_a.is_connected());
         assert!(channel_b.is_connected());
 
-        channel_a.send(&vec![1, 2, 3]).unwrap();
+        channel_a.send(&[1, 2, 3]).unwrap();
         channel_a.transfer_to(&channel_b).unwrap();
 
         let received = channel_b.recv().unwrap();
@@ -338,8 +338,8 @@ mod tests {
         let config = ChannelConfig::default();
         let channel = MemoryChannel::new(1, config);
 
-        channel.send(&vec![1, 2, 3]).unwrap();
-        channel.send(&vec![4, 5, 6]).unwrap();
+        channel.send(&[1, 2, 3]).unwrap();
+        channel.send(&[4, 5, 6]).unwrap();
 
         let stats = channel.stats();
         assert_eq!(stats.bytes_out, 6);
@@ -355,7 +355,7 @@ mod tests {
         channel.close().unwrap();
         assert!(!channel.is_connected());
 
-        let result = channel.send(&vec![1, 2, 3]);
+        let result = channel.send(&[1, 2, 3]);
         assert!(result.is_err());
     }
 

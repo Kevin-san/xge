@@ -35,20 +35,15 @@ pub trait NetMessage: Serialize + DeserializeOwned + Send + Sync + 'static {
 }
 
 /// Serialization format enumeration
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum SerializeFormat {
     /// MessagePack format (default)
     MessagePack,
     /// JSON format
     Json,
     /// Bincode format (fast binary)
+    #[default]
     Bincode,
-}
-
-impl Default for SerializeFormat {
-    fn default() -> Self {
-        Self::Bincode
-    }
 }
 
 /// Message wrapper for network transmission
@@ -181,7 +176,6 @@ impl Default for MessageBuilder {
 }
 
 /// Common network messages
-
 /// Ping message for keepalive
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PingMessage {

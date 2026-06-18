@@ -101,7 +101,7 @@ mod tests {
     #[test]
     fn test_build_cache_new() {
         let dir = tempdir().unwrap();
-        let cache = BuildCache::new(dir.path()).unwrap();
+        let _cache = BuildCache::new(dir.path()).unwrap();
         assert!(dir.path().exists());
     }
 

@@ -1,7 +1,6 @@
 //! 查询模块 - ECS 查询系统
 
 use crate::{Component, Entity, World};
-use std::any::TypeId;
 use std::marker::PhantomData;
 
 // ============ QueryFilter ============
@@ -88,7 +87,6 @@ impl<'a, C: Component> std::ops::DerefMut for QueryItemMut<'a, C> {
 // ============ QueryState ============
 /// Query 状态
 pub struct QueryState<C: Component, F: QueryFilter = NoneFilter> {
-    component_type: TypeId,
     _marker: PhantomData<(C, F)>,
 }
 
@@ -96,7 +94,6 @@ impl<C: Component, F: QueryFilter> QueryState<C, F> {
     /// 创建新的 Query 状态
     pub fn new() -> Self {
         Self {
-            component_type: TypeId::of::<C>(),
             _marker: PhantomData,
         }
     }

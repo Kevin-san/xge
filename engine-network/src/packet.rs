@@ -18,6 +18,7 @@ pub struct PacketHeader {
     pub payload_len: u16,
 }
 
+#[allow(clippy::derivable_impls)]
 impl Default for PacketHeader {
     fn default() -> Self {
         Self {

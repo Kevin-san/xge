@@ -325,14 +325,12 @@ impl World {
         // 已死亡实体的组件会残留在存储中直到 clear_entities 被调用。
         // 这是一个架构设计限制，真正的解决方案是重新设计组件存储以支持按 entity_id 移除。
 
-        // 标记实体为死亡
-        let result = self.entities.despawn(entity);
-
         // 注意：组件并未从 self.components 中移除，这是一个内存泄漏问题
         // 组件数据会保留在 DenseStorage 中直到实体被重新创建（generation 增加）
         // 或者直到 clear_entities 被调用
 
-        result
+        // 标记实体为死亡
+        self.entities.despawn(entity)
     }
 
     /// 通过实体ID移除组件（内部辅助方法）

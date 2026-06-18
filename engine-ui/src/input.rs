@@ -307,7 +307,6 @@ impl Default for UiInput {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use engine_ecs::World;
 
     #[test]
     fn test_ui_event_creation() {

@@ -37,37 +37,37 @@ pub trait Plugin: Send + Sync {
     fn id(&self) -> PluginId;
 
     /// Initialize the plugin
-    fn on_init(&self, context: &PluginContext) -> NetResult<()> {
+    fn on_init(&self, _context: &PluginContext) -> NetResult<()> {
         Ok(())
     }
 
     /// Called when plugin is activated
-    fn on_activate(&self, context: &PluginContext) -> NetResult<()> {
+    fn on_activate(&self, _context: &PluginContext) -> NetResult<()> {
         Ok(())
     }
 
     /// Called when plugin is deactivated
-    fn on_deactivate(&self, context: &PluginContext) -> NetResult<()> {
+    fn on_deactivate(&self, _context: &PluginContext) -> NetResult<()> {
         Ok(())
     }
 
     /// Called on each tick/update
-    fn on_tick(&self, context: &PluginContext) -> NetResult<()> {
+    fn on_tick(&self, _context: &PluginContext) -> NetResult<()> {
         Ok(())
     }
 
     /// Handle incoming message
     fn on_message(
         &self,
-        context: &PluginContext,
-        message_type: u32,
-        data: &[u8],
+        _context: &PluginContext,
+        _message_type: u32,
+        _data: &[u8],
     ) -> NetResult<Option<Vec<u8>>> {
         Ok(None)
     }
 
     /// Called before shutdown
-    fn on_shutdown(&self, context: &PluginContext) -> NetResult<()> {
+    fn on_shutdown(&self, _context: &PluginContext) -> NetResult<()> {
         Ok(())
     }
 
