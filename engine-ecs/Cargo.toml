@@ -1,0 +1,65 @@
+[package]
+name = "engine-ecs"
+version = "0.1.0"
+edition = "2021"
+authors = ["Game Engine Team"]
+description = "ECS (Entity Component System) core for game development"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+engine-utils = { path = "../engine-utils" }
+anyhow = "1.0"
+thiserror = "1.0"
+parking_lot = "0.12"
+slab = "0.4"
+
+[dev-dependencies]
+criterion = "0.5"
+
+[[example]]
+name = "ecs_hello"
+path = "examples/ecs_hello.rs"
+
+[[example]]
+name = "ecs_query"
+path = "examples/ecs_query.rs"
+
+[[example]]
+name = "ecs_spawn_batch"
+path = "examples/ecs_spawn_batch.rs"
+
+[[example]]
+name = "ecs_resource"
+path = "examples/ecs_resource.rs"
+
+[[example]]
+name = "ecs_bundle"
+path = "examples/ecs_bundle.rs"
+
+[[example]]
+name = "ecs_system"
+path = "examples/ecs_system.rs"
+
+[[example]]
+name = "ecs_hierarchy"
+path = "examples/ecs_hierarchy.rs"
+
+[[example]]
+name = "ecs_events"
+path = "examples/ecs_events.rs"
+
+[[example]]
+name = "ecs_schedule"
+path = "examples/ecs_schedule.rs"
+
+[[example]]
+name = "ecs_change_detection"
+path = "examples/ecs_change_detection.rs"
+
+[[example]]
+name = "ecs_sparse_set"
+path = "examples/ecs_sparse_set.rs"
+
+[[example]]
+name = "ecs_performance"
+path = "examples/ecs_performance.rs"

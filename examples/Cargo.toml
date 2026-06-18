@@ -1,0 +1,16 @@
+[package]
+name = "engine-examples"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+engine-core = { path = "../engine-core" }
+engine-math = { path = "../engine-math" }
+engine-window = { path = "../engine-window" }
+engine-render = { path = "../engine-render" }
+engine-ecs = { path = "../engine-ecs" }
+engine-ui = { path = "../engine-ui" }
+anyhow = "1.0"
+log = "0.4"
+env_logger = "0.10"

@@ -1,0 +1,24 @@
+[package]
+name = "engine-particles"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+description = "Particle system and post-processing effects for game engine"
+
+[features]
+default = ["std"]
+std = []
+gpu_particles = []
+
+[dependencies]
+engine-math = { path = "../engine-math" }
+engine-utils = { path = "../engine-utils" }
+
+[dev-dependencies]
+
+[lib]
+name = "engine_particles"
+path = "src/lib.rs"

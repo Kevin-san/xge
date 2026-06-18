@@ -1,0 +1,58 @@
+[workspace]
+resolver = "2"
+members = [
+    "engine-core",
+    "engine-math",
+    "engine-utils",
+    "engine-platform",
+    "engine-window",
+    "engine-render",
+    "engine-render-3d",
+    "engine-physics-2d",
+    "engine-physics-3d",
+    "engine-scene",
+    "engine-ecs",
+    "engine-ui",
+    "engine-editor",
+    "engine-build",
+    "engine-pbr",
+    "engine-particles",
+    "engine-animation",
+    "engine-blueprint",
+    "engine-network",
+    "engine-ecosystem",
+    "examples",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Game Engine Team"]
+license = "MIT OR Apache-2.0"
+rust-version = "1.70"
+
+[workspace.dependencies]
+anyhow = "1.0"
+parking_lot = "0.12"
+chrono = "0.4"
+
+# Internal crate dependencies
+engine-core = { path = "engine-core" }
+engine-math = { path = "engine-math" }
+engine-utils = { path = "engine-utils" }
+engine-platform = { path = "engine-platform" }
+engine-window = { path = "engine-window" }
+engine-render = { path = "engine-render" }
+engine-physics-2d = { path = "engine-physics-2d" }
+engine-physics-3d = { path = "engine-physics-3d" }
+engine-scene = { path = "engine-scene" }
+engine-ecs = { path = "engine-ecs" }
+engine-ui = { path = "engine-ui" }
+engine-editor = { path = "engine-editor" }
+engine-build = { path = "engine-build" }
+engine-pbr = { path = "engine-pbr" }
+engine-particles = { path = "engine-particles" }
+engine-render-3d = { path = "engine-render-3d" }
+engine-animation = { path = "engine-animation" }
+engine-blueprint = { path = "engine-blueprint" }
+engine-network = { path = "engine-network" }

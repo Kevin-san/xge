@@ -1,0 +1,14 @@
+[package]
+name = "engine-core"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+rust-version = "1.70"
+
+[dependencies]
+anyhow.workspace = true
+engine-window = { path = "../engine-window" }
+
+[build-dependencies]
+chrono.workspace = true

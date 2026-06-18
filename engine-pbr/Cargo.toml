@@ -1,0 +1,23 @@
+[package]
+name = "engine-pbr"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Game engine PBR material and shader system"
+
+[features]
+default = []
+
+[dependencies]
+# External crates
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+anyhow.workspace = true
+
+# Internal crates
+engine-math = { path = "../engine-math" }
+
+[dev-dependencies]

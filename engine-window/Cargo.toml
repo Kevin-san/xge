@@ -1,0 +1,23 @@
+[package]
+name = "engine-window"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+# winit for window management and events
+winit = "0.29"
+
+# raw-window-handle for graphics API integration
+raw-window-handle = "0.5"
+
+# bitflags for ModifiersState
+bitflags = "1.3"
+
+# engine math for Vec2
+engine-math = { path = "../engine-math" }
+
+[dev-dependencies]
+# For testing
