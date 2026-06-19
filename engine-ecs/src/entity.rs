@@ -1,6 +1,6 @@
 //! 实体模块
 //!
-//! 定义 Entity 结构体和相关类型。
+//! 定义 Entity 结构体、EntityTable 实体表以及相关引用类型。
 
 use std::fmt;
 
@@ -107,6 +107,121 @@ impl<'a> EntityMut<'a> {
     /// 获取组件可变引用
     pub fn get_component_mut<C: Component>(&mut self) -> Option<&mut C> {
         self.world.get_component_mut::<C>(self.entity)
+    }
+}
+
+/// 实体在 Archetype 中的位置
+#[derive(Debug, Clone, Copy)]
+pub struct EntityLocation {
+    pub archetype: u32,
+    pub row: u32,
+}
+
+/// 实体表：分配和跟踪实体的生命周期与位置
+pub struct EntityTable {
+    generations: Vec<u32>,
+    alive: Vec<bool>,
+    locations: Vec<Option<EntityLocation>>,
+    free_list: Vec<u32>,
+    next_id: u32,
+}
+
+impl EntityTable {
+    pub fn new() -> Self {
+        Self {
+            generations: Vec::new(),
+            alive: Vec::new(),
+            locations: Vec::new(),
+            free_list: Vec::new(),
+            next_id: 0,
+        }
+    }
+
+    pub fn allocate(&mut self) -> Entity {
+        if let Some(id) = self.free_list.pop() {
+            // 重用已释放的 id，generation +1
+            let gen = &mut self.generations[id as usize];
+            *gen = gen.wrapping_add(1);
+            self.alive[id as usize] = true;
+            self.locations[id as usize] = None;
+            return Entity::new(id, self.generations[id as usize]);
+        }
+        // 分配新 id
+        let id = self.next_id;
+        self.next_id += 1;
+        self.generations.push(1);
+        self.alive.push(true);
+        self.locations.push(None);
+        Entity::new(id, 1)
+    }
+
+    pub fn free(&mut self, entity: Entity) -> bool {
+        let id = entity.id() as usize;
+        if id >= self.alive.len() {
+            return false;
+        }
+        if !self.alive[id] {
+            return false;
+        }
+        // 检查代际
+        if self.generations[id] != entity.generation() {
+            return false;
+        }
+        self.alive[id] = false;
+        self.locations[id] = None;
+        self.free_list.push(entity.id());
+        true
+    }
+
+    pub fn is_alive(&self, entity: Entity) -> bool {
+        let id = entity.id() as usize;
+        if id >= self.alive.len() {
+            return false;
+        }
+        if !self.alive[id] {
+            return false;
+        }
+        self.generations[id] == entity.generation()
+    }
+
+    pub fn get_location(&self, entity_id: u32) -> Option<EntityLocation> {
+        let id = entity_id as usize;
+        if id >= self.alive.len() || !self.alive[id] {
+            return None;
+        }
+        self.locations[id]
+    }
+
+    pub fn set_location(&mut self, entity_id: u32, location: EntityLocation) {
+        let id = entity_id as usize;
+        if id >= self.locations.len() {
+            return;
+        }
+        self.locations[id] = Some(location);
+    }
+
+    /// 遍历所有活着的 entity（不保证顺序）
+    pub fn iter_alive(&self) -> impl Iterator<Item = Entity> + '_ {
+        self.alive
+            .iter()
+            .enumerate()
+            .filter_map(move |(i, &alive)| {
+                if alive {
+                    Some(Entity::new(i as u32, self.generations[i]))
+                } else {
+                    None
+                }
+            })
+    }
+
+    pub fn alive_count(&self) -> usize {
+        self.alive.iter().filter(|&&a| a).count()
+    }
+}
+
+impl Default for EntityTable {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

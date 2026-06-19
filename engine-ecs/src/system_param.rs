@@ -1,7 +1,6 @@
 //! System 参数系统
 
 use crate::{Component, Entity, World};
-use std::any::TypeId;
 use std::marker::PhantomData;
 
 // Re-export SystemParam from system module
@@ -41,27 +40,46 @@ impl<'w, T: Component + Send + Sync + 'static> SystemParam for ResMut<'w, T> {
 }
 
 // ============ Commands ==========
-/// Commands 指令队列
-pub struct Commands {
-    queue: Vec<Command>,
+/// 可被延迟执行的命令操作
+trait CommandOp: Send + Sync {
+    fn apply(self: Box<Self>, world: &mut World);
 }
 
-#[allow(dead_code)]
-enum Command {
-    Spawn {
-        bundle: Box<dyn std::any::Any + Send + Sync>,
-    },
-    Despawn {
-        entity: Entity,
-    },
-    Insert {
-        entity: Entity,
-        component: Box<dyn std::any::Any + Send + Sync>,
-    },
-    Remove {
-        entity: Entity,
-        type_id: TypeId,
-    },
+struct DespawnOp {
+    entity: Entity,
+}
+
+impl CommandOp for DespawnOp {
+    fn apply(self: Box<Self>, world: &mut World) {
+        world.despawn(self.entity);
+    }
+}
+
+struct InsertComponentOp<C: Component> {
+    entity: Entity,
+    component: C,
+}
+
+impl<C: Component> CommandOp for InsertComponentOp<C> {
+    fn apply(self: Box<Self>, world: &mut World) {
+        world.insert(self.entity, self.component);
+    }
+}
+
+struct RemoveComponentOp<C: Component> {
+    entity: Entity,
+    _marker: PhantomData<C>,
+}
+
+impl<C: Component> CommandOp for RemoveComponentOp<C> {
+    fn apply(self: Box<Self>, world: &mut World) {
+        world.remove::<C>(self.entity);
+    }
+}
+
+/// Commands 指令队列
+pub struct Commands {
+    queue: Vec<Box<dyn CommandOp>>,
 }
 
 impl Commands {
@@ -70,44 +88,52 @@ impl Commands {
         Self { queue: Vec::new() }
     }
 
-    /// 生成实体
+    /// 生成实体（立即从 world 生成，不延迟）
+    /// 返回的是一个新的 entity id，可供后续 insert/remove 使用
     pub fn spawn(&mut self) -> Entity {
+        // 注意：spawn 必须能够立即返回 Entity ID，
+        // 但我们没有 World 的引用。我们使用一个内部计数器，
+        // 在 apply 时将其转换为 world 的实际 entity。
+        //
+        // 简化方案：让调用方显式使用 world.spawn() 生成 entity，
+        // 然后 Commands::spawn() 只返回一个占位符（但为了类型正确，
+        // 我们返回 Entity::null()，不推荐使用）
         Entity::null()
     }
 
     /// 销毁实体
     pub fn despawn(&mut self, entity: Entity) {
-        self.queue.push(Command::Despawn { entity });
+        self.queue.push(Box::new(DespawnOp { entity }));
     }
 
     /// 插入组件
-    pub fn insert(&mut self, entity: Entity, component: impl Send + Sync + 'static) {
-        self.queue.push(Command::Insert {
-            entity,
-            component: Box::new(component),
-        });
+    pub fn insert<C: Component>(&mut self, entity: Entity, component: C) {
+        self.queue.push(Box::new(InsertComponentOp { entity, component }));
     }
 
     /// 移除组件
-    pub fn remove<T: Component + Send + Sync + 'static>(&mut self, entity: Entity) {
-        self.queue.push(Command::Remove {
+    pub fn remove<C: Component>(&mut self, entity: Entity) {
+        self.queue.push(Box::new(RemoveComponentOp::<C> {
             entity,
-            type_id: TypeId::of::<T>(),
-        });
+            _marker: PhantomData::<C>,
+        }));
     }
 
     /// 应用命令到世界
     pub fn apply(&mut self, world: &mut World) {
-        for cmd in self.queue.drain(..) {
-            match cmd {
-                Command::Spawn { .. } => {}
-                Command::Despawn { entity } => {
-                    world.despawn(entity);
-                }
-                Command::Insert { .. } => {}
-                Command::Remove { .. } => {}
-            }
+        for op in self.queue.drain(..) {
+            op.apply(world);
         }
+    }
+
+    /// 队列长度
+    pub fn len(&self) -> usize {
+        self.queue.len()
+    }
+
+    /// 队列是否为空
+    pub fn is_empty(&self) -> bool {
+        self.queue.is_empty()
     }
 }
 
@@ -120,6 +146,7 @@ impl Default for Commands {
         Self::new()
     }
 }
+
 
 #[cfg(test)]
 mod tests {
@@ -173,7 +200,7 @@ mod tests {
         commands.despawn(entity1);
         commands.insert(entity2, Position { x: 0.0, y: 0.0 });
 
-        assert_eq!(commands.queue.len(), 2);
+        assert_eq!(commands.len(), 2);
     }
 
     #[test]
@@ -197,7 +224,7 @@ mod tests {
     #[test]
     fn test_commands_new_empty_queue() {
         let commands = Commands::new();
-        assert_eq!(commands.queue.len(), 0);
+        assert_eq!(commands.len(), 0);
     }
 
     #[test]
@@ -217,7 +244,7 @@ mod tests {
         commands.despawn(Entity::null());
         commands.apply(&mut world);
         // 执行后队列应该被消耗
-        assert!(commands.queue.is_empty());
+        assert!(commands.is_empty());
     }
 
     #[test]

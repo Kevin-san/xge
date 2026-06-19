@@ -2,6 +2,7 @@
 //!
 //! 提供游戏引擎的 ECS 架构实现，包括 World、Entity、Component、System 等核心概念。
 
+pub mod archetype;
 pub mod bundle;
 pub mod change_tracker;
 pub mod component;
@@ -16,6 +17,7 @@ pub mod system;
 pub mod system_param;
 pub mod world;
 
+pub use archetype::{ArchetypeStorage, Archetype};
 pub use bundle::{Bundle, BundleError};
 pub use change_tracker::{ChangeTrackers, Ref, Tick};
 pub use component::Component;
