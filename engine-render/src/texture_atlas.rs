@@ -443,19 +443,6 @@ mod tests {
         Image::from_rgba(w, h, vec![255u8; (w * h * 4) as usize])
     }
 
-    fn create_test_image_with_color(w: u32, h: u32, r: u8, g: u8, b: u8, a: u8) -> Image {
-        let size = (w * h * 4) as usize;
-        let mut data = Vec::with_capacity(size);
-        for chunk in (0..size).step_by(4) {
-            data.push(r);
-            data.push(g);
-            data.push(b);
-            data.push(a);
-            let _ = chunk;
-        }
-        Image::from_rgba(w, h, data)
-    }
-
     #[test]
     fn test_pack_algorithm_skyline() {
         let mut builder = TextureAtlasBuilder::new(256)

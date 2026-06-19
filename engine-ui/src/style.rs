@@ -4,18 +4,28 @@
 
 use engine_render::Color;
 
+/// UI样式
 pub struct Style {
+    /// 背景颜色
     pub background_color: Color,
+    /// 边框颜色
     pub border_color: Color,
+    /// 边框宽度
     pub border_width: f32,
+    /// 圆角半径
     pub corner_radius: f32,
+    /// 阴影颜色
     pub shadow_color: Color,
+    /// 阴影偏移
     pub shadow_offset: (f32, f32),
+    /// 阴影模糊
     pub shadow_blur: f32,
+    /// 不透明度
     pub opacity: f32,
 }
 
 impl Style {
+    /// 创建新的样式
     pub fn new() -> Self {
         Self {
             background_color: Color::WHITE,
@@ -29,22 +39,26 @@ impl Style {
         }
     }
 
+    /// 设置背景颜色
     pub fn with_background(mut self, color: Color) -> Self {
         self.background_color = color;
         self
     }
 
+    /// 设置边框颜色和宽度
     pub fn with_border(mut self, color: Color, width: f32) -> Self {
         self.border_color = color;
         self.border_width = width;
         self
     }
 
+    /// 设置圆角半径
     pub fn with_corner_radius(mut self, radius: f32) -> Self {
         self.corner_radius = radius;
         self
     }
 
+    /// 设置阴影
     pub fn with_shadow(mut self, color: Color, offset: (f32, f32), blur: f32) -> Self {
         self.shadow_color = color;
         self.shadow_offset = offset;
@@ -52,6 +66,7 @@ impl Style {
         self
     }
 
+    /// 设置不透明度
     pub fn with_opacity(mut self, opacity: f32) -> Self {
         self.opacity = opacity.clamp(0.0, 1.0);
         self
@@ -64,15 +79,22 @@ impl Default for Style {
     }
 }
 
+/// 文本样式
 pub struct TextStyle {
+    /// 文本颜色
     pub color: Color,
+    /// 字体大小
     pub font_size: f32,
+    /// 字体族
     pub font_family: String,
+    /// 是否加粗
     pub bold: bool,
+    /// 是否斜体
     pub italic: bool,
 }
 
 impl TextStyle {
+    /// 创建新的文本样式
     pub fn new() -> Self {
         Self {
             color: Color::BLACK,
@@ -83,26 +105,31 @@ impl TextStyle {
         }
     }
 
+    /// 设置文本颜色
     pub fn with_color(mut self, color: Color) -> Self {
         self.color = color;
         self
     }
 
+    /// 设置字体大小
     pub fn with_font_size(mut self, size: f32) -> Self {
         self.font_size = size;
         self
     }
 
+    /// 设置字体族
     pub fn with_font_family(mut self, family: &str) -> Self {
         self.font_family = family.to_string();
         self
     }
 
+    /// 设置加粗
     pub fn bold(mut self) -> Self {
         self.bold = true;
         self
     }
 
+    /// 设置斜体
     pub fn italic(mut self) -> Self {
         self.italic = true;
         self
@@ -115,15 +142,22 @@ impl Default for TextStyle {
     }
 }
 
+/// 按钮样式
 pub struct ButtonStyle {
+    /// 普通状态样式
     pub normal: Style,
+    /// 悬停状态样式
     pub hover: Style,
+    /// 按下状态样式
     pub pressed: Style,
+    /// 禁用状态样式
     pub disabled: Style,
+    /// 文本样式
     pub text_style: TextStyle,
 }
 
 impl ButtonStyle {
+    /// 创建新的按钮样式
     pub fn new() -> Self {
         Self {
             normal: Style::new().with_background(Color::new(0.2, 0.5, 0.8, 1.0)),

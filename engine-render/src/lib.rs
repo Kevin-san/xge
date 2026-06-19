@@ -3,8 +3,6 @@
 //! 提供 2D 渲染所需的核心类型，包括 Renderer trait、Texture、Image、Sprite、SpriteBatch、
 //! TextureAtlas、正交相机等。本 crate 默认使用 OpenGL (glow) 后端。
 
-#![allow(dead_code)]
-#![allow(unused_imports)]
 #![allow(clippy::should_implement_trait)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::needless_range_loop)]

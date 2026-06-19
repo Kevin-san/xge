@@ -2,10 +2,6 @@
 //!
 //! 提供游戏引擎的 ECS 架构实现，包括 World、Entity、Component、System 等核心概念。
 
-// 临时移除 missing_docs 警告以通过 clippy -D warnings
-// 后续可以添加文档
-#![allow(missing_docs)]
-
 pub mod bundle;
 pub mod change_tracker;
 pub mod component;

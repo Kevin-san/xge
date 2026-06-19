@@ -252,10 +252,12 @@ impl Default for SpriteBatch {
 /// BatchRenderer 批次渲染器
 ///
 /// 自动按纹理分批
+#[allow(dead_code)]
 pub struct BatchRenderer {
     batches: Vec<SpriteBatch>,
 }
 
+#[allow(dead_code)]
 impl BatchRenderer {
     /// 创建新的批次渲染器
     pub fn new() -> Self {

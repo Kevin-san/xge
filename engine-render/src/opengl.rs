@@ -2,14 +2,13 @@
 //!
 //! 提供基于 glow crate 的完整 OpenGL 渲染实现。
 
-use glow::{Buffer, HasContext, NativeFramebuffer, NativeProgram, NativeShader, NativeTexture};
+use glow::{Buffer, HasContext, NativeProgram, NativeTexture};
 use std::collections::HashMap;
-use std::ptr;
 
 use crate::sprite::Rect;
 use crate::{
     BlendMode, Camera2D, Color, DrawParams, Image, OrthographicCamera, RenderStats, Renderer,
-    Texture2D, TextureHandle,
+    TextureHandle,
 };
 use engine_math::{Mat4, Vec2, Vec3};
 
@@ -103,6 +102,7 @@ pub struct GlRenderer {
     /// 着色器 uniform 位置缓存
     sprite_uniforms: SpriteUniforms,
     /// 是否启用深度测试
+    #[allow(dead_code)]
     depth_test: bool,
     /// 是否启用裁剪测试
     scissor_test: bool,

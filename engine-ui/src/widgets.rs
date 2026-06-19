@@ -8,6 +8,7 @@ use unicode_segmentation::UnicodeSegmentation;
 
 use crate::style::{ButtonStyle, TextStyle};
 
+/// 按钮控件
 pub struct Button {
     text: String,
     style: ButtonStyle,
@@ -16,6 +17,7 @@ pub struct Button {
 }
 
 impl Button {
+    /// 创建新的按钮
     pub fn new(text: &str) -> Self {
         Self {
             text: text.to_string(),
@@ -25,38 +27,47 @@ impl Button {
         }
     }
 
+    /// 获取按钮文本
     pub fn text(&self) -> &str {
         &self.text
     }
 
+    /// 设置按钮文本
     pub fn set_text(&mut self, text: &str) {
         self.text = text.to_string();
     }
 
+    /// 获取按钮样式
     pub fn style(&self) -> &ButtonStyle {
         &self.style
     }
 
+    /// 获取可变按钮样式
     pub fn style_mut(&mut self) -> &mut ButtonStyle {
         &mut self.style
     }
 
+    /// 是否按下
     pub fn is_pressed(&self) -> bool {
         self.is_pressed
     }
 
+    /// 设置按下状态
     pub fn set_pressed(&mut self, pressed: bool) {
         self.is_pressed = pressed;
     }
 
+    /// 是否悬停
     pub fn is_hovered(&self) -> bool {
         self.is_hovered
     }
 
+    /// 设置悬停状态
     pub fn set_hovered(&mut self, hovered: bool) {
         self.is_hovered = hovered;
     }
 
+    /// 根据状态获取当前样式
     pub fn current_style(&self, enabled: bool) -> &Style {
         if !enabled {
             &self.style.disabled
@@ -72,12 +83,14 @@ impl Button {
 
 impl Component for Button {}
 
+/// 标签控件
 pub struct Label {
     text: String,
     text_style: TextStyle,
 }
 
 impl Label {
+    /// 创建新的标签
     pub fn new(text: &str) -> Self {
         Self {
             text: text.to_string(),
@@ -85,26 +98,32 @@ impl Label {
         }
     }
 
+    /// 获取标签文本
     pub fn text(&self) -> &str {
         &self.text
     }
 
+    /// 设置标签文本
     pub fn set_text(&mut self, text: &str) {
         self.text = text.to_string();
     }
 
+    /// 获取文本样式
     pub fn text_style(&self) -> &TextStyle {
         &self.text_style
     }
 
+    /// 获取可变文本样式
     pub fn text_style_mut(&mut self) -> &mut TextStyle {
         &mut self.text_style
     }
 
+    /// 获取字符数量
     pub fn char_count(&self) -> usize {
         self.text.chars().count()
     }
 
+    /// 获取字素数量
     pub fn grapheme_count(&self) -> usize {
         self.text.graphemes(true).count()
     }
@@ -112,6 +131,7 @@ impl Label {
 
 impl Component for Label {}
 
+/// 文本框控件
 pub struct TextBox {
     text: String,
     placeholder: String,
@@ -127,6 +147,7 @@ pub struct TextBox {
 }
 
 impl TextBox {
+    /// 创建新的文本框
     pub fn new(text: &str) -> Self {
         Self {
             text: text.to_string(),
@@ -141,10 +162,12 @@ impl TextBox {
         }
     }
 
+    /// 获取文本内容
     pub fn text(&self) -> &str {
         &self.text
     }
 
+    /// 设置文本内容
     pub fn set_text(&mut self, text: &str) {
         if let Some(max_len) = self.max_length {
             self.text = text.chars().take(max_len).collect();
@@ -154,42 +177,52 @@ impl TextBox {
         self.cursor_position = self.text.len();
     }
 
+    /// 获取占位符文本
     pub fn placeholder(&self) -> &str {
         &self.placeholder
     }
 
+    /// 设置占位符文本
     pub fn set_placeholder(&mut self, placeholder: &str) {
         self.placeholder = placeholder.to_string();
     }
 
+    /// 获取文本样式
     pub fn text_style(&self) -> &TextStyle {
         &self.text_style
     }
 
+    /// 获取可变文本样式
     pub fn text_style_mut(&mut self) -> &mut TextStyle {
         &mut self.text_style
     }
 
+    /// 获取光标位置
     pub fn cursor_position(&self) -> usize {
         self.cursor_position
     }
 
+    /// 设置光标位置
     pub fn set_cursor_position(&mut self, position: usize) {
         self.cursor_position = position.clamp(0, self.text.len());
     }
 
+    /// 是否获得焦点
     pub fn is_focused(&self) -> bool {
         self.is_focused
     }
 
+    /// 设置焦点状态
     pub fn set_focused(&mut self, focused: bool) {
         self.is_focused = focused;
     }
 
+    /// 获取最大长度限制
     pub fn max_length(&self) -> Option<usize> {
         self.max_length
     }
 
+    /// 设置最大长度限制
     pub fn set_max_length(&mut self, max_length: Option<usize>) {
         self.max_length = max_length;
         if let Some(max_len) = max_length {
@@ -198,14 +231,17 @@ impl TextBox {
         }
     }
 
+    /// 是否为密码模式
     pub fn is_password(&self) -> bool {
         self.is_password
     }
 
+    /// 设置密码模式
     pub fn set_password(&mut self, is_password: bool) {
         self.is_password = is_password;
     }
 
+    /// 获取显示文本
     pub fn display_text(&self) -> String {
         if self.is_password {
             "*".repeat(self.text.len())
@@ -214,6 +250,7 @@ impl TextBox {
         }
     }
 
+    /// 插入字符
     pub fn insert_char(&mut self, c: char) {
         if !c.is_control() {
             if let Some(max_len) = self.max_length {
@@ -229,6 +266,7 @@ impl TextBox {
         }
     }
 
+    /// 删除光标前的字符
     pub fn delete_char(&mut self) {
         if self.cursor_position > 0 {
             let mut chars: Vec<char> = self.text.chars().collect();
@@ -238,6 +276,7 @@ impl TextBox {
         }
     }
 
+    /// 删除光标后的字符
     pub fn delete_char_forward(&mut self) {
         if self.cursor_position < self.text.len() {
             let mut chars: Vec<char> = self.text.chars().collect();
@@ -246,22 +285,26 @@ impl TextBox {
         }
     }
 
+    /// 光标左移
     pub fn move_cursor_left(&mut self) {
         if self.cursor_position > 0 {
             self.cursor_position -= 1;
         }
     }
 
+    /// 光标右移
     pub fn move_cursor_right(&mut self) {
         if self.cursor_position < self.text.len() {
             self.cursor_position += 1;
         }
     }
 
+    /// 光标移到开头
     pub fn move_cursor_to_start(&mut self) {
         self.cursor_position = 0;
     }
 
+    /// 光标移到末尾
     pub fn move_cursor_to_end(&mut self) {
         self.cursor_position = self.text.len();
     }
@@ -269,6 +312,7 @@ impl TextBox {
 
 impl Component for TextBox {}
 
+/// 面板控件
 pub struct Panel {
     background_color: Color,
     border_color: Color,
@@ -277,38 +321,47 @@ pub struct Panel {
 }
 
 impl Panel {
+    /// 创建新的面板
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// 获取背景颜色
     pub fn background_color(&self) -> Color {
         self.background_color
     }
 
+    /// 设置背景颜色
     pub fn set_background_color(&mut self, color: Color) {
         self.background_color = color;
     }
 
+    /// 获取边框颜色
     pub fn border_color(&self) -> Color {
         self.border_color
     }
 
+    /// 设置边框颜色
     pub fn set_border_color(&mut self, color: Color) {
         self.border_color = color;
     }
 
+    /// 获取边框宽度
     pub fn border_width(&self) -> f32 {
         self.border_width
     }
 
+    /// 设置边框宽度
     pub fn set_border_width(&mut self, width: f32) {
         self.border_width = width;
     }
 
+    /// 获取圆角半径
     pub fn corner_radius(&self) -> f32 {
         self.corner_radius
     }
 
+    /// 设置圆角半径
     pub fn set_corner_radius(&mut self, radius: f32) {
         self.corner_radius = radius;
     }
@@ -327,12 +380,14 @@ impl Default for Panel {
     }
 }
 
+/// 复选框控件
 pub struct CheckBox {
     is_checked: bool,
     text: String,
 }
 
 impl CheckBox {
+    /// 创建新的复选框
     pub fn new(text: &str) -> Self {
         Self {
             is_checked: false,
@@ -340,22 +395,27 @@ impl CheckBox {
         }
     }
 
+    /// 是否选中
     pub fn is_checked(&self) -> bool {
         self.is_checked
     }
 
+    /// 设置选中状态
     pub fn set_checked(&mut self, checked: bool) {
         self.is_checked = checked;
     }
 
+    /// 切换选中状态
     pub fn toggle(&mut self) {
         self.is_checked = !self.is_checked;
     }
 
+    /// 获取复选框文本
     pub fn text(&self) -> &str {
         &self.text
     }
 
+    /// 设置复选框文本
     pub fn set_text(&mut self, text: &str) {
         self.text = text.to_string();
     }

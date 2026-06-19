@@ -100,10 +100,12 @@ impl RenderStats {
 }
 
 /// 线程安全的渲染统计（用于全局统计）
+#[allow(dead_code)]
 pub struct RenderStatsHolder {
     stats: RwLock<RenderStats>,
 }
 
+#[allow(dead_code)]
 impl RenderStatsHolder {
     /// 创建新的统计持有者
     pub fn new() -> Self {

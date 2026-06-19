@@ -2,27 +2,40 @@
 //!
 //! 定义 UI 布局类型和属性。
 
+/// 布局类型
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum LayoutType {
+    /// 无布局
     None,
+    /// 水平布局
     Horizontal,
+    /// 垂直布局
     Vertical,
 }
 
+/// 布局方向
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum LayoutDirection {
+    /// 水平方向
     Horizontal,
+    /// 垂直方向
     Vertical,
 }
 
+/// 内边距
 pub struct Padding {
+    /// 左边距
     pub left: f32,
+    /// 右边距
     pub right: f32,
+    /// 上边距
     pub top: f32,
+    /// 下边距
     pub bottom: f32,
 }
 
 impl Padding {
+    /// 创建新的内边距
     pub fn new(left: f32, right: f32, top: f32, bottom: f32) -> Self {
         Self {
             left,
@@ -32,6 +45,7 @@ impl Padding {
         }
     }
 
+    /// 创建各边相同内边距
     pub fn uniform(value: f32) -> Self {
         Self {
             left: value,
@@ -41,6 +55,7 @@ impl Padding {
         }
     }
 
+    /// 创建零内边距
     pub fn zero() -> Self {
         Self {
             left: 0.0,
@@ -57,14 +72,20 @@ impl Default for Padding {
     }
 }
 
+/// 外边距
 pub struct Margin {
+    /// 左边距
     pub left: f32,
+    /// 右边距
     pub right: f32,
+    /// 上边距
     pub top: f32,
+    /// 下边距
     pub bottom: f32,
 }
 
 impl Margin {
+    /// 创建新的外边距
     pub fn new(left: f32, right: f32, top: f32, bottom: f32) -> Self {
         Self {
             left,
@@ -74,6 +95,7 @@ impl Margin {
         }
     }
 
+    /// 创建各边相同外边距
     pub fn uniform(value: f32) -> Self {
         Self {
             left: value,
@@ -83,6 +105,7 @@ impl Margin {
         }
     }
 
+    /// 创建零外边距
     pub fn zero() -> Self {
         Self {
             left: 0.0,
@@ -99,15 +122,22 @@ impl Default for Margin {
     }
 }
 
+/// 布局属性
 pub struct LayoutProperties {
+    /// 内边距
     pub padding: Padding,
+    /// 外边距
     pub margin: Margin,
+    /// 间距
     pub spacing: f32,
+    /// 对齐方式
     pub align: Alignment,
+    /// 拉伸方式
     pub stretch: Stretch,
 }
 
 impl LayoutProperties {
+    /// 创建新的布局属性
     pub fn new() -> Self {
         Self {
             padding: Padding::zero(),
@@ -125,18 +155,27 @@ impl Default for LayoutProperties {
     }
 }
 
+/// 对齐方式
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Alignment {
+    /// 起始对齐
     Start,
+    /// 居中对齐
     Center,
+    /// 末尾对齐
     End,
 }
 
+/// 拉伸方式
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Stretch {
+    /// 无拉伸
     None,
+    /// 水平拉伸
     Horizontal,
+    /// 垂直拉伸
     Vertical,
+    /// 双向拉伸
     Both,
 }
 

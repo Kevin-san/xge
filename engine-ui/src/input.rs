@@ -6,23 +6,40 @@ use engine_ecs::{Component, Entity, Event, Events, World};
 use engine_math::Vec2;
 use engine_window::{KeyCode, MouseButton};
 
+/// UI事件类型
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum UiEventType {
+    /// 鼠标进入
     MouseEnter,
+    /// 鼠标离开
     MouseLeave,
+    /// 鼠标按下
     MouseDown,
+    /// 鼠标释放
     MouseUp,
+    /// 单击
     Click,
+    /// 双击
     DoubleClick,
+    /// 鼠标移动
     MouseMove,
+    /// 鼠标滚轮
     MouseWheel,
+    /// 键盘按下
     KeyDown,
+    /// 键盘释放
     KeyUp,
+    /// 文本输入
     TextInput,
+    /// 获得焦点
     FocusIn,
+    /// 失去焦点
     FocusOut,
 }
 
+/// UI事件
+///
+/// 包含事件类型、目标实体、鼠标位置、键盘输入等信息。
 #[derive(Clone)]
 pub struct UiEvent {
     event_type: UiEventType,
@@ -39,6 +56,7 @@ unsafe impl Send for UiEvent {}
 unsafe impl Sync for UiEvent {}
 
 impl UiEvent {
+    /// 创建新的UI事件
     pub fn new(event_type: UiEventType, target: Entity) -> Self {
         Self {
             event_type,
@@ -51,54 +69,67 @@ impl UiEvent {
         }
     }
 
+    /// 获取事件类型
     pub fn event_type(&self) -> UiEventType {
         self.event_type
     }
 
+    /// 获取目标实体
     pub fn target(&self) -> Entity {
         self.target
     }
 
+    /// 获取鼠标位置
     pub fn mouse_position(&self) -> Vec2 {
         self.mouse_position
     }
 
+    /// 设置鼠标位置
     pub fn set_mouse_position(&mut self, position: Vec2) {
         self.mouse_position = position;
     }
 
+    /// 获取键盘码
     pub fn key_code(&self) -> Option<KeyCode> {
         self.key_code
     }
 
+    /// 设置键盘码
     pub fn set_key_code(&mut self, key_code: KeyCode) {
         self.key_code = Some(key_code);
     }
 
+    /// 获取文本输入
     pub fn text(&self) -> &str {
         &self.text
     }
 
+    /// 设置文本输入
     pub fn set_text(&mut self, text: &str) {
         self.text = text.to_string();
     }
 
+    /// 获取鼠标按钮
     pub fn button(&self) -> Option<MouseButton> {
         self.button
     }
 
+    /// 设置鼠标按钮
     pub fn set_button(&mut self, button: MouseButton) {
         self.button = Some(button);
     }
 
+    /// 获取滚动增量
     pub fn delta(&self) -> Vec2 {
         self.delta
     }
 
+    /// 设置滚动增量
     pub fn set_delta(&mut self, delta: Vec2) {
         self.delta = delta;
     }
 
+    /// 检查是否为鼠标事件
     pub fn is_mouse_event(&self) -> bool {
         matches!(
             self.event_type,
@@ -113,6 +144,7 @@ impl UiEvent {
         )
     }
 
+    /// 检查是否为键盘事件
     pub fn is_keyboard_event(&self) -> bool {
         matches!(
             self.event_type,
@@ -123,6 +155,9 @@ impl UiEvent {
 
 impl Event for UiEvent {}
 
+/// UI输入处理器
+///
+/// 管理鼠标位置、悬停实体、焦点实体，处理输入事件。
 pub struct UiInput {
     mouse_position: Vec2,
     last_click_time: f64,
@@ -132,34 +167,42 @@ pub struct UiInput {
 }
 
 impl UiInput {
+    /// 创建新的UI输入处理器
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// 获取鼠标位置
     pub fn mouse_position(&self) -> Vec2 {
         self.mouse_position
     }
 
+    /// 设置鼠标位置
     pub fn set_mouse_position(&mut self, position: Vec2) {
         self.mouse_position = position;
     }
 
+    /// 获取当前悬停的实体
     pub fn hovered_entity(&self) -> Option<Entity> {
         self.hovered_entity
     }
 
+    /// 设置当前悬停的实体
     pub fn set_hovered_entity(&mut self, entity: Option<Entity>) {
         self.hovered_entity = entity;
     }
 
+    /// 获取当前焦点的实体
     pub fn focused_entity(&self) -> Option<Entity> {
         self.focused_entity
     }
 
+    /// 设置当前焦点的实体
     pub fn set_focused_entity(&mut self, entity: Option<Entity>) {
         self.focused_entity = entity;
     }
 
+    /// 处理鼠标移动事件
     pub fn process_mouse_move(
         &mut self,
         world: &World,
@@ -200,6 +243,7 @@ impl UiInput {
         }
     }
 
+    /// 处理鼠标按下事件
     pub fn process_mouse_down(
         &mut self,
         world: &World,
@@ -226,6 +270,7 @@ impl UiInput {
         }
     }
 
+    /// 处理鼠标释放事件
     pub fn process_mouse_up(
         &mut self,
         world: &World,
@@ -265,6 +310,7 @@ impl UiInput {
         }
     }
 
+    /// 处理键盘按下事件
     pub fn process_key_down(&mut self, key_code: KeyCode, events: &mut Events<UiEvent>) {
         if let Some(focused) = self.focused_entity {
             let mut event = UiEvent::new(UiEventType::KeyDown, focused);
@@ -273,6 +319,7 @@ impl UiInput {
         }
     }
 
+    /// 处理键盘释放事件
     pub fn process_key_up(&mut self, key_code: KeyCode, events: &mut Events<UiEvent>) {
         if let Some(focused) = self.focused_entity {
             let mut event = UiEvent::new(UiEventType::KeyUp, focused);
@@ -281,6 +328,7 @@ impl UiInput {
         }
     }
 
+    /// 处理文本输入事件
     pub fn process_text_input(&mut self, text: &str, events: &mut Events<UiEvent>) {
         if let Some(focused) = self.focused_entity {
             let mut event = UiEvent::new(UiEventType::TextInput, focused);

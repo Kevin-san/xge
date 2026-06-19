@@ -3,7 +3,6 @@
 //! 提供游戏引擎的 UI 系统实现，包括布局、控件、文本渲染等功能。
 
 #![warn(missing_docs)]
-#![allow(missing_docs)]
 
 pub mod input;
 pub mod layout;

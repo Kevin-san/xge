@@ -8,16 +8,24 @@ use engine_math::{Rect, Vec2};
 use crate::layout::{LayoutDirection, LayoutProperties, LayoutType};
 use crate::style::Style;
 
+/// UI节点类型
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum UiNodeType {
+    /// 根节点
     Root,
+    /// 面板
     Panel,
+    /// 按钮
     Button,
+    /// 标签
     Label,
+    /// 文本框
     TextBox,
+    /// 复选框
     CheckBox,
 }
 
+/// UI节点
 pub struct UiNode {
     parent: Option<Entity>,
     children: Vec<Entity>,
@@ -34,6 +42,7 @@ pub struct UiNode {
 }
 
 impl UiNode {
+    /// 创建新的UI节点
     pub fn new(node_type: UiNodeType) -> Self {
         Self {
             parent: None,
@@ -51,102 +60,127 @@ impl UiNode {
         }
     }
 
+    /// 获取节点矩形
     pub fn rect(&self) -> &Rect {
         &self.rect
     }
 
+    /// 获取可变节点矩形
     pub fn rect_mut(&mut self) -> &mut Rect {
         &mut self.rect
     }
 
+    /// 设置节点矩形
     pub fn set_rect(&mut self, rect: Rect) {
         self.rect = rect;
     }
 
+    /// 获取锚点
     pub fn anchor(&self) -> Vec2 {
         self.anchor
     }
 
+    /// 设置锚点
     pub fn set_anchor(&mut self, anchor: Vec2) {
         self.anchor = anchor;
     }
 
+    /// 获取支点
     pub fn pivot(&self) -> Vec2 {
         self.pivot
     }
 
+    /// 设置支点
     pub fn set_pivot(&mut self, pivot: Vec2) {
         self.pivot = pivot;
     }
 
+    /// 是否可见
     pub fn visible(&self) -> bool {
         self.visible
     }
 
+    /// 设置可见性
     pub fn set_visible(&mut self, visible: bool) {
         self.visible = visible;
     }
 
+    /// 是否启用
     pub fn enabled(&self) -> bool {
         self.enabled
     }
 
+    /// 设置启用状态
     pub fn set_enabled(&mut self, enabled: bool) {
         self.enabled = enabled;
     }
 
+    /// 获取节点类型
     pub fn node_type(&self) -> UiNodeType {
         self.node_type
     }
 
+    /// 获取布局类型
     pub fn layout(&self) -> LayoutType {
         self.layout
     }
 
+    /// 设置布局类型
     pub fn set_layout(&mut self, layout: LayoutType) {
         self.layout = layout;
     }
 
+    /// 获取布局方向
     pub fn layout_dir(&self) -> LayoutDirection {
         self.layout_dir
     }
 
+    /// 设置布局方向
     pub fn set_layout_dir(&mut self, dir: LayoutDirection) {
         self.layout_dir = dir;
     }
 
+    /// 获取布局属性
     pub fn layout_props(&self) -> &LayoutProperties {
         &self.layout_props
     }
 
+    /// 获取可变布局属性
     pub fn layout_props_mut(&mut self) -> &mut LayoutProperties {
         &mut self.layout_props
     }
 
+    /// 获取样式
     pub fn style(&self) -> &Style {
         &self.style
     }
 
+    /// 获取可变样式
     pub fn style_mut(&mut self) -> &mut Style {
         &mut self.style
     }
 
+    /// 获取父节点
     pub fn parent(&self) -> Option<Entity> {
         self.parent
     }
 
+    /// 设置父节点
     pub fn set_parent(&mut self, parent: Option<Entity>) {
         self.parent = parent;
     }
 
+    /// 获取子节点列表
     pub fn children(&self) -> &[Entity] {
         &self.children
     }
 
+    /// 添加子节点
     pub fn add_child(&mut self, child: Entity) {
         self.children.push(child);
     }
 
+    /// 移除子节点
     pub fn remove_child(&mut self, child: Entity) -> bool {
         if let Some(index) = self.children.iter().position(|&c| c == child) {
             self.children.remove(index);
@@ -156,10 +190,12 @@ impl UiNode {
         }
     }
 
+    /// 检查是否包含子节点
     pub fn has_child(&self, child: Entity) -> bool {
         self.children.contains(&child)
     }
 
+    /// 获取世界坐标
     pub fn world_position(&self, world: &World) -> Vec2 {
         let mut pos = Vec2::new(self.rect.x, self.rect.y);
         let mut current = self.parent;
@@ -177,6 +213,7 @@ impl UiNode {
         pos
     }
 
+    /// 更新布局
     pub fn update_layout(&self, world: &mut World) {
         match self.layout {
             LayoutType::Horizontal | LayoutType::Vertical => {
@@ -186,6 +223,7 @@ impl UiNode {
         }
     }
 
+    /// 内部布局更新
     pub fn update_layout_internal(&mut self, world: &mut World) {
         match self.layout {
             LayoutType::Horizontal | LayoutType::Vertical => {
@@ -195,6 +233,7 @@ impl UiNode {
         }
     }
 
+    /// 布局子节点
     fn layout_children(&self, world: &mut World) {
         let mut pos = Vec2::new(
             self.layout_props.padding.left,
@@ -225,6 +264,7 @@ impl UiNode {
 
 impl Component for UiNode {}
 
+/// UI根节点
 #[derive(Clone)]
 pub struct UiRoot {
     root_entity: Entity,
@@ -232,6 +272,7 @@ pub struct UiRoot {
 }
 
 impl UiRoot {
+    /// 创建新的UI根节点
     pub fn new(root_entity: Entity, canvas_size: Vec2) -> Self {
         Self {
             root_entity,
@@ -239,18 +280,22 @@ impl UiRoot {
         }
     }
 
+    /// 获取根实体
     pub fn root_entity(&self) -> Entity {
         self.root_entity
     }
 
+    /// 获取画布大小
     pub fn canvas_size(&self) -> Vec2 {
         self.canvas_size
     }
 
+    /// 设置画布大小
     pub fn set_canvas_size(&mut self, size: Vec2) {
         self.canvas_size = size;
     }
 
+    /// 更新UI布局
     pub fn update(&self, world: &mut World) {
         if let Some(node) = world.get_component_mut::<UiNode>(self.root_entity) {
             node.rect.w = self.canvas_size.x;
@@ -314,6 +359,7 @@ impl UiRoot {
         }
     }
 
+    /// 查找指定位置的节点
     pub fn find_node_at_position(&self, world: &World, position: Vec2) -> Option<Entity> {
         self.find_node_at_position_recursive(world, self.root_entity, position)
     }

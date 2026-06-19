@@ -125,6 +125,7 @@ impl WrapMode {
 pub type TextureHandle = Handle<Texture2D>;
 
 /// 采样器句柄
+#[allow(dead_code)]
 pub type SamplerHandle = Handle<Sampler>;
 
 /// 采样器
@@ -158,6 +159,7 @@ impl Default for Sampler {
 }
 
 /// Sampler 构建器
+#[allow(dead_code)]
 pub struct SamplerBuilder {
     mag_filter: FilterMode,
     min_filter: FilterMode,
@@ -167,6 +169,7 @@ pub struct SamplerBuilder {
     mipmap: bool,
 }
 
+#[allow(dead_code)]
 impl SamplerBuilder {
     /// 创建新的采样器构建器
     pub fn new() -> Self {
@@ -331,10 +334,12 @@ impl Texture2D {
 }
 
 /// 纹理管理器
+#[allow(dead_code)]
 pub struct TextureManager {
     textures: RwLock<Vec<Arc<RwLock<Texture2D>>>>,
 }
 
+#[allow(dead_code)]
 impl TextureManager {
     /// 创建新的纹理管理器
     pub fn new() -> Self {

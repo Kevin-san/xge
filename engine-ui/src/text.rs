@@ -6,16 +6,23 @@ use std::collections::HashMap;
 
 use engine_render::Color;
 
+/// 字体大小
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum FontSize {
+    /// 小号
     Small,
+    /// 中号
     Medium,
+    /// 大号
     Large,
+    /// 特大号
     ExtraLarge,
+    /// 自定义大小
     Custom(f32),
 }
 
 impl FontSize {
+    /// 转换为 f32 值
     pub fn to_f32(&self) -> f32 {
         match self {
             FontSize::Small => 12.0,
@@ -27,13 +34,18 @@ impl FontSize {
     }
 }
 
+/// 文本对齐方式
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum TextAlign {
+    /// 左对齐
     Left,
+    /// 居中对齐
     Center,
+    /// 右对齐
     Right,
 }
 
+/// 字体
 pub struct Font {
     family: &'static str,
     size: FontSize,
@@ -43,6 +55,7 @@ pub struct Font {
 }
 
 impl Font {
+    /// 创建新的字体
     pub fn new(family: &'static str, size: FontSize) -> Self {
         Self {
             family,
@@ -53,62 +66,76 @@ impl Font {
         }
     }
 
+    /// 获取字体族
     pub fn family(&self) -> &str {
         self.family
     }
 
+    /// 获取字体大小
     pub fn size(&self) -> FontSize {
         self.size
     }
 
+    /// 获取字体大小（f32）
     pub fn size_f32(&self) -> f32 {
         self.size.to_f32()
     }
 
+    /// 设置字体大小
     pub fn set_size(&mut self, size: FontSize) {
         self.size = size;
     }
 
+    /// 是否加粗
     pub fn bold(&self) -> bool {
         self.bold
     }
 
+    /// 设置加粗
     pub fn set_bold(&mut self, bold: bool) {
         self.bold = bold;
     }
 
+    /// 是否斜体
     pub fn italic(&self) -> bool {
         self.italic
     }
 
+    /// 设置斜体
     pub fn set_italic(&mut self, italic: bool) {
         self.italic = italic;
     }
 
+    /// 获取颜色
     pub fn color(&self) -> Color {
         self.color
     }
 
+    /// 设置颜色
     pub fn set_color(&mut self, color: Color) {
         self.color = color;
     }
 
+    /// 设置加粗
     pub fn with_bold(mut self) -> Self {
         self.bold = true;
         self
     }
 
+    /// 设置斜体
     pub fn with_italic(mut self) -> Self {
         self.italic = true;
         self
     }
 
+    /// 设置颜色
     pub fn with_color(mut self, color: Color) -> Self {
         self.color = color;
         self
     }
 }
 
+/// 字体度量
 pub struct FontMetrics {
     ascent: f32,
     descent: f32,
@@ -117,6 +144,7 @@ pub struct FontMetrics {
 }
 
 impl FontMetrics {
+    /// 创建新的字体度量
     pub fn new(ascent: f32, descent: f32, line_height: f32) -> Self {
         Self {
             ascent,
@@ -126,30 +154,37 @@ impl FontMetrics {
         }
     }
 
+    /// 获取上升量
     pub fn ascent(&self) -> f32 {
         self.ascent
     }
 
+    /// 获取下降量
     pub fn descent(&self) -> f32 {
         self.descent
     }
 
+    /// 获取行高
     pub fn line_height(&self) -> f32 {
         self.line_height
     }
 
+    /// 获取字符宽度
     pub fn char_width(&self, c: char) -> f32 {
         *self.char_widths.get(&c).unwrap_or(&8.0)
     }
 
+    /// 设置字符宽度
     pub fn set_char_width(&mut self, c: char, width: f32) {
         self.char_widths.insert(c, width);
     }
 
+    /// 测量文本宽度
     pub fn measure_text(&self, text: &str) -> f32 {
         text.chars().map(|c| self.char_width(c)).sum()
     }
 
+    /// 测量多行文本，返回（最大宽度，总高度）
     pub fn measure_text_lines(&self, text: &str) -> (f32, f32) {
         let mut max_width: f32 = 0.0;
         let mut lines = 1;
@@ -164,21 +199,25 @@ impl FontMetrics {
     }
 }
 
+/// 文本渲染器
 pub struct TextRenderer {
     default_font: Font,
 }
 
 impl TextRenderer {
+    /// 创建新的文本渲染器
     pub fn new() -> Self {
         Self {
             default_font: Font::new("Arial", FontSize::Medium),
         }
     }
 
+    /// 获取默认字体
     pub fn default_font(&self) -> &Font {
         &self.default_font
     }
 
+    /// 测量文本尺寸
     pub fn measure_text(&self, text: &str, font: &Font) -> (f32, f32) {
         let metrics = FontMetrics::new(
             font.size_f32() * 0.8,

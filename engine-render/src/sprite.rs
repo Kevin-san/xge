@@ -275,6 +275,7 @@ impl Sprite {
 }
 
 /// Sprite 构建器
+#[allow(dead_code)]
 pub struct SpriteBuilder {
     texture: Option<TextureHandle>,
     source_rect: Option<Rect>,
@@ -285,6 +286,7 @@ pub struct SpriteBuilder {
     size_override: Option<Vec2>,
 }
 
+#[allow(dead_code)]
 impl SpriteBuilder {
     /// 创建新的 Sprite 构建器
     pub fn new() -> Self {
