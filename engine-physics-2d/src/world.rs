@@ -280,8 +280,8 @@ impl PhysicsWorld2D {
         let n = self.bodies.len();
         for i in 0..n {
             for j in (i + 1)..n {
-                // 静态物体不参与碰撞检测
-                if self.bodies[i].is_static() || self.bodies[j].is_static() {
+                // 两个静态物体之间不产生碰撞
+                if self.bodies[i].is_static() && self.bodies[j].is_static() {
                     continue;
                 }
 
