@@ -135,6 +135,15 @@ impl RigidBody2D {
         self.inverse_mass
     }
 
+    /// 设置质量（仅对动态刚体有效，0 表示无限质量）
+    pub fn set_mass(&mut self, mass: f32) {
+        if self.body_type != RigidBodyType::Dynamic {
+            return;
+        }
+        self.mass = mass;
+        self.inverse_mass = if mass > 0.0 { 1.0 / mass } else { 0.0 };
+    }
+
     /// 获取转动惯量
     pub fn inertia(&self) -> f32 {
         self.inertia
@@ -143,6 +152,15 @@ impl RigidBody2D {
     /// 获取逆转动惯量
     pub fn inverse_inertia(&self) -> f32 {
         self.inverse_inertia
+    }
+
+    /// 设置转动惯量（仅对动态刚体有效）
+    pub fn set_inertia(&mut self, inertia: f32) {
+        if self.body_type != RigidBodyType::Dynamic {
+            return;
+        }
+        self.inertia = inertia;
+        self.inverse_inertia = if inertia > 0.0 { 1.0 / inertia } else { 0.0 };
     }
 
     /// 获取位置

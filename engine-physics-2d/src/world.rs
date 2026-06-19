@@ -5,7 +5,7 @@
 use std::collections::{HashMap, VecDeque};
 
 use crate::{
-    Collider2D, ColliderShape, CollisionEvent, Contact, Joint2D, Manifold, RigidBody2D,
+    Collider2D, ColliderShape, CollisionEvent, Contact, Joint2D, JointType, Manifold, RigidBody2D,
     RigidBodyType,
 };
 use engine_math::{Rect, Vec2};
@@ -260,6 +260,8 @@ impl PhysicsWorld2D {
         for body in &mut self.bodies {
             if body.body_type() == RigidBodyType::Dynamic {
                 body.update_velocity(dt);
+                // 清空力累加器，避免跨步累积
+                body.clear_forces();
             }
         }
     }
@@ -280,8 +282,8 @@ impl PhysicsWorld2D {
         let n = self.bodies.len();
         for i in 0..n {
             for j in (i + 1)..n {
-                // 静态物体不参与碰撞检测
-                if self.bodies[i].is_static() || self.bodies[j].is_static() {
+                // 两个静态物体之间不产生碰撞
+                if self.bodies[i].is_static() && self.bodies[j].is_static() {
                     continue;
                 }
 
@@ -380,6 +382,35 @@ impl PhysicsWorld2D {
                 ColliderShape::Aabb { half_extents: h1 },
                 ColliderShape::Aabb { half_extents: h2 },
             ) => self.aabb_aabb_collision(index_a, index_b, world_pos_a, world_pos_b, *h1, *h2),
+            (ColliderShape::Polygon { vertices: v1 }, ColliderShape::Polygon { vertices: v2 }) => {
+                self.polygon_polygon_collision(index_a, index_b, world_pos_a, world_pos_b, rot_a, rot_b, v1, v2)
+            }
+            (
+                ColliderShape::Aabb { half_extents } | ColliderShape::Rectangle { half_extents },
+                ColliderShape::Polygon { vertices },
+            ) => {
+                // 将矩形转换为多边形顶点
+                let rect_verts = vec![
+                    Vec2::new(-half_extents.x, -half_extents.y),
+                    Vec2::new(half_extents.x, -half_extents.y),
+                    Vec2::new(half_extents.x, half_extents.y),
+                    Vec2::new(-half_extents.x, half_extents.y),
+                ];
+                self.polygon_polygon_collision(index_a, index_b, world_pos_a, world_pos_b, rot_a, rot_b, &rect_verts, vertices)
+            }
+            (
+                ColliderShape::Polygon { vertices },
+                ColliderShape::Aabb { half_extents } | ColliderShape::Rectangle { half_extents },
+            ) => {
+                let rect_verts = vec![
+                    Vec2::new(-half_extents.x, -half_extents.y),
+                    Vec2::new(half_extents.x, -half_extents.y),
+                    Vec2::new(half_extents.x, half_extents.y),
+                    Vec2::new(-half_extents.x, half_extents.y),
+                ];
+                let manifold = self.polygon_polygon_collision(index_a, index_b, world_pos_a, world_pos_b, rot_a, rot_b, vertices, &rect_verts);
+                manifold
+            }
             _ => None, // 其他形状组合暂不支持
         }
     }
@@ -564,6 +595,119 @@ impl PhysicsWorld2D {
         Some(manifold)
     }
 
+    /// 多边形-多边形碰撞检测（SAT 分离轴定理）
+    #[allow(clippy::too_many_arguments)]
+    fn polygon_polygon_collision(
+        &self,
+        index_a: usize,
+        index_b: usize,
+        pos_a: Vec2,
+        pos_b: Vec2,
+        rot_a: f32,
+        rot_b: f32,
+        local_verts_a: &[Vec2],
+        local_verts_b: &[Vec2],
+    ) -> Option<Manifold> {
+        if local_verts_a.len() < 3 || local_verts_b.len() < 3 {
+            return None;
+        }
+
+        // 将局部顶点变换到世界坐标
+        let cos_a = rot_a.cos();
+        let sin_a = rot_a.sin();
+        let cos_b = rot_b.cos();
+        let sin_b = rot_b.sin();
+
+        let world_a: Vec<Vec2> = local_verts_a
+            .iter()
+            .map(|v| {
+                Vec2::new(
+                    v.x * cos_a - v.y * sin_a + pos_a.x,
+                    v.x * sin_a + v.y * cos_a + pos_a.y,
+                )
+            })
+            .collect();
+        let world_b: Vec<Vec2> = local_verts_b
+            .iter()
+            .map(|v| {
+                Vec2::new(
+                    v.x * cos_b - v.y * sin_b + pos_b.x,
+                    v.x * sin_b + v.y * cos_b + pos_b.y,
+                )
+            })
+            .collect();
+
+        // 收集所有候选分离轴（每个多边形边的法线）
+        let axes_a = Self::polygon_axes(&world_a);
+        let axes_b = Self::polygon_axes(&world_b);
+
+        let mut min_overlap = f32::MAX;
+        let mut best_axis = Vec2::new(1.0, 0.0);
+
+        for axis in axes_a.iter().chain(axes_b.iter()) {
+            let (min_a, max_a) = Self::project_polygon(&world_a, *axis);
+            let (min_b, max_b) = Self::project_polygon(&world_b, *axis);
+
+            // 没有重叠则不碰撞
+            if max_a < min_b || max_b < min_a {
+                return None;
+            }
+            let overlap = (max_a.min(max_b) - min_a.max(min_b)).min(max_a.max(min_b) - min_a.min(max_b));
+            if overlap < min_overlap {
+                min_overlap = overlap;
+                best_axis = *axis;
+            }
+        }
+
+        // 确保法线从 A 指向 B
+        let direction = pos_b - pos_a;
+        if direction.dot(best_axis) < 0.0 {
+            best_axis = -best_axis;
+        }
+
+        // 找接触点：简化为两个多边形中心连线与边界的交点
+        let contact_point = (pos_a + pos_b) * 0.5;
+
+        let mut manifold = Manifold::new(index_a, index_b);
+        manifold.normal = best_axis;
+        manifold.penetration = min_overlap;
+        manifold.add_contact(Contact::new(contact_point, best_axis, min_overlap));
+        Some(manifold)
+    }
+
+    /// 计算多边形所有边的法线轴
+    fn polygon_axes(verts: &[Vec2]) -> Vec<Vec2> {
+        let n = verts.len();
+        let mut axes = Vec::with_capacity(n);
+        for i in 0..n {
+            let j = (i + 1) % n;
+            let edge = verts[j] - verts[i];
+            // 垂直方向（左手法线）
+            let normal = Vec2::new(-edge.y, edge.x);
+            let len = normal.length();
+            if len > 1e-6 {
+                axes.push(normal / len);
+            }
+        }
+        axes
+    }
+
+    /// 将多边形投影到轴上，返回 (min, max)
+    fn project_polygon(verts: &[Vec2], axis: Vec2) -> (f32, f32) {
+        let mut min = verts[0].dot(axis);
+        let mut max = min;
+        for v in &verts[1..] {
+            let proj = v.dot(axis);
+            if proj < min {
+                min = proj;
+            }
+            if proj > max {
+                max = proj;
+            }
+        }
+        (min, max)
+    }
+
     /// 检查 AABB 重叠
     fn check_aabb_overlap(&self, index_a: usize, index_b: usize) -> bool {
         let body_a = self.bodies.get(index_a);
@@ -601,38 +745,444 @@ impl PhysicsWorld2D {
     }
 
     /// 碰撞响应
+    ///
+    /// 基于冲量的碰撞求解，处理法向冲量（弹性）和切向冲量（摩擦）。
     fn resolve_collisions(&mut self) {
-        // 简化的碰撞响应实现
-        // 实际实现需要考虑弹性、摩擦等因素
-        let _ = self;
-    }
+        let velocity_iterations = self.config.velocity_iterations.max(1);
+        let default_restitution = self.config.default_restitution;
+        let default_friction = self.config.default_friction;
 
-    #[allow(dead_code)]
-    fn resolve_contact(&self, _contact: &Contact) {}
+        // 收集流形信息（body_a/body_b/normal/contacts），避免后续借用冲突
+        let mut manifold_infos: Vec<(usize, usize, Vec2, Vec<(Vec2, f32, f32)>)> = Vec::new();
+        for manifold in self.manifolds.values() {
+            let contacts: Vec<(Vec2, f32, f32)> = manifold
+                .contacts
+                .iter()
+                .map(|c| (c.position, c.normal_impulse, c.tangent_impulse))
+                .collect();
+            manifold_infos.push((manifold.body_a, manifold.body_b, manifold.normal, contacts));
+        }
 
-    /// 关节约束求解
-    fn solve_joints(&mut self) {
-        for joint in &self.joints {
-            self.apply_joint_constraint(joint);
+        for _ in 0..velocity_iterations {
+            for (body_a_idx, body_b_idx, normal, contacts) in &manifold_infos {
+                let restitution = {
+                    let ca = self.colliders.get(
+                        self.bodies
+                            .get(*body_a_idx)
+                            .and_then(|b| b.collider_indices().first().copied())
+                            .unwrap_or(0),
+                    );
+                    let cb = self.colliders.get(
+                        self.bodies
+                            .get(*body_b_idx)
+                            .and_then(|b| b.collider_indices().first().copied())
+                            .unwrap_or(0),
+                    );
+                    let ra = ca.map(|c| c.restitution()).unwrap_or(default_restitution);
+                    let rb = cb.map(|c| c.restitution()).unwrap_or(default_restitution);
+                    ra.max(rb)
+                };
+                let friction = {
+                    let ca = self.colliders.get(
+                        self.bodies
+                            .get(*body_a_idx)
+                            .and_then(|b| b.collider_indices().first().copied())
+                            .unwrap_or(0),
+                    );
+                    let cb = self.colliders.get(
+                        self.bodies
+                            .get(*body_b_idx)
+                            .and_then(|b| b.collider_indices().first().copied())
+                            .unwrap_or(0),
+                    );
+                    let fa = ca.map(|c| c.friction()).unwrap_or(default_friction);
+                    let fb = cb.map(|c| c.friction()).unwrap_or(default_friction);
+                    (fa + fb) * 0.5
+                };
+
+                for (contact_point, normal_impulse_acc, tangent_impulse_acc) in contacts {
+                    self.solve_contact_impulse(
+                        *body_a_idx,
+                        *body_b_idx,
+                        *contact_point,
+                        *normal,
+                        restitution,
+                        friction,
+                        *normal_impulse_acc,
+                        *tangent_impulse_acc,
+                    );
+                }
+            }
         }
     }
 
-    /// 应用关节约束
-    fn apply_joint_constraint(&self, _joint: &Joint2D) {
-        // 简化的关节实现
+    /// 求解单个接触点的冲量
+    #[allow(clippy::too_many_arguments)]
+    fn solve_contact_impulse(
+        &mut self,
+        body_a_idx: usize,
+        body_b_idx: usize,
+        contact_point: Vec2,
+        normal: Vec2,
+        restitution: f32,
+        friction: f32,
+        normal_impulse_acc: f32,
+        tangent_impulse_acc: f32,
+    ) {
+        // 提取刚体状态
+        let (inv_mass_a, inv_inertia_a, pos_a, vel_a, ang_vel_a, type_a) = {
+            let b = match self.bodies.get(body_a_idx) {
+                Some(b) => b,
+                None => return,
+            };
+            (
+                b.inverse_mass(),
+                b.inverse_inertia(),
+                b.position(),
+                b.linear_velocity(),
+                b.angular_velocity(),
+                b.body_type(),
+            )
+        };
+        let (inv_mass_b, inv_inertia_b, pos_b, vel_b, ang_vel_b, type_b) = {
+            let b = match self.bodies.get(body_b_idx) {
+                Some(b) => b,
+                None => return,
+            };
+            (
+                b.inverse_mass(),
+                b.inverse_inertia(),
+                b.position(),
+                b.linear_velocity(),
+                b.angular_velocity(),
+                b.body_type(),
+            )
+        };
+
+        // 静态/运动学刚体不参与冲量响应
+        let inv_mass_a = if type_a == RigidBodyType::Dynamic { inv_mass_a } else { 0.0 };
+        let inv_inertia_a = if type_a == RigidBodyType::Dynamic { inv_inertia_a } else { 0.0 };
+        let inv_mass_b = if type_b == RigidBodyType::Dynamic { inv_mass_b } else { 0.0 };
+        let inv_inertia_b = if type_b == RigidBodyType::Dynamic { inv_inertia_b } else { 0.0 };
+
+        let inv_mass_sum = inv_mass_a + inv_mass_b;
+        if inv_mass_sum <= 0.0 {
+            return;
+        }
+
+        // 接触点相对刚体中心的位置
+        let ra = contact_point - pos_a;
+        let rb = contact_point - pos_b;
+
+        // 接触点处的速度: v + ω × r （2D 中 ω × r = (-ω*ry, ω*rx)）
+        let vel_at_a = vel_a + Vec2::new(-ang_vel_a * ra.y, ang_vel_a * ra.x);
+        let vel_at_b = vel_b + Vec2::new(-ang_vel_b * rb.y, ang_vel_b * rb.x);
+        let rel_vel = vel_at_b - vel_at_a;
+
+        // 沿法线的相对速度
+        let vel_along_normal = rel_vel.dot(normal);
+        // 分离的物体不需要冲量
+        if vel_along_normal > 0.0 {
+            return;
+        }
+
+        // 计算有效转动惯量项 (r × n)^2
+        let ra_cross_n = ra.cross(normal);
+        let rb_cross_n = rb.cross(normal);
+        let denom_normal = inv_mass_sum
+            + inv_inertia_a * ra_cross_n * ra_cross_n
+            + inv_inertia_b * rb_cross_n * rb_cross_n;
+        if denom_normal <= 0.0 {
+            return;
+        }
+
+        // 法向冲量（带弹性）
+        let j = -(1.0 + restitution) * vel_along_normal / denom_normal;
+        // 累积冲量钳制（不允许产生分离冲量）
+        let new_normal_impulse = (normal_impulse_acc + j).max(0.0);
+        let delta_impulse = new_normal_impulse - normal_impulse_acc;
+        let impulse = normal * delta_impulse;
+
+        // 应用法向冲量
+        if type_a == RigidBodyType::Dynamic {
+            let b = &mut self.bodies[body_a_idx];
+            b.set_linear_velocity(vel_a - impulse * inv_mass_a);
+            let new_ang = ang_vel_a - ra.cross(impulse) * inv_inertia_a;
+            b.set_angular_velocity(new_ang);
+        }
+        if type_b == RigidBodyType::Dynamic {
+            let b = &mut self.bodies[body_b_idx];
+            b.set_linear_velocity(vel_b + impulse * inv_mass_b);
+            let new_ang = ang_vel_b + rb.cross(impulse) * inv_inertia_b;
+            b.set_angular_velocity(new_ang);
+        }
+
+        // ===== 摩擦冲量（切向） =====
+        // 重新计算相对速度
+        let vel_a = self.bodies[body_a_idx].linear_velocity();
+        let vel_b = self.bodies[body_b_idx].linear_velocity();
+        let ang_vel_a = self.bodies[body_a_idx].angular_velocity();
+        let ang_vel_b = self.bodies[body_b_idx].angular_velocity();
+        let vel_at_a = vel_a + Vec2::new(-ang_vel_a * ra.y, ang_vel_a * ra.x);
+        let vel_at_b = vel_b + Vec2::new(-ang_vel_b * rb.y, ang_vel_b * rb.x);
+        let rel_vel = vel_at_b - vel_at_a;
+
+        // 切向方向（相对速度在切平面的投影）
+        let tangent = rel_vel - normal * rel_vel.dot(normal);
+        let tangent_len = tangent.length();
+        if tangent_len < 1e-6 {
+            return;
+        }
+        let tangent = tangent / tangent_len;
+
+        let ra_cross_t = ra.cross(tangent);
+        let rb_cross_t = rb.cross(tangent);
+        let denom_tangent = inv_mass_sum
+            + inv_inertia_a * ra_cross_t * ra_cross_t
+            + inv_inertia_b * rb_cross_t * rb_cross_t;
+        if denom_tangent <= 0.0 {
+            return;
+        }
+
+        let jt = -rel_vel.dot(tangent) / denom_tangent;
+        // 库仑摩擦定律：|jt| <= friction * j
+        let max_friction = friction * new_normal_impulse;
+        let new_tangent_impulse = (tangent_impulse_acc + jt).clamp(-max_friction, max_friction);
+        let delta_t = new_tangent_impulse - tangent_impulse_acc;
+        let friction_impulse = tangent * delta_t;
+
+        if type_a == RigidBodyType::Dynamic {
+            let b = &mut self.bodies[body_a_idx];
+            b.set_linear_velocity(b.linear_velocity() - friction_impulse * inv_mass_a);
+            let new_ang = b.angular_velocity() - ra.cross(friction_impulse) * inv_inertia_a;
+            b.set_angular_velocity(new_ang);
+        }
+        if type_b == RigidBodyType::Dynamic {
+            let b = &mut self.bodies[body_b_idx];
+            b.set_linear_velocity(b.linear_velocity() + friction_impulse * inv_mass_b);
+            let new_ang = b.angular_velocity() + rb.cross(friction_impulse) * inv_inertia_b;
+            b.set_angular_velocity(new_ang);
+        }
     }
 
-    /// 位置修正
-    fn correct_positions(&mut self) {
-        let slop = 0.005;
-        let baumgarte = 0.2;
+    /// 关节约束求解
+    fn solve_joints(&mut self) {
+        let iterations = self.config.position_iterations.max(1);
+        // 收集关节数据，避免借用冲突
+        let joint_snapshots: Vec<(JointType, usize, usize, Vec2, Vec2, bool)> = self
+            .joints
+            .iter()
+            .map(|j| {
+                (
+                    j.joint_type(),
+                    j.body_a(),
+                    j.body_b(),
+                    j.anchor_a(),
+                    j.anchor_b(),
+                    j.is_enabled(),
+                )
+            })
+            .collect();
 
-        for manifold in self.manifolds.values_mut() {
-            for contact in &mut manifold.contacts {
-                let correction = contact.normal * contact.penetration * baumgarte;
-                if correction.length() > slop {
-                    // 位置修正
+        for _ in 0..iterations {
+            for (joint_type, body_a_idx, body_b_idx, anchor_a, anchor_b, enabled) in &joint_snapshots {
+                self.apply_joint_constraint_data(
+                    *joint_type,
+                    *body_a_idx,
+                    *body_b_idx,
+                    *anchor_a,
+                    *anchor_b,
+                    *enabled,
+                );
+            }
+        }
+    }
+
+    /// 应用关节约束（基于快照数据）
+    #[allow(clippy::too_many_arguments)]
+    fn apply_joint_constraint_data(
+        &mut self,
+        joint_type: JointType,
+        body_a_idx: usize,
+        body_b_idx: usize,
+        anchor_a: Vec2,
+        anchor_b: Vec2,
+        enabled: bool,
+    ) {
+        if !enabled {
+            return;
+        }
+
+        let (pos_a, pos_b, inv_mass_a, inv_mass_b, type_a, type_b) = {
+            let a = match self.bodies.get(body_a_idx) {
+                Some(b) => b,
+                None => return,
+            };
+            let b = match self.bodies.get(body_b_idx) {
+                Some(b) => b,
+                None => return,
+            };
+            (
+                a.position(),
+                b.position(),
+                a.inverse_mass(),
+                b.inverse_mass(),
+                a.body_type(),
+                b.body_type(),
+            )
+        };
+
+        let inv_mass_a = if type_a == RigidBodyType::Dynamic { inv_mass_a } else { 0.0 };
+        let inv_mass_b = if type_b == RigidBodyType::Dynamic { inv_mass_b } else { 0.0 };
+
+        match joint_type {
+            JointType::Distance => {
+                // 保持两个锚点之间的距离等于目标长度
+                let target_len = (anchor_b - anchor_a).length();
+                let current = pos_b - pos_a;
+                let current_len = current.length();
+                if current_len < 1e-6 {
+                    return;
                 }
+                let dir = current / current_len;
+                let diff = current_len - target_len;
+                let correction = dir * diff;
+                let total_inv_mass = inv_mass_a + inv_mass_b;
+                if total_inv_mass <= 0.0 {
+                    return;
+                }
+                if type_a == RigidBodyType::Dynamic {
+                    self.bodies[body_a_idx].set_position(pos_a + correction * (inv_mass_a / total_inv_mass));
+                }
+                if type_b == RigidBodyType::Dynamic {
+                    self.bodies[body_b_idx].set_position(pos_b - correction * (inv_mass_b / total_inv_mass));
+                }
+            }
+            JointType::Revolute | JointType::Weld => {
+                // 旋转/焊接关节：将两个锚点拉到同一点
+                let diff = anchor_b - anchor_a;
+                let total_inv_mass = inv_mass_a + inv_mass_b;
+                if total_inv_mass <= 0.0 {
+                    return;
+                }
+                if type_a == RigidBodyType::Dynamic {
+                    self.bodies[body_a_idx].set_position(pos_a + diff * (inv_mass_a / total_inv_mass));
+                }
+                if type_b == RigidBodyType::Dynamic {
+                    self.bodies[body_b_idx].set_position(pos_b - diff * (inv_mass_b / total_inv_mass));
+                }
+            }
+            JointType::Spring => {
+                // 弹簧关节：胡克定律 F = -k*x - c*v
+                let current = pos_b - pos_a;
+                let current_len = current.length();
+                if current_len < 1e-6 {
+                    return;
+                }
+                let dir = current / current_len;
+                let rest_len = (anchor_b - anchor_a).length();
+                let stretch = current_len - rest_len;
+                let stiffness = 100.0; // 默认刚度
+                let damping = 1.0; // 默认阻尼
+                let force_mag = stiffness * stretch;
+                let force = dir * force_mag;
+                let total_inv_mass = inv_mass_a + inv_mass_b;
+                if total_inv_mass <= 0.0 {
+                    return;
+                }
+                // 位置修正（软约束）
+                let correction = force * 0.01;
+                if type_a == RigidBodyType::Dynamic {
+                    self.bodies[body_a_idx].set_position(pos_a + correction * (inv_mass_a / total_inv_mass));
+                }
+                if type_b == RigidBodyType::Dynamic {
+                    self.bodies[body_b_idx].set_position(pos_b - correction * (inv_mass_b / total_inv_mass));
+                }
+                // 速度阻尼
+                let vel_a = self.bodies[body_a_idx].linear_velocity();
+                let vel_b = self.bodies[body_b_idx].linear_velocity();
+                let rel_vel = vel_b - vel_a;
+                let damp_force = rel_vel * damping;
+                if type_a == RigidBodyType::Dynamic {
+                    self.bodies[body_a_idx].set_linear_velocity(vel_a + damp_force * (inv_mass_a / total_inv_mass) * 0.1);
+                }
+                if type_b == RigidBodyType::Dynamic {
+                    self.bodies[body_b_idx].set_linear_velocity(vel_b - damp_force * (inv_mass_b / total_inv_mass) * 0.1);
+                }
+            }
+            JointType::Prismatic | JointType::Rope | JointType::Motor => {
+                // 滑块/绳索/驱动关节：简化为位置约束
+                let diff = pos_b - pos_a;
+                let total_inv_mass = inv_mass_a + inv_mass_b;
+                if total_inv_mass <= 0.0 {
+                    return;
+                }
+                let correction = diff * 0.1;
+                if type_a == RigidBodyType::Dynamic {
+                    self.bodies[body_a_idx].set_position(pos_a + correction * (inv_mass_a / total_inv_mass));
+                }
+                if type_b == RigidBodyType::Dynamic {
+                    self.bodies[body_b_idx].set_position(pos_b - correction * (inv_mass_b / total_inv_mass));
+                }
+            }
+        }
+    }
+
+    /// 位置修正（Baumgarte 稳定化）
+    fn correct_positions(&mut self) {
+        let slop = 0.005; // 允许的穿透容差
+        let percent = 0.4; // 修正比例（0-1）
+
+        // 收集流形信息避免借用冲突
+        let mut corrections: Vec<(usize, usize, Vec2, f32)> = Vec::new();
+        for manifold in self.manifolds.values() {
+            for contact in &manifold.contacts {
+                if contact.penetration > slop {
+                    let correction_mag = (contact.penetration - slop) * percent;
+                    corrections.push((
+                        manifold.body_a,
+                        manifold.body_b,
+                        contact.normal,
+                        correction_mag,
+                    ));
+                }
+            }
+        }
+
+        for (body_a_idx, body_b_idx, normal, mag) in corrections {
+            let (inv_mass_a, type_a) = {
+                let b = match self.bodies.get(body_a_idx) {
+                    Some(b) => b,
+                    None => continue,
+                };
+                (
+                    if b.body_type() == RigidBodyType::Dynamic { b.inverse_mass() } else { 0.0 },
+                    b.body_type(),
+                )
+            };
+            let (inv_mass_b, type_b) = {
+                let b = match self.bodies.get(body_b_idx) {
+                    Some(b) => b,
+                    None => continue,
+                };
+                (
+                    if b.body_type() == RigidBodyType::Dynamic { b.inverse_mass() } else { 0.0 },
+                    b.body_type(),
+                )
+            };
+
+            let total_inv_mass = inv_mass_a + inv_mass_b;
+            if total_inv_mass <= 0.0 {
+                continue;
+            }
+            let correction = normal * mag;
+            if type_a == RigidBodyType::Dynamic {
+                let pos = self.bodies[body_a_idx].position();
+                self.bodies[body_a_idx].set_position(pos - correction * (inv_mass_a / total_inv_mass));
+            }
+            if type_b == RigidBodyType::Dynamic {
+                let pos = self.bodies[body_b_idx].position();
+                self.bodies[body_b_idx].set_position(pos + correction * (inv_mass_b / total_inv_mass));
             }
         }
     }
@@ -898,6 +1448,7 @@ impl PhysicsWorld2D {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{Collider2D, ColliderShape, Joint2D, JointType, RigidBody2DBuilder};
 
     #[test]
     fn test_physics_world_creation() {
@@ -995,5 +1546,520 @@ mod tests {
         assert!(body.is_some());
         // 原来的索引 1 应该变成 0
         assert_eq!(body.unwrap().collider_indices(), &[0]);
+    }
+
+    // ============= P2-001 新增：物理积分/碰撞响应/关节约束测试 =============
+
+    #[test]
+    fn test_gravity_integration_dynamic_body() {
+        // 动态刚体在重力作用下应该加速下落
+        use crate::ColliderShape;
+
+        let mut world = PhysicsWorld2D::with_default_config();
+        world.set_gravity(Vec2::new(0.0, -10.0));
+
+        let mut body = RigidBody2DBuilder::dynamic().with_mass(1.0).build();
+        body.set_linear_damping(0.0); // 禁用阻尼以验证纯重力
+        let body_idx = world.add_body(body);
+        world.add_collider(Collider2D::new(ColliderShape::Circle { radius: 0.5 }), body_idx);
+
+        let initial_y = world.get_body(body_idx).unwrap().position().y;
+        world.step(1.0 / 60.0);
+        let after_y = world.get_body(body_idx).unwrap().position().y;
+        // 下落，y 应该减小
+        assert!(after_y < initial_y, "动态刚体应该在重力作用下下落");
+    }
+
+    #[test]
+    fn test_static_body_not_affected_by_gravity() {
+        // 静态刚体不受重力影响
+        use crate::ColliderShape;
+
+        let mut world = PhysicsWorld2D::with_default_config();
+        world.set_gravity(Vec2::new(0.0, -10.0));
+
+        let body = RigidBody2DBuilder::static_()
+            .with_position(Vec2::new(0.0, 5.0))
+            .build();
+        let body_idx = world.add_body(body);
+        world.add_collider(Collider2D::new(ColliderShape::Aabb { half_extents: Vec2::new(1.0, 1.0) }), body_idx);
+
+        let initial_y = world.get_body(body_idx).unwrap().position().y;
+        world.step(1.0 / 60.0);
+        let after_y = world.get_body(body_idx).unwrap().position().y;
+        assert_eq!(initial_y, after_y, "静态刚体不应受重力影响");
+    }
+
+    #[test]
+    fn test_circle_circle_collision_response() {
+        // 两个圆形动态刚体相向运动，碰撞后应该反弹
+        use crate::ColliderShape;
+
+        let mut world = PhysicsWorld2D::with_default_config();
+        world.set_gravity(Vec2::ZERO); // 无重力
+
+        let mut body_a = RigidBody2DBuilder::dynamic()
+            .with_mass(1.0)
+            .with_position(Vec2::new(-2.0, 0.0))
+            .with_velocity(Vec2::new(5.0, 0.0))
+            .build();
+        body_a.set_linear_damping(0.0);
+        let idx_a = world.add_body(body_a);
+        world.add_collider(Collider2D::new(ColliderShape::Circle { radius: 1.0 }), idx_a);
+
+        let mut body_b = RigidBody2DBuilder::dynamic()
+            .with_mass(1.0)
+            .with_position(Vec2::new(2.0, 0.0))
+            .with_velocity(Vec2::new(-5.0, 0.0))
+            .build();
+        body_b.set_linear_damping(0.0);
+        let idx_b = world.add_body(body_b);
+        world.add_collider(Collider2D::new(ColliderShape::Circle { radius: 1.0 }), idx_b);
+
+        // 步进几步让它们碰撞
+        for _ in 0..30 {
+            world.step(1.0 / 60.0);
+        }
+
+        let vel_a = world.get_body(idx_a).unwrap().linear_velocity();
+        let vel_b = world.get_body(idx_b).unwrap().linear_velocity();
+        // 碰撞后 A 应该向左/反向运动，B 应该向右/反向运动
+        assert!(vel_a.x < 5.0, "碰撞后 A 速度应减小或反向: {}", vel_a.x);
+        assert!(vel_b.x > -5.0, "碰撞后 B 速度应减小或反向: {}", vel_b.x);
+    }
+
+    #[test]
+    fn test_dynamic_static_collision_no_pass_through() {
+        // 动态刚体不应穿过静态刚体
+        let mut world = PhysicsWorld2D::with_default_config();
+        world.set_gravity(Vec2::new(0.0, -10.0));
+
+        // 静态地面
+        let ground = RigidBody2DBuilder::static_()
+            .with_position(Vec2::new(0.0, -1.0))
+            .build();
+        let ground_idx = world.add_body(ground);
+        world.add_collider(
+            Collider2D::new(ColliderShape::Aabb { half_extents: Vec2::new(10.0, 1.0) }),
+            ground_idx,
+        );
+
+        // 动态球
+        let mut ball = RigidBody2DBuilder::dynamic()
+            .with_mass(1.0)
+            .with_position(Vec2::new(0.0, 5.0))
+            .build();
+        ball.set_linear_damping(0.0);
+        let ball_idx = world.add_body(ball);
+        world.add_collider(Collider2D::new(ColliderShape::Circle { radius: 0.5 }), ball_idx);
+
+        // 步进足够长时间让球下落
+        for _ in 0..120 {
+            world.step(1.0 / 60.0);
+        }
+
+        let ball_y = world.get_body(ball_idx).unwrap().position().y;
+        // 球应该停在地面附近（地面顶部 y=0，球半径 0.5）
+        // 允许少量穿透（Baumgarte 稳定化不是精确求解）
+        assert!(ball_y >= -1.0, "动态刚体不应穿过静态刚体: ball_y={}", ball_y);
+        assert!(ball_y <= 1.5, "球应该下落到地面附近: ball_y={}", ball_y);
+    }
+
+    #[test]
+    fn test_aabb_aabb_collision_response() {
+        // 两个 AABB 碰撞应该产生响应
+        use crate::ColliderShape;
+
+        let mut world = PhysicsWorld2D::with_default_config();
+        world.set_gravity(Vec2::ZERO);
+
+        let mut body_a = RigidBody2DBuilder::dynamic()
+            .with_mass(1.0)
+            .with_position(Vec2::new(-3.0, 0.0))
+            .with_velocity(Vec2::new(10.0, 0.0))
+            .build();
+        body_a.set_linear_damping(0.0);
+        let idx_a = world.add_body(body_a);
+        world.add_collider(
+            Collider2D::new(ColliderShape::Aabb { half_extents: Vec2::new(1.0, 1.0) }),
+            idx_a,
+        );
+
+        let mut body_b = RigidBody2DBuilder::dynamic()
+            .with_mass(1.0)
+            .with_position(Vec2::new(3.0, 0.0))
+            .with_velocity(Vec2::new(-10.0, 0.0))
+            .build();
+        body_b.set_linear_damping(0.0);
+        let idx_b = world.add_body(body_b);
+        world.add_collider(
+            Collider2D::new(ColliderShape::Aabb { half_extents: Vec2::new(1.0, 1.0) }),
+            idx_b,
+        );
+
+        for _ in 0..30 {
+            world.step(1.0 / 60.0);
+        }
+
+        let vel_a = world.get_body(idx_a).unwrap().linear_velocity();
+        let vel_b = world.get_body(idx_b).unwrap().linear_velocity();
+        // 碰撞后速度应该减小或反向
+        assert!(vel_a.x < 10.0, "A 碰撞后速度应变化: {}", vel_a.x);
+        assert!(vel_b.x > -10.0, "B 碰撞后速度应变化: {}", vel_b.x);
+    }
+
+    #[test]
+    fn test_polygon_polygon_sat_collision() {
+        // 两个多边形碰撞应该被检测到
+        use crate::ColliderShape;
+
+        let mut world = PhysicsWorld2D::with_default_config();
+        world.set_gravity(Vec2::ZERO);
+
+        // 三角形 A
+        let tri_a = vec![
+            Vec2::new(-1.0, -1.0),
+            Vec2::new(1.0, -1.0),
+            Vec2::new(0.0, 1.0),
+        ];
+        let mut body_a = RigidBody2DBuilder::dynamic()
+            .with_mass(1.0)
+            .with_position(Vec2::new(-1.0, 0.0))
+            .with_velocity(Vec2::new(5.0, 0.0))
+            .build();
+        body_a.set_linear_damping(0.0);
+        let idx_a = world.add_body(body_a);
+        world.add_collider(
+            Collider2D::new(ColliderShape::Polygon { vertices: tri_a }),
+            idx_a,
+        );
+
+        // 三角形 B
+        let tri_b = vec![
+            Vec2::new(-1.0, -1.0),
+            Vec2::new(1.0, -1.0),
+            Vec2::new(0.0, 1.0),
+        ];
+        let mut body_b = RigidBody2DBuilder::dynamic()
+            .with_mass(1.0)
+            .with_position(Vec2::new(1.0, 0.0))
+            .with_velocity(Vec2::new(-5.0, 0.0))
+            .build();
+        body_b.set_linear_damping(0.0);
+        let idx_b = world.add_body(body_b);
+        world.add_collider(
+            Collider2D::new(ColliderShape::Polygon { vertices: tri_b }),
+            idx_b,
+        );
+
+        for _ in 0..30 {
+            world.step(1.0 / 60.0);
+        }
+
+        let vel_a = world.get_body(idx_a).unwrap().linear_velocity();
+        let vel_b = world.get_body(idx_b).unwrap().linear_velocity();
+        // 多边形碰撞应该产生响应
+        assert!(vel_a.x < 5.0, "多边形碰撞后 A 速度应变化: {}", vel_a.x);
+        assert!(vel_b.x > -5.0, "多边形碰撞后 B 速度应变化: {}", vel_b.x);
+    }
+
+    #[test]
+    fn test_distance_joint_constraint() {
+        // 距离关节应该约束两个刚体的距离
+        use crate::{DistanceJoint, Joint2D, JointType};
+
+        let mut world = PhysicsWorld2D::with_default_config();
+        world.set_gravity(Vec2::ZERO);
+
+        let body_a = RigidBody2DBuilder::dynamic()
+            .with_mass(1.0)
+            .with_position(Vec2::new(0.0, 0.0))
+            .build();
+        let idx_a = world.add_body(body_a);
+
+        let body_b = RigidBody2DBuilder::dynamic()
+            .with_mass(1.0)
+            .with_position(Vec2::new(5.0, 0.0))
+            .build();
+        let idx_b = world.add_body(body_b);
+
+        // 创建距离关节，目标距离 5.0
+        let mut joint = Joint2D::new(JointType::Distance, idx_a, idx_b);
+        joint.set_anchor_a(Vec2::new(0.0, 0.0));
+        joint.set_anchor_b(Vec2::new(5.0, 0.0));
+        world.add_joint(joint);
+
+        // 给 B 一个远离的力
+        world.get_body_mut(idx_b).unwrap().apply_impulse(Vec2::new(100.0, 0.0));
+
+        // 步进
+        for _ in 0..60 {
+            world.step(1.0 / 60.0);
+        }
+
+        let pos_a = world.get_body(idx_a).unwrap().position();
+        let pos_b = world.get_body(idx_b).unwrap().position();
+        let dist = (pos_b - pos_a).length();
+        // 距离应该被约束在目标附近（允许一定误差）
+        assert!(dist < 10.0, "距离关节应约束两体距离: dist={}", dist);
+    }
+
+    #[test]
+    fn test_set_mass_changes_inverse_mass() {
+        let mut body = RigidBody2DBuilder::dynamic().with_mass(2.0).build();
+        assert_eq!(body.inverse_mass(), 0.5);
+        body.set_mass(4.0);
+        assert_eq!(body.mass(), 4.0);
+        assert_eq!(body.inverse_mass(), 0.25);
+    }
+
+    #[test]
+    fn test_set_mass_zero_for_static() {
+        // 静态刚体的 set_mass 不应生效
+        let mut body = RigidBody2D::new(RigidBodyType::Static);
+        body.set_mass(5.0);
+        assert_eq!(body.mass(), 0.0);
+        assert_eq!(body.inverse_mass(), 0.0);
+    }
+
+    #[test]
+    fn test_set_inertia_changes_inverse_inertia() {
+        let mut body = RigidBody2DBuilder::dynamic().with_inertia(2.0).build();
+        assert_eq!(body.inverse_inertia(), 0.5);
+        body.set_inertia(4.0);
+        assert_eq!(body.inertia(), 4.0);
+        assert_eq!(body.inverse_inertia(), 0.25);
+    }
+
+    #[test]
+    fn test_broad_phase_allows_static_dynamic() {
+        // 静态-动态对应该被检测到
+        let mut world = PhysicsWorld2D::with_default_config();
+        world.set_gravity(Vec2::ZERO);
+
+        let ground = RigidBody2DBuilder::static_().build();
+        let g_idx = world.add_body(ground);
+        world.add_collider(
+            Collider2D::new(ColliderShape::Aabb { half_extents: Vec2::new(10.0, 1.0) }),
+            g_idx,
+        );
+
+        let ball = RigidBody2DBuilder::dynamic()
+            .with_position(Vec2::new(0.0, 0.5))
+            .build();
+        let b_idx = world.add_body(ball);
+        world.add_collider(Collider2D::new(ColliderShape::Circle { radius: 0.5 }), b_idx);
+
+        world.step(1.0 / 60.0);
+        // 应该有碰撞事件产生
+        assert!(!world.collision_events().is_empty(), "静态-动态碰撞应被检测");
+    }
+
+    #[test]
+    fn test_broad_phase_skips_static_static() {
+        // 两个静态刚体之间不应产生碰撞
+        use crate::ColliderShape;
+
+        let mut world = PhysicsWorld2D::with_default_config();
+        let a = RigidBody2DBuilder::static_().build();
+        let a_idx = world.add_body(a);
+        world.add_collider(
+            Collider2D::new(ColliderShape::Aabb { half_extents: Vec2::new(1.0, 1.0) }),
+            a_idx,
+        );
+
+        let b = RigidBody2DBuilder::static_().build();
+        let b_idx = world.add_body(b);
+        world.add_collider(
+            Collider2D::new(ColliderShape::Aabb { half_extents: Vec2::new(1.0, 1.0) }),
+            b_idx,
+        );
+
+        world.step(1.0 / 60.0);
+        assert!(world.collision_events().is_empty(), "静态-静态不应产生碰撞");
+    }
+
+    #[test]
+    fn test_restitution_bouncy_ball() {
+        // 高弹性球应该反弹
+        use crate::ColliderShape;
+
+        let mut world = PhysicsWorld2D::with_default_config();
+        world.set_gravity(Vec2::new(0.0, -10.0));
+
+        // 静态地面
+        let ground = RigidBody2DBuilder::static_().build();
+        let g_idx = world.add_body(ground);
+        let mut ground_collider = Collider2D::new(ColliderShape::Aabb { half_extents: Vec2::new(10.0, 1.0) });
+        ground_collider.set_restitution(1.0); // 完全弹性
+        world.add_collider(ground_collider, g_idx);
+
+        // 弹性球
+        let mut ball_collider = Collider2D::new(ColliderShape::Circle { radius: 0.5 });
+        ball_collider.set_restitution(1.0);
+        let mut ball = RigidBody2DBuilder::dynamic()
+            .with_mass(1.0)
+            .with_position(Vec2::new(0.0, 5.0))
+            .build();
+        ball.set_linear_damping(0.0);
+        ball.set_angular_damping(0.0);
+        let b_idx = world.add_body(ball);
+        world.add_collider(ball_collider, b_idx);
+
+        // 步进直到碰撞
+        for _ in 0..120 {
+            world.step(1.0 / 60.0);
+        }
+
+        // 球应该反弹（y 速度为正或位置上升）
+        let vel = world.get_body(b_idx).unwrap().linear_velocity();
+        let pos = world.get_body(b_idx).unwrap().position();
+        // 完全弹性碰撞后应该反弹
+        assert!(
+            vel.y > -1.0 || pos.y > 0.5,
+            "弹性球应该反弹: vel.y={}, pos.y={}",
+            vel.y,
+            pos.y
+        );
+    }
+
+    #[test]
+    fn test_friction_slows_motion() {
+        // 摩擦应该减慢运动
+        use crate::ColliderShape;
+
+        let mut world = PhysicsWorld2D::with_default_config();
+        world.set_gravity(Vec2::new(0.0, -10.0));
+
+        // 地面（高摩擦）
+        let ground = RigidBody2DBuilder::static_().build();
+        let g_idx = world.add_body(ground);
+        let mut ground_collider = Collider2D::new(ColliderShape::Aabb { half_extents: Vec2::new(50.0, 1.0) });
+        ground_collider.set_friction(0.9);
+        world.add_collider(ground_collider, g_idx);
+
+        // 滑块（高摩擦）
+        let mut box_collider = Collider2D::new(ColliderShape::Aabb { half_extents: Vec2::new(0.5, 0.5) });
+        box_collider.set_friction(0.9);
+        let mut body = RigidBody2DBuilder::dynamic()
+            .with_mass(1.0)
+            .with_position(Vec2::new(0.0, 2.0))
+            .with_velocity(Vec2::new(10.0, 0.0))
+            .build();
+        body.set_linear_damping(0.0);
+        let b_idx = world.add_body(body);
+        world.add_collider(box_collider, b_idx);
+
+        // 步进
+        for _ in 0..120 {
+            world.step(1.0 / 60.0);
+        }
+
+        let vel = world.get_body(b_idx).unwrap().linear_velocity();
+        // 摩擦应该显著减慢速度
+        assert!(vel.x.abs() < 10.0, "摩擦应减慢运动: vel.x={}", vel.x);
+    }
+
+    #[test]
+    fn test_position_correction_reduces_penetration() {
+        // 位置修正应该减少穿透
+        use crate::ColliderShape;
+
+        let mut world = PhysicsWorld2D::with_default_config();
+        world.set_gravity(Vec2::ZERO);
+
+        // 静态地面
+        let ground = RigidBody2DBuilder::static_().build();
+        let g_idx = world.add_body(ground);
+        world.add_collider(
+            Collider2D::new(ColliderShape::Aabb { half_extents: Vec2::new(10.0, 1.0) }),
+            g_idx,
+        );
+
+        // 动态球，初始与地面重叠
+        let ball = RigidBody2DBuilder::dynamic()
+            .with_mass(1.0)
+            .with_position(Vec2::new(0.0, 0.0)) // 与地面重叠
+            .build();
+        let b_idx = world.add_body(ball);
+        world.add_collider(Collider2D::new(ColliderShape::Circle { radius: 0.5 }), b_idx);
+
+        // 步进几步让位置修正生效
+        for _ in 0..10 {
+            world.step(1.0 / 60.0);
+        }
+
+        let ball_y = world.get_body(b_idx).unwrap().position().y;
+        // 球应该被推到地面之上
+        assert!(ball_y > -0.5, "位置修正应减少穿透: ball_y={}", ball_y);
+    }
+
+    #[test]
+    fn test_polygon_axes_generation() {
+        let square = vec![
+            Vec2::new(-1.0, -1.0),
+            Vec2::new(1.0, -1.0),
+            Vec2::new(1.0, 1.0),
+            Vec2::new(-1.0, 1.0),
+        ];
+        let axes = PhysicsWorld2D::polygon_axes(&square);
+        // 正方形应该有 4 条边，但去重后是 2 个独立轴方向
+        assert_eq!(axes.len(), 4);
+        // 所有轴应该是单位向量
+        for axis in &axes {
+            assert!((axis.length() - 1.0).abs() < 1e-5, "轴应该是单位向量");
+        }
+    }
+
+    #[test]
+    fn test_project_polygon() {
+        let square = vec![
+            Vec2::new(-1.0, -1.0),
+            Vec2::new(1.0, -1.0),
+            Vec2::new(1.0, 1.0),
+            Vec2::new(-1.0, 1.0),
+        ];
+        let (min, max) = PhysicsWorld2D::project_polygon(&square, Vec2::new(1.0, 0.0));
+        assert!((min - (-1.0)).abs() < 1e-5);
+        assert!((max - 1.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_energy_conservation_elastic_collision() {
+        // 等质量完全弹性碰撞应该交换速度
+        let mut world = PhysicsWorld2D::with_default_config();
+        world.set_gravity(Vec2::ZERO);
+
+        let mut a = RigidBody2DBuilder::dynamic()
+            .with_mass(1.0)
+            .with_position(Vec2::new(-2.0, 0.0))
+            .with_velocity(Vec2::new(5.0, 0.0))
+            .build();
+        a.set_linear_damping(0.0);
+        let idx_a = world.add_body(a);
+        let mut col_a = Collider2D::new(ColliderShape::Circle { radius: 0.5 });
+        col_a.set_restitution(1.0);
+        world.add_collider(col_a, idx_a);
+
+        let mut b = RigidBody2DBuilder::dynamic()
+            .with_mass(1.0)
+            .with_position(Vec2::new(2.0, 0.0))
+            .build();
+        b.set_linear_damping(0.0);
+        let idx_b = world.add_body(b);
+        let mut col_b = Collider2D::new(ColliderShape::Circle { radius: 0.5 });
+        col_b.set_restitution(1.0);
+        world.add_collider(col_b, idx_b);
+
+        // 步进直到碰撞发生（A 速度 5/s，1秒移动 5 单位到 x=3，必然与 B 碰撞）
+        for _ in 0..90 {
+            world.step(1.0 / 60.0);
+        }
+
+        let vel_a = world.get_body(idx_a).unwrap().linear_velocity();
+        let vel_b = world.get_body(idx_b).unwrap().linear_velocity();
+        // 等质量完全弹性碰撞：A 静止，B 获得 A 的速度
+        assert!(vel_a.x.abs() < 2.0, "等质量弹性碰撞后 A 应接近静止: {}", vel_a.x);
+        assert!(vel_b.x > 1.0, "等质量弹性碰撞后 B 应获得速度: {}", vel_b.x);
     }
 }
