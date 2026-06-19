@@ -1279,34 +1279,6 @@ mod tests {
 
     // ===== 字体解析测试 =====
 
-    /// 构造一个最小化的 TTF 字体数据用于测试
-    fn make_minimal_ttf() -> Vec<u8> {
-        // 这是一个非常简化的 TTF 结构，仅用于测试解析器能否正确识别表目录
-        // 真实字体文件需要完整的表数据
-        let mut data = Vec::new();
-
-        // sfnt version (0x00010000 for TTF)
-        data.extend_from_slice(&0x00010000u32.to_be_bytes());
-        // numTables = 6 (head, hhea, hmtx, cmap, OS/2, name)
-        data.extend_from_slice(&6u16.to_be_bytes());
-        // searchRange, entrySelector, rangeShift (简化)
-        data.extend_from_slice(&48u16.to_be_bytes());
-        data.extend_from_slice(&2u16.to_be_bytes());
-        data.extend_from_slice(&0u16.to_be_bytes());
-
-        // 表目录（6 个表，每个 16 字节）
-        // 我们只填充 tag 和 offset/length，实际数据为空
-        let tags: [&[u8; 4]; 6] = [b"head", b"hhea", b"hmtx", b"cmap", b"OS/2", b"name"];
-        for (i, tag) in tags.iter().enumerate() {
-            data.extend_from_slice(*tag);
-            data.extend_from_slice(&0u32.to_be_bytes()); // checksum
-            data.extend_from_slice(&((200 + i as u32 * 100).to_be_bytes())); // offset
-            data.extend_from_slice(&0u32.to_be_bytes()); // length
-        }
-
-        data
-    }
-
     #[test]
     fn test_font_load_error_display() {
         let err = FontLoadError::TooShort;

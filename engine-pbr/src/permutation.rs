@@ -557,7 +557,7 @@ mod tests {
     #[test]
     fn test_permutation_key_clone() {
         let key1 = ShaderPermutationKey::new().with_flags(PbrMaterialFlags::HAS_ALBEDO_MAP);
-        let key2 = key1.clone();
+        let key2 = key1;
         assert_eq!(key1, key2);
     }
 

@@ -340,7 +340,7 @@ mod tests {
             TestEvent { value: 2 },
             TestEvent { value: 3 },
         ];
-        bus.send_batch(events.into_iter());
+        bus.send_batch(events);
         assert_eq!(bus.len(), 3);
     }
 

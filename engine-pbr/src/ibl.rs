@@ -1011,11 +1011,11 @@ mod tests {
 
         // At NdotV=1, roughness=0, the scale should be high (close to 1)
         let (scale_smooth, _bias_smooth) = lut.sample(1.0, 0.0);
-        assert!(scale_smooth >= 0.0 && scale_smooth <= 1.0);
+        assert!((0.0..=1.0).contains(&scale_smooth));
 
         // At NdotV=1, roughness=1, the scale should be lower
         let (scale_rough, _bias_rough) = lut.sample(1.0, 1.0);
-        assert!(scale_rough >= 0.0 && scale_rough <= 1.0);
+        assert!((0.0..=1.0).contains(&scale_rough));
     }
 
     #[test]
@@ -1045,8 +1045,8 @@ mod tests {
 
         let (r, g) = lut.sample(0.5, 0.5);
         // Should be interpolated values
-        assert!(r >= 0.0 && r <= 1.0);
-        assert!(g >= 0.0 && g <= 1.0);
+        assert!((0.0..=1.0).contains(&r));
+        assert!((0.0..=1.0).contains(&g));
     }
 
     #[test]
@@ -1257,16 +1257,16 @@ mod tests {
     fn test_integrate_brdf_smooth() {
         // At NdotV=1, roughness=0, scale should be high
         let (scale, bias) = IBLBaker::integrate_brdf(1.0, 0.0, 64);
-        assert!(scale >= 0.0 && scale <= 1.0);
-        assert!(bias >= 0.0 && bias <= 1.0);
+        assert!((0.0..=1.0).contains(&scale));
+        assert!((0.0..=1.0).contains(&bias));
     }
 
     #[test]
     fn test_integrate_brdf_rough() {
         // At NdotV=1, roughness=1, scale should be lower
         let (scale, bias) = IBLBaker::integrate_brdf(1.0, 1.0, 64);
-        assert!(scale >= 0.0 && scale <= 1.0);
-        assert!(bias >= 0.0 && bias <= 1.0);
+        assert!((0.0..=1.0).contains(&scale));
+        assert!((0.0..=1.0).contains(&bias));
     }
 
     #[test]
@@ -1275,8 +1275,8 @@ mod tests {
         let (scale_low, _bias_low) = IBLBaker::integrate_brdf(0.1, 0.5, 64);
         let (scale_high, _bias_high) = IBLBaker::integrate_brdf(0.9, 0.5, 64);
         // Both should be valid
-        assert!(scale_low >= 0.0 && scale_low <= 1.0);
-        assert!(scale_high >= 0.0 && scale_high <= 1.0);
+        assert!((0.0..=1.0).contains(&scale_low));
+        assert!((0.0..=1.0).contains(&scale_high));
     }
 
     #[test]
@@ -1314,10 +1314,10 @@ mod tests {
         let (s11, _) = lut.sample(1.0, 1.0);
 
         // All should be valid values
-        assert!(s00 >= 0.0 && s00 <= 1.0);
-        assert!(s10 >= 0.0 && s10 <= 1.0);
-        assert!(s01 >= 0.0 && s01 <= 1.0);
-        assert!(s11 >= 0.0 && s11 <= 1.0);
+        assert!((0.0..=1.0).contains(&s00));
+        assert!((0.0..=1.0).contains(&s10));
+        assert!((0.0..=1.0).contains(&s01));
+        assert!((0.0..=1.0).contains(&s11));
     }
 
     #[test]

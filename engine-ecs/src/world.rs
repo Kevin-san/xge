@@ -58,6 +58,11 @@ impl World {
         self.entities.alive_count()
     }
 
+    /// 遍历所有存活实体（不保证顺序）。
+    pub fn entities_iter(&self) -> impl Iterator<Item = Entity> + '_ {
+        self.entities.iter_alive()
+    }
+
     pub fn spawn(&mut self) -> Entity {
         let entity = self.entities.allocate();
         let row = self.archetypes.finalize_push_entity(0, entity);
@@ -351,14 +356,23 @@ impl World {
         self.resources.get_mut::<R>()
     }
 
+    /// 检查资源是否存在
+    pub fn contains_resource<R: Resource>(&self) -> bool {
+        self.resources.contains::<R>()
+    }
+
+    /// 移除资源，返回被移除的值
+    pub fn remove_resource<R: Resource>(&mut self) -> Option<R> {
+        self.resources.remove::<R>()
+    }
+
     // ========== Events ==========
 
     pub fn send_event<E: Event + Clone>(&mut self, event: E) {
         let type_id = TypeId::of::<E>();
-        if !self.events.contains_key(&type_id) {
-            self.events
-                .insert(type_id, Box::new(Vec::<E>::new()) as Box<dyn std::any::Any + Send + Sync>);
-        }
+        self.events
+            .entry(type_id)
+            .or_insert_with(|| Box::new(Vec::<E>::new()) as Box<dyn std::any::Any + Send + Sync>);
         if let Some(box_vec) = self.events.get_mut(&type_id) {
             if let Some(vec) = box_vec.downcast_mut::<Vec<E>>() {
                 vec.push(event);
@@ -410,9 +424,9 @@ mod tests {
     fn test_world_insert_and_get() {
         let mut world = World::new();
         let e = world.spawn();
-        world.insert(e, Position { x: 3.14 });
+        world.insert(e, Position { x: std::f32::consts::PI });
         let p = world.get_component::<Position>(e).unwrap();
-        assert_eq!(p.x, 3.14);
+        assert_eq!(p.x, std::f32::consts::PI);
     }
 
     #[test]

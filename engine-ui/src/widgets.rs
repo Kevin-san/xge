@@ -426,18 +426,13 @@ impl Component for CheckBox {}
 // ===== Slider 滑块控件 =====
 
 /// 滑块方向
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
 pub enum SliderDirection {
     /// 水平
+    #[default]
     Horizontal,
     /// 垂直
     Vertical,
-}
-
-impl Default for SliderDirection {
-    fn default() -> Self {
-        SliderDirection::Horizontal
-    }
 }
 
 /// 滑块控件
@@ -668,18 +663,13 @@ impl Default for Slider {
 // ===== Grid 网格控件 =====
 
 /// 网格布局方向
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
 pub enum GridFlow {
     /// 行优先（先填满一行再换行）
+    #[default]
     Row,
     /// 列优先（先填满一列再换列）
     Column,
-}
-
-impl Default for GridFlow {
-    fn default() -> Self {
-        GridFlow::Row
-    }
 }
 
 /// 网格控件
@@ -816,7 +806,7 @@ impl Grid {
                 } else {
                     // 自动计算列数：根据行数
                     let rows = if self.rows > 0 { self.rows } else { 1 };
-                    (item_count + rows - 1) / rows
+                    item_count.div_ceil(rows)
                 };
                 (index % cols, index / cols)
             }
@@ -825,7 +815,7 @@ impl Grid {
                     self.rows
                 } else {
                     let cols = if self.columns > 0 { self.columns } else { 1 };
-                    (item_count + cols - 1) / cols
+                    item_count.div_ceil(cols)
                 };
                 (index / rows, index % rows)
             }
@@ -837,7 +827,7 @@ impl Grid {
                     self.columns
                 } else {
                     let rows = if self.rows > 0 { self.rows } else { 1 };
-                    (item_count + rows - 1) / rows
+                    item_count.div_ceil(rows)
                 }
             }
             GridFlow::Column => {
@@ -862,7 +852,7 @@ impl Grid {
                     self.rows
                 } else {
                     let cols = if self.columns > 0 { self.columns } else { 1 };
-                    (item_count + cols - 1) / cols
+                    item_count.div_ceil(cols)
                 }
             }
         };
@@ -905,9 +895,9 @@ impl Grid {
                     self.columns
                 } else {
                     let r = if self.rows > 0 { self.rows } else { 1 };
-                    (item_count + r - 1) / r
+                    item_count.div_ceil(r)
                 };
-                let r = (item_count + c - 1) / c;
+                let r = item_count.div_ceil(c);
                 (c, r)
             }
             GridFlow::Column => {
@@ -915,9 +905,9 @@ impl Grid {
                     self.rows
                 } else {
                     let c = if self.columns > 0 { self.columns } else { 1 };
-                    (item_count + c - 1) / c
+                    item_count.div_ceil(c)
                 };
-                let c = (item_count + r - 1) / r;
+                let c = item_count.div_ceil(r);
                 (c, r)
             }
         };

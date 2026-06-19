@@ -979,7 +979,7 @@ mod tests {
 
         // 第一个监听器停止冒泡
         let counter_clone1 = counter.clone();
-        bus.subscribe(UiEventType::Click, move |event| {
+        bus.subscribe(UiEventType::Click, move |_event| {
             counter_clone1.fetch_add(1, Ordering::SeqCst);
         });
 

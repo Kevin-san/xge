@@ -111,7 +111,7 @@ fn main() {
     println!("\n--- Processing Events ---");
 
     // 处理碰撞事件
-    let reader = world.events::<CollisionEvent>();
+    let reader = world.read_events::<CollisionEvent>();
     let collisions: Vec<_> = reader.into_iter().collect();
     println!("Received {} collision events:", collisions.len());
     for event in &collisions {
@@ -122,8 +122,8 @@ fn main() {
     }
 
     // 处理伤害事件
-    let reader = world.events::<DamageEvent>();
-    let damages: Vec<_> = reader.into_iter().collect();
+    let reader = world.read_events::<DamageEvent>();
+    let damages: Vec<_> = reader.into_iter().cloned().collect();
     println!("\nReceived {} damage events:", damages.len());
     for event in &damages {
         // 应用伤害
@@ -138,7 +138,7 @@ fn main() {
     }
 
     // 处理死亡事件
-    let reader = world.events::<DeathEvent>();
+    let reader = world.read_events::<DeathEvent>();
     let deaths: Vec<_> = reader.into_iter().collect();
     println!("\nReceived {} death events:", deaths.len());
     for event in &deaths {

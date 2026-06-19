@@ -175,7 +175,7 @@ impl<T: Copy> Buffer<T> {
             self.grow(slice.len());
         }
         let byte_offset = self.count * std::mem::size_of::<T>();
-        let byte_len = slice.len() * std::mem::size_of::<T>();
+        let byte_len = std::mem::size_of_val(slice);
         let end = byte_offset + byte_len;
         if self.data.len() < end {
             self.data.resize(end, 0);

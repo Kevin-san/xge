@@ -143,18 +143,18 @@ pub fn parse_json_value(s: &str) -> Result<(JsonValue, &str), GltfError> {
 }
 
 fn parse_null(s: &str) -> Result<(JsonValue, &str), GltfError> {
-    if s.starts_with("null") {
-        Ok((JsonValue::Null, &s[4..]))
+    if let Some(rest) = s.strip_prefix("null") {
+        Ok((JsonValue::Null, rest))
     } else {
         Err(GltfError::InvalidJson("Expected `null`".to_string()))
     }
 }
 
 fn parse_bool(s: &str) -> Result<(JsonValue, &str), GltfError> {
-    if s.starts_with("true") {
-        Ok((JsonValue::Bool(true), &s[4..]))
-    } else if s.starts_with("false") {
-        Ok((JsonValue::Bool(false), &s[5..]))
+    if let Some(rest) = s.strip_prefix("true") {
+        Ok((JsonValue::Bool(true), rest))
+    } else if let Some(rest) = s.strip_prefix("false") {
+        Ok((JsonValue::Bool(false), rest))
     } else {
         Err(GltfError::InvalidJson("Expected `true` or `false`".to_string()))
     }
@@ -242,18 +242,18 @@ fn parse_array(s: &str) -> Result<(JsonValue, &str), GltfError> {
     let mut arr = Vec::new();
 
     s = skip_whitespace(s);
-    if s.starts_with(']') {
-        return Ok((JsonValue::Array(arr), &s[1..]));
+    if let Some(rest) = s.strip_prefix(']') {
+        return Ok((JsonValue::Array(arr), rest));
     }
 
     loop {
         let (val, rest) = parse_json_value(s)?;
         arr.push(val);
         s = skip_whitespace(rest);
-        if s.starts_with(',') {
-            s = skip_whitespace(&s[1..]);
-        } else if s.starts_with(']') {
-            return Ok((JsonValue::Array(arr), &s[1..]));
+        if let Some(rest) = s.strip_prefix(',') {
+            s = skip_whitespace(rest);
+        } else if let Some(rest) = s.strip_prefix(']') {
+            return Ok((JsonValue::Array(arr), rest));
         } else {
             return Err(GltfError::InvalidJson("Expected `,` or `]` in array".to_string()));
         }
@@ -265,25 +265,26 @@ fn parse_object(s: &str) -> Result<(JsonValue, &str), GltfError> {
     let mut obj = BTreeMap::new();
 
     s = skip_whitespace(s);
-    if s.starts_with('}') {
-        return Ok((JsonValue::Object(obj), &s[1..]));
+    if let Some(rest) = s.strip_prefix('}') {
+        return Ok((JsonValue::Object(obj), rest));
     }
 
     loop {
         s = skip_whitespace(s);
         let (key, rest) = parse_string_raw(s)?;
         s = skip_whitespace(rest);
-        if !s.starts_with(':') {
+        if let Some(rest) = s.strip_prefix(':') {
+            s = skip_whitespace(rest);
+        } else {
             return Err(GltfError::InvalidJson("Expected `:` in object".to_string()));
         }
-        s = skip_whitespace(&s[1..]);
         let (val, rest2) = parse_json_value(s)?;
         obj.insert(key, val);
         s = skip_whitespace(rest2);
-        if s.starts_with(',') {
-            s = skip_whitespace(&s[1..]);
-        } else if s.starts_with('}') {
-            return Ok((JsonValue::Object(obj), &s[1..]));
+        if let Some(rest) = s.strip_prefix(',') {
+            s = skip_whitespace(rest);
+        } else if let Some(rest) = s.strip_prefix('}') {
+            return Ok((JsonValue::Object(obj), rest));
         } else {
             return Err(GltfError::InvalidJson("Expected `,` or `}` in object".to_string()));
         }
@@ -502,7 +503,7 @@ impl GltfDocument {
                 if let Some(t) = o.get("translation") {
                     let a = json_to_f32_array(t);
                     node.translation = [
-                        a.get(0).copied().unwrap_or(0.0),
+                        a.first().copied().unwrap_or(0.0),
                         a.get(1).copied().unwrap_or(0.0),
                         a.get(2).copied().unwrap_or(0.0),
                     ];
@@ -510,7 +511,7 @@ impl GltfDocument {
                 if let Some(r) = o.get("rotation") {
                     let a = json_to_f32_array(r);
                     node.rotation = [
-                        a.get(0).copied().unwrap_or(0.0),
+                        a.first().copied().unwrap_or(0.0),
                         a.get(1).copied().unwrap_or(0.0),
                         a.get(2).copied().unwrap_or(0.0),
                         a.get(3).copied().unwrap_or(1.0),
@@ -519,7 +520,7 @@ impl GltfDocument {
                 if let Some(sc) = o.get("scale") {
                     let a = json_to_f32_array(sc);
                     node.scale = [
-                        a.get(0).copied().unwrap_or(1.0),
+                        a.first().copied().unwrap_or(1.0),
                         a.get(1).copied().unwrap_or(1.0),
                         a.get(2).copied().unwrap_or(1.0),
                     ];
@@ -959,8 +960,8 @@ mod tests {
 
     #[test]
     fn test_json_parse_number() {
-        let (val, rest) = parse_json_value("3.14").unwrap();
-        assert_eq!(val.as_number(), Some(3.14));
+        let (val, rest) = parse_json_value("3.5").unwrap();
+        assert_eq!(val.as_number(), Some(3.5));
         assert!(rest.is_empty());
 
         let (val2, _) = parse_json_value("-42").unwrap();

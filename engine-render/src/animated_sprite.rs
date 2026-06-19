@@ -133,7 +133,6 @@ impl AnimatedSprite {
             return;
         }
         let frame_duration = 1.0 / self.fps.max(f32::EPSILON);
-        let total_duration = frame_duration * self.frames.len() as f32;
         let clamped = seconds.max(0.0);
         let frame_index = match self.loop_mode {
             LoopMode::Loop => (clamped / frame_duration) as usize % self.frames.len(),

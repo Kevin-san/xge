@@ -55,24 +55,24 @@ fn main() {
     world.insert_resource(Score::default());
 
     // 读取资源
-    let config = world.resource::<GameConfig>();
+    let config = world.get_resource::<GameConfig>().unwrap();
     println!("Game config: {:?}", config);
 
     // 可变访问资源
     {
-        let time = world.resource_mut::<GameTime>();
+        let time = world.get_resource_mut::<GameTime>().unwrap();
         time.total_seconds += time.delta_seconds;
         println!("Game time updated: {:.3}s", time.total_seconds);
     }
 
     // 使用资源
     {
-        let score = world.resource_mut::<Score>();
+        let score = world.get_resource_mut::<Score>().unwrap();
         score.player1 += 100;
         score.player2 += 50;
     }
 
-    let score = world.resource::<Score>();
+    let score = world.get_resource::<Score>().unwrap();
     println!(
         "Score - Player1: {}, Player2: {}",
         score.player1, score.player2

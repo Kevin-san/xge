@@ -342,7 +342,7 @@ mod tests {
             Position { x: 5.0, y: 6.0 },
         ];
 
-        world.spawn_batch(bundles.into_iter());
+        world.spawn_batch(bundles);
 
         assert_eq!(world.entity_count(), 3);
     }

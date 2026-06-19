@@ -1,7 +1,7 @@
 //! 引擎自定义按键枚举与 winit 原生按键映射
 
 /// 引擎级按键枚举（屏蔽 winit 依赖）
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 #[repr(u32)]
 pub enum KeyCode {
     // ===== 字母键 =====
@@ -36,6 +36,7 @@ pub enum KeyCode {
     Semicolon, Apostrophe, Comma, Period, Slash,
 
     // ===== 未知 =====
+    #[default]
     Unknown,
 }
 
@@ -83,29 +84,18 @@ impl KeyCode {
     }
 }
 
-impl Default for KeyCode {
-    fn default() -> Self {
-        KeyCode::Unknown
-    }
-}
-
 // ===== 鼠标按钮 =====
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 #[repr(u8)]
 pub enum MouseButton {
+    #[default]
     Left,
     Middle,
     Right,
     Back,
     Forward,
     Other(u16),
-}
-
-impl Default for MouseButton {
-    fn default() -> Self {
-        MouseButton::Left
-    }
 }
 
 // ===== 修饰键状态 =====
@@ -288,7 +278,7 @@ pub fn map_mouse_button(button: winit::event::MouseButton) -> MouseButton {
 pub fn map_modifiers(modifiers: winit::event::Modifiers) -> ModifiersState {
     let mut state = ModifiersState::empty();
     let ms = modifiers.state();
-    let raw: u32 = ms.bits() as u32;
+    let raw: u32 = ms.bits();
     if raw & 0b0001 != 0 { state.bits |= ModifiersState::SHIFT; }
     if raw & 0b0010 != 0 { state.bits |= ModifiersState::CONTROL; }
     if raw & 0b0100 != 0 { state.bits |= ModifiersState::ALT; }

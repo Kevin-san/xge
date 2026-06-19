@@ -77,7 +77,7 @@ impl<C: Component> ColumnVec<C> {
         &mut self.data
     }
 
-    pub fn replace(&mut self, row: usize, mut value: C) -> Option<C> {
+    pub fn replace(&mut self, row: usize, value: C) -> Option<C> {
         if row < self.data.len() {
             let old = std::mem::replace(&mut self.data[row], value);
             let mut old = old;
@@ -99,6 +99,10 @@ impl<C: Component> ColumnVec<C> {
 
     pub fn len(&self) -> usize {
         self.data.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.data.is_empty()
     }
 }
 
@@ -247,13 +251,11 @@ impl ArchetypeStorage {
     }
 
     /// push entity + 一个组件值 C（用于 spawn 或 insert 场景的填充）
-    pub fn push_entity_with_component<C: Component>(&mut self, arch_id: u32, entity: Entity, value: C) {
+    pub fn push_entity_with_component<C: Component>(&mut self, arch_id: u32, _entity: Entity, value: C) {
         let type_id = std::any::TypeId::of::<C>();
         let arch = self.archetypes.iter_mut().find(|a| a.id == arch_id).expect("archetype not found");
         // 确保 C 列存在
-        if !arch.columns.contains_key(&type_id) {
-            arch.columns.insert(type_id, Box::new(ColumnVec::<C>::new()));
-        }
+        arch.columns.entry(type_id).or_insert_with(|| Box::new(ColumnVec::<C>::new()));
         // 对 *每个* 已有列：要么 push C（如果类型匹配），要么 push 一个空值？
         // —— 不，这里我们只保证列类型匹配的列 push 值，
         //    其他列的 push 应由调用方在 *同一循环里* 再调用本方法。
@@ -269,7 +271,6 @@ impl ArchetypeStorage {
             arch.columns.insert(type_id, Box::new(cv));
         }
         // 注意：entity 不在此处 push，调用方需最后调用 finalize_push_entity
-        let _ = &mut self.archetypes; // silence unused_mut warning
     }
 
     /// 完成一次 push：把 entity id 加入该 archetype 的 entities 列表
@@ -284,9 +285,7 @@ impl ArchetypeStorage {
     pub fn push_raw_component<C: Component>(&mut self, arch_id: u32, value: C) {
         let type_id = std::any::TypeId::of::<C>();
         let arch = self.archetypes.iter_mut().find(|a| a.id == arch_id).expect("archetype not found");
-        if !arch.columns.contains_key(&type_id) {
-            arch.columns.insert(type_id, Box::new(ColumnVec::<C>::new()));
-        }
+        arch.columns.entry(type_id).or_insert_with(|| Box::new(ColumnVec::<C>::new()));
         let col = arch.columns.get_mut(&type_id).unwrap();
         if let Some(cv) = <dyn Column>::as_any_mut(&mut **col).downcast_mut::<ColumnVec<C>>() {
             cv.push_raw(value);
@@ -375,14 +374,8 @@ impl ArchetypeStorage {
         dst_arch_id: u32,
         except: &[TypeId],
     ) -> Option<Entity> {
-        let src_idx = match self.archetypes.iter().position(|a| a.id == src_arch_id) {
-            Some(i) => i,
-            None => return None,
-        };
-        let dst_idx = match self.archetypes.iter().position(|a| a.id == dst_arch_id) {
-            Some(i) => i,
-            None => return None,
-        };
+        let src_idx = self.archetypes.iter().position(|a| a.id == src_arch_id)?;
+        let dst_idx = self.archetypes.iter().position(|a| a.id == dst_arch_id)?;
         if src_idx == dst_idx {
             return None;
         }

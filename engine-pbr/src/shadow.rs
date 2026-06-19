@@ -600,7 +600,7 @@ mod tests {
         // depth = 0.5, biased = 0.5 - bias
         // If shadow_map_depth > biased, then lit
         let factor = renderer.compute_shadow_factor(Vec3::new(0.0, 0.0, 0.0), 1.0, 0);
-        assert!(factor >= 0.0 && factor <= 1.0);
+        assert!((0.0..=1.0).contains(&factor));
     }
 
     #[test]
@@ -666,8 +666,8 @@ mod tests {
         let v1 = tex.sample(-1.0, -1.0);
         let v2 = tex.sample(2.0, 2.0);
         // Should not panic, returns clamped values
-        assert!(v1 >= 0.0 && v1 <= 1.0);
-        assert!(v2 >= 0.0 && v2 <= 1.0);
+        assert!((0.0..=1.0).contains(&v1));
+        assert!((0.0..=1.0).contains(&v2));
     }
 
     #[test]
@@ -777,8 +777,10 @@ mod tests {
 
     #[test]
     fn test_calculate_cascade_splits_lambda_zero() {
-        let mut config = ShadowMapConfig::default();
-        config.cascade_split_lambda = 0.0; // Pure uniform
+        let config = ShadowMapConfig {
+            cascade_split_lambda: 0.0, // Pure uniform
+            ..Default::default()
+        };
         let renderer = ShadowMapRenderer::new(config);
         let splits = renderer.calculate_cascade_splits(0.0, 100.0);
         // With lambda=0, splits should be uniform

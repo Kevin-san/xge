@@ -29,9 +29,10 @@ pub enum LayoutDirection {
 }
 
 /// Flex 主轴方向
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
 pub enum FlexDirection {
     /// 水平排列（左→右）
+    #[default]
     Row,
     /// 水平反向排列（右→左）
     RowReverse,
@@ -53,16 +54,11 @@ impl FlexDirection {
     }
 }
 
-impl Default for FlexDirection {
-    fn default() -> Self {
-        FlexDirection::Row
-    }
-}
-
 /// Flex 主轴对齐方式（justify-content）
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
 pub enum JustifyContent {
     /// 起始对齐
+    #[default]
     FlexStart,
     /// 末尾对齐
     FlexEnd,
@@ -76,14 +72,8 @@ pub enum JustifyContent {
     SpaceEvenly,
 }
 
-impl Default for JustifyContent {
-    fn default() -> Self {
-        JustifyContent::FlexStart
-    }
-}
-
 /// Flex 交叉轴对齐方式（align-items）
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
 pub enum AlignItems {
     /// 起始对齐
     FlexStart,
@@ -92,21 +82,17 @@ pub enum AlignItems {
     /// 居中对齐
     Center,
     /// 拉伸填充
+    #[default]
     Stretch,
     /// 基线对齐
     Baseline,
 }
 
-impl Default for AlignItems {
-    fn default() -> Self {
-        AlignItems::Stretch
-    }
-}
-
 /// Flex 单个子项的交叉轴对齐覆盖（align-self）
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
 pub enum AlignSelf {
     /// 继承父级 align-items
+    #[default]
     Auto,
     /// 起始对齐
     FlexStart,
@@ -120,16 +106,11 @@ pub enum AlignSelf {
     Baseline,
 }
 
-impl Default for AlignSelf {
-    fn default() -> Self {
-        AlignSelf::Auto
-    }
-}
-
 /// Flex 包装模式（flex-wrap）
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
 pub enum FlexWrap {
     /// 不换行
+    #[default]
     NoWrap,
     /// 换行
     Wrap,
@@ -137,16 +118,11 @@ pub enum FlexWrap {
     WrapReverse,
 }
 
-impl Default for FlexWrap {
-    fn default() -> Self {
-        FlexWrap::NoWrap
-    }
-}
-
 /// 尺寸值（用于 width/height/flex-basis）
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug, Default)]
 pub enum Dimension {
     /// 自动（由内容决定）
+    #[default]
     Auto,
     /// 固定像素值
     Pixels(f32),
@@ -182,12 +158,6 @@ impl Dimension {
     /// 是否为固定像素值
     pub fn is_pixels(self) -> bool {
         matches!(self, Dimension::Pixels(_))
-    }
-}
-
-impl Default for Dimension {
-    fn default() -> Self {
-        Dimension::Auto
     }
 }
 

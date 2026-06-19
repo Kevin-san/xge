@@ -52,18 +52,13 @@ pub struct TextInputEvent {
 }
 
 /// 元素状态
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ElementState {
     /// 按下
+    #[default]
     Pressed,
     /// 松开
     Released,
-}
-
-impl Default for ElementState {
-    fn default() -> Self {
-        ElementState::Pressed
-    }
 }
 
 /// 统一的引擎输入事件
@@ -82,22 +77,18 @@ pub enum InputEvent {
 }
 
 /// 光标可见性
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum CursorVisibility {
+    #[default]
     Visible,
     Hidden,
 }
 
-impl Default for CursorVisibility {
-    fn default() -> Self {
-        CursorVisibility::Visible
-    }
-}
-
 /// 光标捕获模式
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum CursorGrabMode {
     /// 无捕获
+    #[default]
     None,
     /// 限制在窗口内
     Confined,
@@ -105,15 +96,10 @@ pub enum CursorGrabMode {
     Locked,
 }
 
-impl Default for CursorGrabMode {
-    fn default() -> Self {
-        CursorGrabMode::None
-    }
-}
-
 /// 光标图标
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum CursorIcon {
+    #[default]
     Default,
     Crosshair,
     Hand,
@@ -149,12 +135,6 @@ pub enum CursorIcon {
     NwseResize,
     ColResize,
     RowResize,
-}
-
-impl Default for CursorIcon {
-    fn default() -> Self {
-        CursorIcon::Default
-    }
 }
 
 #[cfg(test)]

@@ -213,7 +213,7 @@ pub struct TouchPoint {
 // ===== 输入状态 =====
 
 /// 按键状态
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 enum KeyPressState {
     /// 上一帧松开，当前帧按下 — 刚按下
     JustPressed,
@@ -222,28 +222,18 @@ enum KeyPressState {
     /// 上一帧按下，当前帧松开 — 刚松开
     JustReleased,
     /// 已松开
+    #[default]
     Released,
 }
 
-impl Default for KeyPressState {
-    fn default() -> Self {
-        KeyPressState::Released
-    }
-}
-
 /// 鼠标按钮状态
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 enum ButtonPressState {
     JustPressed,
     Pressed,
     JustReleased,
+    #[default]
     Released,
-}
-
-impl Default for ButtonPressState {
-    fn default() -> Self {
-        ButtonPressState::Released
-    }
 }
 
 /// 输入状态 — 基于引擎级 KeyCode 枚举
@@ -530,6 +520,12 @@ impl Default for Input {
 
 pub struct InputModule {
     input: Input,
+}
+
+impl Default for InputModule {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl InputModule {

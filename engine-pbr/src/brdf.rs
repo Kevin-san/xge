@@ -96,7 +96,6 @@ impl CookTorranceBRDF {
     /// * `f0` - Reflectance at normal incidence (surface reflection)
     pub fn fresnel_schlick(cos_theta: f32, f0: Vec3) -> Vec3 {
         let cos_theta = cos_theta.clamp(0.0, 1.0);
-        let f0 = f0;
         // Use 5th power approximation: F0 + (1 - F0) * (1 - cos)^5
         let one_minus_cos = 1.0 - cos_theta;
         let pow5 = one_minus_cos * one_minus_cos * one_minus_cos * one_minus_cos * one_minus_cos;
@@ -289,7 +288,7 @@ mod tests {
 
     #[test]
     fn test_pi_constant() {
-        assert!(approx_eq(PI, 3.14159265));
+        assert!(approx_eq(PI, core::f32::consts::PI));
     }
 
     #[test]
@@ -590,7 +589,7 @@ mod tests {
 
     #[test]
     fn test_cook_torrance_default() {
-        let _brdf = CookTorranceBRDF::default();
+        let _brdf = CookTorranceBRDF;
     }
 
     #[test]

@@ -8,22 +8,17 @@ use std::collections::{HashMap, HashSet};
 /// 组件存储类型
 ///
 /// 用于控制组件在存储层的存储策略，影响访问性能与缓存友好度。
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum StorageType {
     /// 表存储（默认）— 按 Archetype 分组的密集数组
     ///
     /// 最适合高频迭代的组件，提供最佳缓存命中。
+    #[default]
     Table,
     /// 稀疏集存储 — 适合实体稀疏拥有的组件
     ///
     /// 如偶发标记/状态组件。按实体 ID 直接索引。
     SparseSet,
-}
-
-impl Default for StorageType {
-    fn default() -> Self {
-        StorageType::Table
-    }
 }
 
 /// 组件唯一标识
@@ -331,7 +326,7 @@ mod tests {
 
     #[test]
     fn test_component_set_basic() {
-        let mut set = ComponentSet::new(vec![
+        let set = ComponentSet::new(vec![
             TypeId::of::<Position>(),
             TypeId::of::<Velocity>(),
         ]);
