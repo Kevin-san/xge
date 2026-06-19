@@ -218,6 +218,506 @@ impl IBLBaker {
 
         (f0_scale, geometry)
     }
+
+    /// Bake BRDF LUT data using actual Cook-Torrance integration
+    ///
+    /// Computes the 2D LUT where:
+    /// - X axis: NdotV (cosine between normal and view direction)
+    /// - Y axis: Roughness
+    /// - Red channel: F0 scale factor
+    /// - Green channel: Geometry/visibility term
+    ///
+    /// # Arguments
+    /// * `size` - LUT dimension (size x size)
+    /// * `sample_count` - Number of samples for Monte Carlo integration
+    pub fn bake_brdf_lut_data(&self, size: u32, sample_count: u32) -> BrdfLutData {
+        let mut data = BrdfLutData::new(size);
+
+        for y in 0..size {
+            let roughness = y as f32 / (size - 1) as f32;
+            for x in 0..size {
+                let n_dot_v = x as f32 / (size - 1) as f32;
+                let (r0_scale, g_bias) = Self::integrate_brdf(n_dot_v, roughness, sample_count);
+                data.set(x, y, [r0_scale, g_bias, 0.0, 1.0]);
+            }
+        }
+
+        data
+    }
+
+    /// Integrate BRDF for a given NdotV and roughness
+    ///
+    /// Uses importance sampling with GGX distribution to compute
+    /// the scale and bias for F0 in the split-sum approximation.
+    fn integrate_brdf(n_dot_v: f32, roughness: f32, sample_count: u32) -> (f32, f32) {
+        let n_dot_v = n_dot_v.clamp(0.0, 1.0);
+        let roughness = roughness.clamp(0.0, 1.0);
+
+        let v = Vec3::new(
+            (1.0 - n_dot_v * n_dot_v).max(0.0).sqrt(),
+            0.0,
+            n_dot_v,
+        );
+
+        let mut a = 0.0; // F0 scale
+        let mut b = 0.0; // F0 bias
+
+        let mut sample_index = 0u32;
+        while sample_index < sample_count {
+            let h = Self::importance_sample_ggx(sample_index, sample_count, roughness);
+            let l = (2.0 * v.dot(h)) * h - v;
+
+            let n_dot_l = l.z.max(0.0);
+            let n_dot_h = h.z.max(0.0);
+            let v_dot_h = v.dot(h).max(0.0);
+
+            if n_dot_l > 0.0 {
+                let g = Self::geometry_smith_ibl(n_dot_v, n_dot_l, roughness);
+                let g_vis = (g * v_dot_h) / (n_dot_h * n_dot_v + 1e-6);
+                let fc = (1.0 - v_dot_h).powi(5);
+
+                a += (1.0 - fc) * g_vis;
+                b += fc * g_vis;
+            }
+
+            sample_index += 1;
+        }
+
+        let inv_samples = 1.0 / sample_count as f32;
+        (a * inv_samples, b * inv_samples)
+    }
+
+    /// Importance sample GGX distribution
+    fn importance_sample_ggx(sample_index: u32, _sample_count: u32, roughness: f32) -> Vec3 {
+        let a = roughness * roughness;
+
+        // Halton sequence for low-discrepancy sampling
+        let mut u = Self::halton(sample_index * 2 + 1, 2);
+        let mut v = Self::halton(sample_index * 2 + 2, 3);
+
+        // Avoid exact 0 and 1
+        u = u.clamp(1e-6, 1.0 - 1e-6);
+        v = v.clamp(1e-6, 1.0 - 1e-6);
+
+        let phi = 2.0 * core::f32::consts::PI * u;
+        let cos_theta = (1.0 - v) / (1.0 + (a * a - 1.0) * v);
+        let cos_theta = cos_theta.clamp(-1.0, 1.0);
+        let sin_theta = (1.0 - cos_theta * cos_theta).max(0.0).sqrt();
+
+        Vec3::new(
+            sin_theta * phi.cos(),
+            sin_theta * phi.sin(),
+            cos_theta,
+        )
+    }
+
+    /// Halton sequence for quasi-random sampling
+    fn halton(index: u32, base: u32) -> f32 {
+        let mut result = 0.0f32;
+        let mut f = 1.0f32;
+        let mut i = index;
+
+        while i > 0 {
+            f /= base as f32;
+            result += f * (i % base) as f32;
+            i /= base;
+        }
+
+        result
+    }
+
+    /// Smith geometry function for IBL (uses different k than direct lighting)
+    fn geometry_smith_ibl(n_dot_v: f32, n_dot_l: f32, roughness: f32) -> f32 {
+        let k = (roughness * roughness) / 2.0;
+        let gv = n_dot_v / (n_dot_v * (1.0 - k) + k + 1e-6);
+        let gl = n_dot_l / (n_dot_l * (1.0 - k) + k + 1e-6);
+        gv * gl
+    }
+
+    /// Bake irradiance map data by convolving an environment sample function
+    ///
+    /// # Arguments
+    /// * `size` - Cube map face resolution
+    /// * `sample_count` - Number of samples for the convolution
+    /// * `env_sampler` - Function that returns environment color for a direction
+    pub fn bake_irradiance_data<F>(
+        &self,
+        size: u32,
+        sample_count: u32,
+        env_sampler: F,
+    ) -> IrradianceMapData
+    where
+        F: Fn(Vec3) -> Vec3,
+    {
+        let mut data = IrradianceMapData::new(size);
+
+        // For each face, for each pixel, convolve the hemisphere
+        // This is a simplified version that computes irradiance for a single
+        // direction (up) and applies it uniformly. A full implementation would
+        // process all 6 faces and all pixels.
+        for face in 0..6 {
+            for y in 0..size {
+                for x in 0..size {
+                    let dir = Self::cube_map_direction(face, x, y, size);
+                    let irradiance = Self::convolve_irradiance(&env_sampler, dir, sample_count);
+                    data.set_face_pixel(face, x, y, irradiance);
+                }
+            }
+        }
+
+        data
+    }
+
+    /// Convolve environment map for diffuse irradiance
+    fn convolve_irradiance<F>(env_sampler: &F, normal: Vec3, sample_count: u32) -> [f32; 3]
+    where
+        F: Fn(Vec3) -> Vec3,
+    {
+        let mut irradiance = Vec3::new(0.0, 0.0, 0.0);
+        let mut sample_count_actual = 0u32;
+
+        // Build tangent frame
+        let up = if normal.z.abs() < 0.999 {
+            Vec3::new(0.0, 0.0, 1.0)
+        } else {
+            Vec3::new(1.0, 0.0, 0.0)
+        };
+        let tangent = up.cross(normal).normalize_or_zero();
+        let bitangent = normal.cross(tangent);
+
+        let sample_step = (sample_count as f32).sqrt().max(1.0) as u32;
+
+        for phi_step in 0..sample_step {
+            for theta_step in 0..sample_step {
+                let phi = 2.0 * core::f32::consts::PI * phi_step as f32 / sample_step as f32;
+                let theta = (core::f32::consts::PI / 2.0) * theta_step as f32 / sample_step as f32;
+
+                let sin_theta = theta.sin();
+                let cos_theta = theta.cos();
+
+                let sample_dir = tangent * (sin_theta * phi.cos())
+                    + bitangent * (sin_theta * phi.sin())
+                    + normal * cos_theta;
+
+                let env_color = env_sampler(sample_dir);
+                irradiance += env_color * (cos_theta * sin_theta);
+                sample_count_actual += 1;
+            }
+        }
+
+        let weight = core::f32::consts::PI / sample_count_actual as f32;
+        [
+            irradiance.x * weight,
+            irradiance.y * weight,
+            irradiance.z * weight,
+        ]
+    }
+
+    /// Bake prefilter map data for a specific roughness level
+    ///
+    /// # Arguments
+    /// * `size` - Cube map face resolution
+    /// * `roughness` - Roughness value for this mip level [0, 1]
+    /// * `sample_count` - Number of samples for Monte Carlo integration
+    /// * `env_sampler` - Function that returns environment color for a direction
+    pub fn bake_prefilter_data<F>(
+        &self,
+        size: u32,
+        roughness: f32,
+        sample_count: u32,
+        env_sampler: F,
+    ) -> PrefilterMapData
+    where
+        F: Fn(Vec3) -> Vec3,
+    {
+        let mut data = PrefilterMapData::new(size, roughness);
+
+        for face in 0..6 {
+            for y in 0..size {
+                for x in 0..size {
+                    let dir = Self::cube_map_direction(face, x, y, size);
+                    let prefiltered = Self::prefilter_env(&env_sampler, dir, roughness, sample_count);
+                    data.set_face_pixel(face, x, y, prefiltered);
+                }
+            }
+        }
+
+        data
+    }
+
+    /// Prefilter environment map for specular IBL using GGX importance sampling
+    fn prefilter_env<F>(env_sampler: &F, normal: Vec3, roughness: f32, sample_count: u32) -> [f32; 3]
+    where
+        F: Fn(Vec3) -> Vec3,
+    {
+        let mut prefiltered = Vec3::new(0.0, 0.0, 0.0);
+        let mut total_weight = 0.0f32;
+
+        // Build tangent frame
+        let up = if normal.z.abs() < 0.999 {
+            Vec3::new(0.0, 0.0, 1.0)
+        } else {
+            Vec3::new(1.0, 0.0, 0.0)
+        };
+        let tangent = up.cross(normal).normalize_or_zero();
+        let bitangent = normal.cross(tangent);
+
+        for i in 0..sample_count {
+            let h = Self::importance_sample_ggx(i, sample_count, roughness);
+            // Transform to world space
+            let h_world = tangent * h.x + bitangent * h.y + normal * h.z;
+
+            let v = h_world; // For prefilter, V = H (view = halfway)
+            let l = (2.0 * v.dot(h_world)) * h_world - v;
+
+            let n_dot_l = normal.dot(l).max(0.0);
+
+            if n_dot_l > 0.0 {
+                let env_color = env_sampler(l);
+                prefiltered += env_color * n_dot_l;
+                total_weight += n_dot_l;
+            }
+        }
+
+        if total_weight > 0.0 {
+            [
+                prefiltered.x / total_weight,
+                prefiltered.y / total_weight,
+                prefiltered.z / total_weight,
+            ]
+        } else {
+            [0.0, 0.0, 0.0]
+        }
+    }
+
+    /// Get the direction vector for a cube map face pixel
+    ///
+    /// # Arguments
+    /// * `face` - Face index (0-5: +X, -X, +Y, -Y, +Z, -Z)
+    /// * `x` - Pixel x coordinate
+    /// * `y` - Pixel y coordinate
+    /// * `size` - Face size
+    pub fn cube_map_direction(face: u32, x: u32, y: u32, size: u32) -> Vec3 {
+        let u = (2.0 * x as f32 + 1.0) / size as f32 - 1.0;
+        let v = (2.0 * y as f32 + 1.0) / size as f32 - 1.0;
+
+        match face {
+            0 => Vec3::new(1.0, v, -u),   // +X
+            1 => Vec3::new(-1.0, v, u),  // -X
+            2 => Vec3::new(u, 1.0, -v),  // +Y
+            3 => Vec3::new(u, -1.0, v),  // -Y
+            4 => Vec3::new(u, v, 1.0),   // +Z
+            5 => Vec3::new(-u, v, -1.0), // -Z
+            _ => Vec3::new(0.0, 0.0, 1.0),
+        }
+        .normalize_or_zero()
+    }
+}
+
+/// BRDF LUT data (2D texture with actual pixel values)
+#[derive(Clone, Debug)]
+pub struct BrdfLutData {
+    /// Texture width
+    pub width: u32,
+    /// Texture height
+    pub height: u32,
+    /// Pixel data (RGBA, row-major)
+    pub pixels: Vec<[f32; 4]>,
+}
+
+impl BrdfLutData {
+    /// Create a new BRDF LUT filled with zeros
+    pub fn new(size: u32) -> Self {
+        Self {
+            width: size,
+            height: size,
+            pixels: vec![[0.0, 0.0, 0.0, 1.0]; (size * size) as usize],
+        }
+    }
+
+    /// Get a pixel at (x, y)
+    pub fn get(&self, x: u32, y: u32) -> [f32; 4] {
+        if x >= self.width || y >= self.height {
+            return [0.0, 0.0, 0.0, 1.0];
+        }
+        let index = (y * self.width + x) as usize;
+        self.pixels[index]
+    }
+
+    /// Set a pixel at (x, y)
+    pub fn set(&mut self, x: u32, y: u32, pixel: [f32; 4]) {
+        if x < self.width && y < self.height {
+            let index = (y * self.width + x) as usize;
+            self.pixels[index] = pixel;
+        }
+    }
+
+    /// Sample the LUT with bilinear filtering
+    ///
+    /// # Arguments
+    /// * `n_dot_v` - Normalized dot product [0, 1]
+    /// * `roughness` - Roughness [0, 1]
+    pub fn sample(&self, n_dot_v: f32, roughness: f32) -> (f32, f32) {
+        let x = n_dot_v.clamp(0.0, 1.0) * (self.width - 1) as f32;
+        let y = roughness.clamp(0.0, 1.0) * (self.height - 1) as f32;
+
+        let x0 = x.floor() as u32;
+        let y0 = y.floor() as u32;
+        let x1 = (x0 + 1).min(self.width - 1);
+        let y1 = (y0 + 1).min(self.height - 1);
+
+        let fx = x - x0 as f32;
+        let fy = y - y0 as f32;
+
+        let s00 = self.get(x0, y0);
+        let s10 = self.get(x1, y0);
+        let s01 = self.get(x0, y1);
+        let s11 = self.get(x1, y1);
+
+        let r0 = s00[0] * (1.0 - fx) + s10[0] * fx;
+        let r1 = s01[0] * (1.0 - fx) + s11[0] * fx;
+        let r = r0 * (1.0 - fy) + r1 * fy;
+
+        let g0 = s00[1] * (1.0 - fx) + s10[1] * fx;
+        let g1 = s01[1] * (1.0 - fx) + s11[1] * fx;
+        let g = g0 * (1.0 - fy) + g1 * fy;
+
+        (r, g)
+    }
+}
+
+/// Irradiance map data (cube map with actual pixel values)
+#[derive(Clone, Debug)]
+pub struct IrradianceMapData {
+    /// Face size (width = height)
+    pub size: u32,
+    /// Pixel data for all 6 faces (face * size * size)
+    pub pixels: Vec<[f32; 3]>,
+}
+
+impl IrradianceMapData {
+    /// Create a new irradiance map filled with zeros
+    pub fn new(size: u32) -> Self {
+        Self {
+            size,
+            pixels: vec![[0.0, 0.0, 0.0]; (6 * size * size) as usize],
+        }
+    }
+
+    /// Get a pixel from a specific face
+    pub fn get_face_pixel(&self, face: u32, x: u32, y: u32) -> [f32; 3] {
+        if face >= 6 || x >= self.size || y >= self.size {
+            return [0.0, 0.0, 0.0];
+        }
+        let index = ((face * self.size * self.size) + y * self.size + x) as usize;
+        self.pixels[index]
+    }
+
+    /// Set a pixel on a specific face
+    pub fn set_face_pixel(&mut self, face: u32, x: u32, y: u32, color: [f32; 3]) {
+        if face < 6 && x < self.size && y < self.size {
+            let index = ((face * self.size * self.size) + y * self.size + x) as usize;
+            self.pixels[index] = color;
+        }
+    }
+
+    /// Sample the irradiance map for a given direction
+    pub fn sample(&self, direction: Vec3) -> [f32; 3] {
+        // Determine which face to sample based on dominant axis
+        let abs_x = direction.x.abs();
+        let abs_y = direction.y.abs();
+        let abs_z = direction.z.abs();
+
+        let (face, u, v) = if abs_x >= abs_y && abs_x >= abs_z {
+            if direction.x > 0.0 {
+                (0u32, direction.z, direction.y)
+            } else {
+                (1u32, -direction.z, direction.y)
+            }
+        } else if abs_y >= abs_x && abs_y >= abs_z {
+            if direction.y > 0.0 {
+                (2u32, direction.x, -direction.z)
+            } else {
+                (3u32, direction.x, direction.z)
+            }
+        } else if direction.z > 0.0 {
+            (4u32, direction.x, direction.y)
+        } else {
+            (5u32, -direction.x, direction.y)
+        };
+
+        let x = ((u * 0.5 + 0.5) * (self.size - 1) as f32) as u32;
+        let y = ((v * 0.5 + 0.5) * (self.size - 1) as f32) as u32;
+        self.get_face_pixel(face, x.min(self.size - 1), y.min(self.size - 1))
+    }
+}
+
+/// Prefilter map data for a single roughness level (cube map)
+#[derive(Clone, Debug)]
+pub struct PrefilterMapData {
+    /// Face size
+    pub size: u32,
+    /// Roughness level this data was baked for
+    pub roughness: f32,
+    /// Pixel data for all 6 faces
+    pub pixels: Vec<[f32; 3]>,
+}
+
+impl PrefilterMapData {
+    /// Create a new prefilter map filled with zeros
+    pub fn new(size: u32, roughness: f32) -> Self {
+        Self {
+            size,
+            roughness,
+            pixels: vec![[0.0, 0.0, 0.0]; (6 * size * size) as usize],
+        }
+    }
+
+    /// Get a pixel from a specific face
+    pub fn get_face_pixel(&self, face: u32, x: u32, y: u32) -> [f32; 3] {
+        if face >= 6 || x >= self.size || y >= self.size {
+            return [0.0, 0.0, 0.0];
+        }
+        let index = ((face * self.size * self.size) + y * self.size + x) as usize;
+        self.pixels[index]
+    }
+
+    /// Set a pixel on a specific face
+    pub fn set_face_pixel(&mut self, face: u32, x: u32, y: u32, color: [f32; 3]) {
+        if face < 6 && x < self.size && y < self.size {
+            let index = ((face * self.size * self.size) + y * self.size + x) as usize;
+            self.pixels[index] = color;
+        }
+    }
+
+    /// Sample the prefilter map for a given direction
+    pub fn sample(&self, direction: Vec3) -> [f32; 3] {
+        let abs_x = direction.x.abs();
+        let abs_y = direction.y.abs();
+        let abs_z = direction.z.abs();
+
+        let (face, u, v) = if abs_x >= abs_y && abs_x >= abs_z {
+            if direction.x > 0.0 {
+                (0u32, direction.z, direction.y)
+            } else {
+                (1u32, -direction.z, direction.y)
+            }
+        } else if abs_y >= abs_x && abs_y >= abs_z {
+            if direction.y > 0.0 {
+                (2u32, direction.x, -direction.z)
+            } else {
+                (3u32, direction.x, direction.z)
+            }
+        } else if direction.z > 0.0 {
+            (4u32, direction.x, direction.y)
+        } else {
+            (5u32, -direction.x, direction.y)
+        };
+
+        let x = ((u * 0.5 + 0.5) * (self.size - 1) as f32) as u32;
+        let y = ((v * 0.5 + 0.5) * (self.size - 1) as f32) as u32;
+        self.get_face_pixel(face, x.min(self.size - 1), y.min(self.size - 1))
+    }
 }
 
 #[cfg(test)]
@@ -493,5 +993,375 @@ mod tests {
         let lut = baker.bake_brdf_lut(256);
         assert!(lut.width > 0);
         assert!(lut.height > 0);
+    }
+
+    #[test]
+    fn test_bake_brdf_lut_data_basic() {
+        let baker = IBLBaker::new();
+        let lut = baker.bake_brdf_lut_data(16, 64);
+        assert_eq!(lut.width, 16);
+        assert_eq!(lut.height, 16);
+        assert_eq!(lut.pixels.len(), 16 * 16);
+    }
+
+    #[test]
+    fn test_bake_brdf_lut_data_values() {
+        let baker = IBLBaker::new();
+        let lut = baker.bake_brdf_lut_data(32, 128);
+
+        // At NdotV=1, roughness=0, the scale should be high (close to 1)
+        let (scale_smooth, _bias_smooth) = lut.sample(1.0, 0.0);
+        assert!(scale_smooth >= 0.0 && scale_smooth <= 1.0);
+
+        // At NdotV=1, roughness=1, the scale should be lower
+        let (scale_rough, _bias_rough) = lut.sample(1.0, 1.0);
+        assert!(scale_rough >= 0.0 && scale_rough <= 1.0);
+    }
+
+    #[test]
+    fn test_bake_brdf_lut_data_get_set() {
+        let mut lut = BrdfLutData::new(8);
+        lut.set(2, 3, [0.5, 0.6, 0.0, 1.0]);
+        let pixel = lut.get(2, 3);
+        assert_eq!(pixel, [0.5, 0.6, 0.0, 1.0]);
+    }
+
+    #[test]
+    fn test_bake_brdf_lut_data_get_out_of_bounds() {
+        let lut = BrdfLutData::new(8);
+        let pixel = lut.get(100, 100);
+        assert_eq!(pixel, [0.0, 0.0, 0.0, 1.0]);
+    }
+
+    #[test]
+    fn test_bake_brdf_lut_data_sample_bilinear() {
+        let mut lut = BrdfLutData::new(4);
+        // Set known values
+        for y in 0..4 {
+            for x in 0..4 {
+                lut.set(x, y, [x as f32 / 3.0, y as f32 / 3.0, 0.0, 1.0]);
+            }
+        }
+
+        let (r, g) = lut.sample(0.5, 0.5);
+        // Should be interpolated values
+        assert!(r >= 0.0 && r <= 1.0);
+        assert!(g >= 0.0 && g <= 1.0);
+    }
+
+    #[test]
+    fn test_bake_irradiance_data_basic() {
+        let baker = IBLBaker::new();
+        let env_sampler = |dir: Vec3| {
+            // Simple environment: white from above, black from below
+            Vec3::new(1.0, 1.0, 1.0) * dir.z.max(0.0)
+        };
+        let data = baker.bake_irradiance_data(4, 16, env_sampler);
+        assert_eq!(data.size, 4);
+        assert_eq!(data.pixels.len(), 6 * 4 * 4);
+    }
+
+    #[test]
+    fn test_bake_irradiance_data_uniform_env() {
+        let baker = IBLBaker::new();
+        let env_sampler = |_dir: Vec3| Vec3::new(0.5, 0.5, 0.5);
+        let data = baker.bake_irradiance_data(4, 16, env_sampler);
+
+        // With uniform environment, irradiance should be approximately pi * env_color
+        let pixel = data.get_face_pixel(4, 1, 1); // +Z face, center-ish
+        // Irradiance for uniform env = env_color * pi
+        // So 0.5 * pi ≈ 1.57
+        assert!(pixel[0] > 0.0);
+        assert!(pixel[1] > 0.0);
+        assert!(pixel[2] > 0.0);
+    }
+
+    #[test]
+    fn test_bake_prefilter_data_basic() {
+        let baker = IBLBaker::new();
+        let env_sampler = |dir: Vec3| {
+            Vec3::new(1.0, 1.0, 1.0) * dir.z.max(0.0)
+        };
+        let data = baker.bake_prefilter_data(4, 0.5, 32, env_sampler);
+        assert_eq!(data.size, 4);
+        assert_eq!(data.roughness, 0.5);
+        assert_eq!(data.pixels.len(), 6 * 4 * 4);
+    }
+
+    #[test]
+    fn test_bake_prefilter_data_smooth() {
+        let baker = IBLBaker::new();
+        let env_sampler = |dir: Vec3| {
+            // Environment that's bright in +Z direction
+            Vec3::new(1.0, 1.0, 1.0) * dir.z.max(0.0)
+        };
+        let data = baker.bake_prefilter_data(4, 0.0, 32, env_sampler);
+
+        // With roughness=0, prefilter should be close to the environment reflection
+        let pixel = data.get_face_pixel(4, 1, 1);
+        assert!(pixel[0] >= 0.0);
+    }
+
+    #[test]
+    fn test_irradiance_map_data_new() {
+        let data = IrradianceMapData::new(8);
+        assert_eq!(data.size, 8);
+        assert_eq!(data.pixels.len(), 6 * 8 * 8);
+    }
+
+    #[test]
+    fn test_irradiance_map_data_get_set() {
+        let mut data = IrradianceMapData::new(4);
+        data.set_face_pixel(0, 1, 2, [0.1, 0.2, 0.3]);
+        let pixel = data.get_face_pixel(0, 1, 2);
+        assert_eq!(pixel, [0.1, 0.2, 0.3]);
+    }
+
+    #[test]
+    fn test_irradiance_map_data_get_out_of_bounds() {
+        let data = IrradianceMapData::new(4);
+        let pixel = data.get_face_pixel(10, 100, 100);
+        assert_eq!(pixel, [0.0, 0.0, 0.0]);
+    }
+
+    #[test]
+    fn test_irradiance_map_data_sample() {
+        let mut data = IrradianceMapData::new(4);
+        data.set_face_pixel(4, 2, 2, [1.0, 0.0, 0.0]); // +Z face center
+        let sampled = data.sample(Vec3::new(0.0, 0.0, 1.0));
+        // Should sample from +Z face
+        assert!(sampled[0] >= 0.0);
+    }
+
+    #[test]
+    fn test_prefilter_map_data_new() {
+        let data = PrefilterMapData::new(8, 0.5);
+        assert_eq!(data.size, 8);
+        assert_eq!(data.roughness, 0.5);
+        assert_eq!(data.pixels.len(), 6 * 8 * 8);
+    }
+
+    #[test]
+    fn test_prefilter_map_data_get_set() {
+        let mut data = PrefilterMapData::new(4, 0.3);
+        data.set_face_pixel(2, 1, 1, [0.5, 0.5, 0.5]);
+        let pixel = data.get_face_pixel(2, 1, 1);
+        assert_eq!(pixel, [0.5, 0.5, 0.5]);
+    }
+
+    #[test]
+    fn test_prefilter_map_data_get_out_of_bounds() {
+        let data = PrefilterMapData::new(4, 0.5);
+        let pixel = data.get_face_pixel(10, 100, 100);
+        assert_eq!(pixel, [0.0, 0.0, 0.0]);
+    }
+
+    #[test]
+    fn test_prefilter_map_data_sample() {
+        let mut data = PrefilterMapData::new(4, 0.5);
+        data.set_face_pixel(0, 2, 2, [1.0, 0.0, 0.0]); // +X face center
+        let sampled = data.sample(Vec3::new(1.0, 0.0, 0.0));
+        assert!(sampled[0] >= 0.0);
+    }
+
+    #[test]
+    fn test_cube_map_direction_face_zero() {
+        let dir = IBLBaker::cube_map_direction(0, 0, 0, 4);
+        // +X face, should have positive x component
+        assert!(dir.x > 0.0);
+    }
+
+    #[test]
+    fn test_cube_map_direction_face_one() {
+        let dir = IBLBaker::cube_map_direction(1, 0, 0, 4);
+        // -X face, should have negative x component
+        assert!(dir.x < 0.0);
+    }
+
+    #[test]
+    fn test_cube_map_direction_face_two() {
+        let dir = IBLBaker::cube_map_direction(2, 0, 0, 4);
+        // +Y face, should have positive y component
+        assert!(dir.y > 0.0);
+    }
+
+    #[test]
+    fn test_cube_map_direction_face_four() {
+        let dir = IBLBaker::cube_map_direction(4, 2, 2, 4);
+        // +Z face, center should have positive z component
+        assert!(dir.z > 0.0);
+    }
+
+    #[test]
+    fn test_cube_map_direction_normalized() {
+        let dir = IBLBaker::cube_map_direction(0, 1, 1, 4);
+        let length = (dir.x * dir.x + dir.y * dir.y + dir.z * dir.z).sqrt();
+        assert!((length - 1.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_halton_sequence() {
+        // Halton(1, 2) = 0.5
+        let h1 = IBLBaker::halton(1, 2);
+        assert!((h1 - 0.5).abs() < 0.001);
+
+        // Halton(2, 2) = 0.25
+        let h2 = IBLBaker::halton(2, 2);
+        assert!((h2 - 0.25).abs() < 0.001);
+
+        // Halton(0, 2) = 0
+        let h0 = IBLBaker::halton(0, 2);
+        assert!((h0 - 0.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_halton_base3() {
+        // Halton(1, 3) = 1/3
+        let h1 = IBLBaker::halton(1, 3);
+        assert!((h1 - 1.0 / 3.0).abs() < 0.001);
+
+        // Halton(2, 3) = 2/3
+        let h2 = IBLBaker::halton(2, 3);
+        assert!((h2 - 2.0 / 3.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_importance_sample_ggx_normalized() {
+        let h = IBLBaker::importance_sample_ggx(0, 16, 0.5);
+        let length = (h.x * h.x + h.y * h.y + h.z * h.z).sqrt();
+        assert!((length - 1.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_importance_sample_ggx_smooth() {
+        // With low roughness, samples should be concentrated near the normal (z axis)
+        let h = IBLBaker::importance_sample_ggx(0, 16, 0.1);
+        assert!(h.z > 0.0);
+    }
+
+    #[test]
+    fn test_geometry_smith_ibl() {
+        let g = IBLBaker::geometry_smith_ibl(1.0, 1.0, 0.0);
+        // With roughness=0, k=0, so G = 1
+        assert!((g - 1.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_geometry_smith_ibl_rough() {
+        let g = IBLBaker::geometry_smith_ibl(0.5, 0.5, 1.0);
+        // Should be less than 1 with roughness=1
+        assert!(g > 0.0 && g < 1.0);
+    }
+
+    #[test]
+    fn test_integrate_brdf_smooth() {
+        // At NdotV=1, roughness=0, scale should be high
+        let (scale, bias) = IBLBaker::integrate_brdf(1.0, 0.0, 64);
+        assert!(scale >= 0.0 && scale <= 1.0);
+        assert!(bias >= 0.0 && bias <= 1.0);
+    }
+
+    #[test]
+    fn test_integrate_brdf_rough() {
+        // At NdotV=1, roughness=1, scale should be lower
+        let (scale, bias) = IBLBaker::integrate_brdf(1.0, 1.0, 64);
+        assert!(scale >= 0.0 && scale <= 1.0);
+        assert!(bias >= 0.0 && bias <= 1.0);
+    }
+
+    #[test]
+    fn test_integrate_brdf_grazing_angle() {
+        // At grazing angle (NdotV near 0), Fresnel should increase
+        let (scale_low, _bias_low) = IBLBaker::integrate_brdf(0.1, 0.5, 64);
+        let (scale_high, _bias_high) = IBLBaker::integrate_brdf(0.9, 0.5, 64);
+        // Both should be valid
+        assert!(scale_low >= 0.0 && scale_low <= 1.0);
+        assert!(scale_high >= 0.0 && scale_high <= 1.0);
+    }
+
+    #[test]
+    fn test_brdf_lut_data_clone() {
+        let lut1 = BrdfLutData::new(4);
+        let lut2 = lut1.clone();
+        assert_eq!(lut1.width, lut2.width);
+        assert_eq!(lut1.height, lut2.height);
+    }
+
+    #[test]
+    fn test_irradiance_map_data_clone() {
+        let data1 = IrradianceMapData::new(4);
+        let data2 = data1.clone();
+        assert_eq!(data1.size, data2.size);
+    }
+
+    #[test]
+    fn test_prefilter_map_data_clone() {
+        let data1 = PrefilterMapData::new(4, 0.5);
+        let data2 = data1.clone();
+        assert_eq!(data1.size, data2.size);
+        assert_eq!(data1.roughness, data2.roughness);
+    }
+
+    #[test]
+    fn test_bake_brdf_lut_data_sample_corners() {
+        let baker = IBLBaker::new();
+        let lut = baker.bake_brdf_lut_data(8, 32);
+
+        // Sample at corners
+        let (s00, _) = lut.sample(0.0, 0.0);
+        let (s10, _) = lut.sample(1.0, 0.0);
+        let (s01, _) = lut.sample(0.0, 1.0);
+        let (s11, _) = lut.sample(1.0, 1.0);
+
+        // All should be valid values
+        assert!(s00 >= 0.0 && s00 <= 1.0);
+        assert!(s10 >= 0.0 && s10 <= 1.0);
+        assert!(s01 >= 0.0 && s01 <= 1.0);
+        assert!(s11 >= 0.0 && s11 <= 1.0);
+    }
+
+    #[test]
+    fn test_bake_irradiance_data_clamped() {
+        let baker = IBLBaker::new();
+        let env_sampler = |dir: Vec3| {
+            // Very bright environment
+            Vec3::new(10.0, 10.0, 10.0) * dir.z.max(0.0)
+        };
+        let data = baker.bake_irradiance_data(2, 4, env_sampler);
+        // Should not panic and produce finite values
+        for pixel in &data.pixels {
+            assert!(pixel[0].is_finite());
+            assert!(pixel[1].is_finite());
+            assert!(pixel[2].is_finite());
+        }
+    }
+
+    #[test]
+    fn test_bake_prefilter_data_different_roughness() {
+        let baker = IBLBaker::new();
+        let env_sampler = |dir: Vec3| Vec3::new(1.0, 1.0, 1.0) * dir.z.max(0.0);
+
+        let data_smooth = baker.bake_prefilter_data(2, 0.0, 16, env_sampler);
+        let data_rough = baker.bake_prefilter_data(2, 1.0, 16, env_sampler);
+
+        assert_eq!(data_smooth.roughness, 0.0);
+        assert_eq!(data_rough.roughness, 1.0);
+    }
+
+    #[test]
+    fn test_cube_map_direction_all_faces() {
+        for face in 0..6u32 {
+            let dir = IBLBaker::cube_map_direction(face, 1, 1, 4);
+            // All directions should be normalized
+            let length = (dir.x * dir.x + dir.y * dir.y + dir.z * dir.z).sqrt();
+            assert!((length - 1.0).abs() < 0.01, "Face {} not normalized", face);
+        }
+    }
+
+    #[test]
+    fn test_cube_map_direction_invalid_face() {
+        let dir = IBLBaker::cube_map_direction(99, 0, 0, 4);
+        // Should return default direction (0, 0, 1) normalized
+        assert!((dir.z - 1.0).abs() < 0.01);
     }
 }

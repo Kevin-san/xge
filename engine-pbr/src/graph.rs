@@ -390,7 +390,7 @@ impl ShaderGraph {
         // Generate each node's code in topological order
         for node_id in order {
             if let Some(node) = self.nodes.get(&node_id) {
-                let node_code = self.generate_node_code(node);
+                let node_code = self.generate_node_code_wgsl(node);
                 code.push_str(&node_code);
                 code.push('\n');
             }
@@ -399,8 +399,32 @@ impl ShaderGraph {
         Ok(code)
     }
 
-    /// Generate code for a single node
-    fn generate_node_code(&self, node: &ShaderGraphNode) -> String {
+    /// Generate GLSL shader code from the graph
+    ///
+    /// Produces GLSL 330+ compatible code. Supports all node types
+    /// that the WGSL generator supports, with GLSL-specific syntax.
+    pub fn generate_glsl(&self) -> Result<String, CycleError> {
+        let order = self.topological_order()?;
+        let mut code = String::new();
+
+        // Generate shader header
+        code.push_str("#version 330\n");
+        code.push_str("// Generated shader from ShaderGraph\n\n");
+
+        // Generate each node's code in topological order
+        for node_id in order {
+            if let Some(node) = self.nodes.get(&node_id) {
+                let node_code = self.generate_node_code_glsl(node);
+                code.push_str(&node_code);
+                code.push('\n');
+            }
+        }
+
+        Ok(code)
+    }
+
+    /// Generate code for a single node (WGSL)
+    fn generate_node_code_wgsl(&self, node: &ShaderGraphNode) -> String {
         match &node.kind {
             NodeKind::Input { name, ty } => {
                 let ty_str = self.type_to_wgsl(*ty);
@@ -435,6 +459,130 @@ impl ShaderGraph {
         }
     }
 
+    /// Generate code for a single node (GLSL)
+    fn generate_node_code_glsl(&self, node: &ShaderGraphNode) -> String {
+        match &node.kind {
+            NodeKind::Input { name, ty } => {
+                let ty_str = self.type_to_glsl(*ty);
+                format!("{} {};", ty_str, name)
+            }
+            NodeKind::Output { name, ty } => {
+                let ty_str = self.type_to_glsl(*ty);
+                format!("{} {};", ty_str, name)
+            }
+            NodeKind::ConstantFloat(v) => format!("float n{} = {};", node.id.0, Self::fmt_float(*v)),
+            NodeKind::ConstantVec2(v) => {
+                format!(
+                    "vec2 n{} = vec2({}, {});",
+                    node.id.0,
+                    Self::fmt_float(v[0]),
+                    Self::fmt_float(v[1])
+                )
+            }
+            NodeKind::ConstantVec3(v) => format!(
+                "vec3 n{} = vec3({}, {}, {});",
+                node.id.0,
+                Self::fmt_float(v[0]),
+                Self::fmt_float(v[1]),
+                Self::fmt_float(v[2])
+            ),
+            NodeKind::ConstantVec4(v) => format!(
+                "vec4 n{} = vec4({}, {}, {}, {});",
+                node.id.0,
+                Self::fmt_float(v[0]),
+                Self::fmt_float(v[1]),
+                Self::fmt_float(v[2]),
+                Self::fmt_float(v[3])
+            ),
+            NodeKind::ConstantColor(v) => format!(
+                "vec4 n{} = vec4({}, {}, {}, {});",
+                node.id.0, v[0], v[1], v[2], v[3]
+            ),
+            NodeKind::ConstantBool(v) => format!("bool n{} = {};", node.id.0, v),
+            // Binary operations
+            NodeKind::Add => format!("n{} = a{} + b{};", node.id.0, node.id.0, node.id.0),
+            NodeKind::Sub => format!("n{} = a{} - b{};", node.id.0, node.id.0, node.id.0),
+            NodeKind::Mul => format!("n{} = a{} * b{};", node.id.0, node.id.0, node.id.0),
+            NodeKind::Div => format!("n{} = a{} / b{};", node.id.0, node.id.0, node.id.0),
+            NodeKind::Pow => format!("n{} = pow(a{}, b{});", node.id.0, node.id.0, node.id.0),
+            NodeKind::Min => format!("n{} = min(a{}, b{});", node.id.0, node.id.0, node.id.0),
+            NodeKind::Max => format!("n{} = max(a{}, b{});", node.id.0, node.id.0, node.id.0),
+            NodeKind::Dot => format!("n{} = dot(a{}, b{});", node.id.0, node.id.0, node.id.0),
+            NodeKind::Cross => format!("n{} = cross(a{}, b{});", node.id.0, node.id.0, node.id.0),
+            NodeKind::Distance => format!("n{} = distance(a{}, b{});", node.id.0, node.id.0, node.id.0),
+            // Unary operations
+            NodeKind::Negate => format!("n{} = -v{};", node.id.0, node.id.0),
+            NodeKind::Abs => format!("n{} = abs(v{});", node.id.0, node.id.0),
+            NodeKind::Sign => format!("n{} = sign(v{});", node.id.0, node.id.0),
+            NodeKind::Sqrt => format!("n{} = sqrt(v{});", node.id.0, node.id.0),
+            NodeKind::Log => format!("n{} = log(v{});", node.id.0, node.id.0),
+            NodeKind::Exp => format!("n{} = exp(v{});", node.id.0, node.id.0),
+            NodeKind::Sin => format!("n{} = sin(v{});", node.id.0, node.id.0),
+            NodeKind::Cos => format!("n{} = cos(v{});", node.id.0, node.id.0),
+            NodeKind::Tan => format!("n{} = tan(v{});", node.id.0, node.id.0),
+            NodeKind::Floor => format!("n{} = floor(v{});", node.id.0, node.id.0),
+            NodeKind::Ceil => format!("n{} = ceil(v{});", node.id.0, node.id.0),
+            NodeKind::Round => format!("n{} = round(v{});", node.id.0, node.id.0),
+            NodeKind::Normalize => format!("n{} = normalize(v{});", node.id.0, node.id.0),
+            NodeKind::Length => format!("n{} = length(v{});", node.id.0, node.id.0),
+            // Color operations
+            NodeKind::Swizzle { pattern } => {
+                format!("n{} = v{}.{};", node.id.0, node.id.0, pattern)
+            }
+            NodeKind::Mix => format!("n{} = mix(a{}, b{}, t{});", node.id.0, node.id.0, node.id.0, node.id.0),
+            NodeKind::ToSrgb => format!("n{} = pow(v{}, vec3(1.0/2.2));", node.id.0, node.id.0),
+            NodeKind::ToLinear => format!("n{} = pow(v{}, vec3(2.2));", node.id.0, node.id.0),
+            NodeKind::Gamma => format!("n{} = pow(v{}, vec3(g{}));", node.id.0, node.id.0, node.id.0),
+            // UV operations
+            NodeKind::Tiling => format!("n{} = uv{} * t{};", node.id.0, node.id.0, node.id.0),
+            NodeKind::Offset => format!("n{} = uv{} + o{};", node.id.0, node.id.0, node.id.0),
+            NodeKind::Rotate => format!("n{} = rotateUV(uv{}, a{});", node.id.0, node.id.0, node.id.0),
+            NodeKind::Pan => format!("n{} = uv{} + time * s{};", node.id.0, node.id.0, node.id.0),
+            // Time nodes
+            NodeKind::Time => "float time = time_uniform;".to_string(),
+            NodeKind::SinTime => "float sin_time = sin(time_uniform);".to_string(),
+            NodeKind::CosTime => "float cos_time = cos(time_uniform);".to_string(),
+            // Normal map
+            NodeKind::NormalMap { strength } => {
+                format!("vec3 n{} = normalize(texture(normalMap, uv{}).xyz * 2.0 - 1.0 * {});",
+                    node.id.0, node.id.0, strength)
+            }
+            // PBR Master
+            NodeKind::PbrMaster => "// PBR Master node - outputs to fragment shader".to_string(),
+            // Vertex data
+            NodeKind::VertexPosition => "vec3 vertex_pos = in_position;".to_string(),
+            NodeKind::VertexNormal => "vec3 vertex_normal = in_normal;".to_string(),
+            NodeKind::VertexUV0 => "vec2 vertex_uv0 = in_uv0;".to_string(),
+            NodeKind::VertexUV1 => "vec2 vertex_uv1 = in_uv1;".to_string(),
+            NodeKind::VertexColor => "vec4 vertex_color = in_color;".to_string(),
+            NodeKind::VertexTangent => "vec3 vertex_tangent = in_tangent;".to_string(),
+            // Fragment data
+            NodeKind::FragmentNormalWS => "vec3 frag_normal_ws = normal_ws;".to_string(),
+            NodeKind::FragmentViewDirWS => "vec3 frag_view_dir_ws = view_dir_ws;".to_string(),
+            NodeKind::FragmentLightDirWS => "vec3 frag_light_dir_ws = light_dir_ws;".to_string(),
+            NodeKind::FragmentShadowCoord => "vec4 frag_shadow_coord = shadow_coord;".to_string(),
+            // Texture sample
+            NodeKind::TextureSample { name } => {
+                format!("vec4 n{} = texture({}, uv{});", node.id.0, name, node.id.0)
+            }
+            // Control flow
+            NodeKind::If => format!("n{} = (c{}) ? a{} : b{};", node.id.0, node.id.0, node.id.0, node.id.0),
+            NodeKind::Switch { cases } => {
+                let mut s = format!("switch(v{}) {{\n", node.id.0);
+                for i in 0..*cases {
+                    s.push_str(&format!("  case {}: r{} = v{}_{};\n", i, node.id.0, node.id.0, i));
+                }
+                s.push_str("}\n");
+                s.push_str(&format!("n{} = r{};", node.id.0, node.id.0));
+                s
+            }
+            // Custom
+            NodeKind::Custom { name, code } => {
+                format!("// Custom node: {}\n{}", name, code)
+            }
+        }
+    }
+
     /// Convert shader node type to WGSL type string
     fn type_to_wgsl(&self, ty: ShaderNodeType) -> &'static str {
         match ty {
@@ -446,6 +594,30 @@ impl ShaderGraph {
             ShaderNodeType::Bool => "bool",
             ShaderNodeType::Sampler => "sampler",
             ShaderNodeType::Void => "()",
+        }
+    }
+
+    /// Convert shader node type to GLSL type string
+    fn type_to_glsl(&self, ty: ShaderNodeType) -> &'static str {
+        match ty {
+            ShaderNodeType::Float => "float",
+            ShaderNodeType::Vec2 => "vec2",
+            ShaderNodeType::Vec3 => "vec3",
+            ShaderNodeType::Vec4 => "vec4",
+            ShaderNodeType::Color => "vec4",
+            ShaderNodeType::Bool => "bool",
+            ShaderNodeType::Sampler => "sampler2D",
+            ShaderNodeType::Void => "void",
+        }
+    }
+
+    /// Format a float for GLSL output, ensuring it always has a decimal point
+    fn fmt_float(v: f32) -> String {
+        let s = format!("{}", v);
+        if s.contains('.') || s.contains("e") || s.contains("E") || s.contains("inf") || s.contains("NaN") {
+            s
+        } else {
+            format!("{}.0", s)
         }
     }
 }
@@ -546,6 +718,451 @@ mod tests {
 
         let code = graph.generate_wgsl().unwrap();
         assert!(code.contains("f32"));
+    }
+
+    #[test]
+    fn test_graph_generate_glsl() {
+        let mut graph = ShaderGraph::new();
+        graph.add_node(NodeKind::ConstantFloat(1.0));
+        graph.add_node(NodeKind::Time);
+
+        let code = graph.generate_glsl().unwrap();
+        assert!(code.contains("#version 330"));
+        assert!(code.contains("float"));
+    }
+
+    #[test]
+    fn test_graph_generate_glsl_vec3() {
+        let mut graph = ShaderGraph::new();
+        graph.add_node(NodeKind::ConstantVec3([1.0, 0.5, 0.2]));
+
+        let code = graph.generate_glsl().unwrap();
+        assert!(code.contains("vec3"));
+        assert!(code.contains("1.0"));
+    }
+
+    #[test]
+    fn test_graph_generate_glsl_vec4() {
+        let mut graph = ShaderGraph::new();
+        graph.add_node(NodeKind::ConstantVec4([1.0, 0.5, 0.2, 0.8]));
+
+        let code = graph.generate_glsl().unwrap();
+        assert!(code.contains("vec4"));
+    }
+
+    #[test]
+    fn test_graph_generate_glsl_color() {
+        let mut graph = ShaderGraph::new();
+        graph.add_node(NodeKind::ConstantColor([1.0, 0.0, 0.0, 1.0]));
+
+        let code = graph.generate_glsl().unwrap();
+        assert!(code.contains("vec4"));
+    }
+
+    #[test]
+    fn test_graph_generate_glsl_bool() {
+        let mut graph = ShaderGraph::new();
+        graph.add_node(NodeKind::ConstantBool(true));
+
+        let code = graph.generate_glsl().unwrap();
+        assert!(code.contains("bool"));
+    }
+
+    #[test]
+    fn test_graph_generate_glsl_add() {
+        let mut graph = ShaderGraph::new();
+        let a = graph.add_node(NodeKind::ConstantFloat(1.0));
+        let b = graph.add_node(NodeKind::ConstantFloat(2.0));
+        let c = graph.add_node(NodeKind::Add);
+        graph.add_edge(a, c, 0, 0);
+        graph.add_edge(b, c, 0, 1);
+
+        let code = graph.generate_glsl().unwrap();
+        assert!(code.contains("+"));
+    }
+
+    #[test]
+    fn test_graph_generate_glsl_sub() {
+        let mut graph = ShaderGraph::new();
+        graph.add_node(NodeKind::Sub);
+
+        let code = graph.generate_glsl().unwrap();
+        assert!(code.contains("-"));
+    }
+
+    #[test]
+    fn test_graph_generate_glsl_mul() {
+        let mut graph = ShaderGraph::new();
+        graph.add_node(NodeKind::Mul);
+
+        let code = graph.generate_glsl().unwrap();
+        assert!(code.contains("*"));
+    }
+
+    #[test]
+    fn test_graph_generate_glsl_div() {
+        let mut graph = ShaderGraph::new();
+        graph.add_node(NodeKind::Div);
+
+        let code = graph.generate_glsl().unwrap();
+        assert!(code.contains("/"));
+    }
+
+    #[test]
+    fn test_graph_generate_glsl_math_functions() {
+        let mut graph = ShaderGraph::new();
+        graph.add_node(NodeKind::Sin);
+        graph.add_node(NodeKind::Cos);
+        graph.add_node(NodeKind::Abs);
+        graph.add_node(NodeKind::Sqrt);
+
+        let code = graph.generate_glsl().unwrap();
+        assert!(code.contains("sin("));
+        assert!(code.contains("cos("));
+        assert!(code.contains("abs("));
+        assert!(code.contains("sqrt("));
+    }
+
+    #[test]
+    fn test_graph_generate_glsl_normalize_length() {
+        let mut graph = ShaderGraph::new();
+        graph.add_node(NodeKind::Normalize);
+        graph.add_node(NodeKind::Length);
+
+        let code = graph.generate_glsl().unwrap();
+        assert!(code.contains("normalize("));
+        assert!(code.contains("length("));
+    }
+
+    #[test]
+    fn test_graph_generate_glsl_dot_cross() {
+        let mut graph = ShaderGraph::new();
+        graph.add_node(NodeKind::Dot);
+        graph.add_node(NodeKind::Cross);
+
+        let code = graph.generate_glsl().unwrap();
+        assert!(code.contains("dot("));
+        assert!(code.contains("cross("));
+    }
+
+    #[test]
+    fn test_graph_generate_glsl_texture_sample() {
+        let mut graph = ShaderGraph::new();
+        graph.add_node(NodeKind::TextureSample {
+            name: "albedo_tex".to_string(),
+        });
+
+        let code = graph.generate_glsl().unwrap();
+        assert!(code.contains("texture("));
+        assert!(code.contains("albedo_tex"));
+    }
+
+    #[test]
+    fn test_graph_generate_glsl_vertex_data() {
+        let mut graph = ShaderGraph::new();
+        graph.add_node(NodeKind::VertexPosition);
+        graph.add_node(NodeKind::VertexNormal);
+        graph.add_node(NodeKind::VertexUV0);
+        graph.add_node(NodeKind::VertexColor);
+
+        let code = graph.generate_glsl().unwrap();
+        assert!(code.contains("in_position"));
+        assert!(code.contains("in_normal"));
+        assert!(code.contains("in_uv0"));
+        assert!(code.contains("in_color"));
+    }
+
+    #[test]
+    fn test_graph_generate_glsl_fragment_data() {
+        let mut graph = ShaderGraph::new();
+        graph.add_node(NodeKind::FragmentNormalWS);
+        graph.add_node(NodeKind::FragmentViewDirWS);
+        graph.add_node(NodeKind::FragmentLightDirWS);
+
+        let code = graph.generate_glsl().unwrap();
+        assert!(code.contains("normal_ws"));
+        assert!(code.contains("view_dir_ws"));
+        assert!(code.contains("light_dir_ws"));
+    }
+
+    #[test]
+    fn test_graph_generate_glsl_time_nodes() {
+        let mut graph = ShaderGraph::new();
+        graph.add_node(NodeKind::Time);
+        graph.add_node(NodeKind::SinTime);
+        graph.add_node(NodeKind::CosTime);
+
+        let code = graph.generate_glsl().unwrap();
+        assert!(code.contains("time_uniform"));
+        assert!(code.contains("sin("));
+        assert!(code.contains("cos("));
+    }
+
+    #[test]
+    fn test_graph_generate_glsl_normal_map() {
+        let mut graph = ShaderGraph::new();
+        graph.add_node(NodeKind::NormalMap { strength: 1.5 });
+
+        let code = graph.generate_glsl().unwrap();
+        assert!(code.contains("normalMap"));
+        assert!(code.contains("1.5"));
+    }
+
+    #[test]
+    fn test_graph_generate_glsl_pbr_master() {
+        let mut graph = ShaderGraph::new();
+        graph.add_node(NodeKind::PbrMaster);
+
+        let code = graph.generate_glsl().unwrap();
+        assert!(code.contains("PBR Master"));
+    }
+
+    #[test]
+    fn test_graph_generate_glsl_custom() {
+        let mut graph = ShaderGraph::new();
+        graph.add_node(NodeKind::Custom {
+            name: "my_func".to_string(),
+            code: "float my_func() { return 1.0; }".to_string(),
+        });
+
+        let code = graph.generate_glsl().unwrap();
+        assert!(code.contains("my_func"));
+        assert!(code.contains("return 1.0"));
+    }
+
+    #[test]
+    fn test_graph_generate_glsl_swizzle() {
+        let mut graph = ShaderGraph::new();
+        graph.add_node(NodeKind::Swizzle {
+            pattern: "xyz".to_string(),
+        });
+
+        let code = graph.generate_glsl().unwrap();
+        assert!(code.contains(".xyz"));
+    }
+
+    #[test]
+    fn test_graph_generate_glsl_mix() {
+        let mut graph = ShaderGraph::new();
+        graph.add_node(NodeKind::Mix);
+
+        let code = graph.generate_glsl().unwrap();
+        assert!(code.contains("mix("));
+    }
+
+    #[test]
+    fn test_graph_generate_glsl_input_output() {
+        let mut graph = ShaderGraph::new();
+        graph.add_node(NodeKind::Input {
+            name: "albedo".to_string(),
+            ty: ShaderNodeType::Vec3,
+        });
+        graph.add_node(NodeKind::Output {
+            name: "frag_color".to_string(),
+            ty: ShaderNodeType::Color,
+        });
+
+        let code = graph.generate_glsl().unwrap();
+        assert!(code.contains("vec3 albedo"));
+        assert!(code.contains("vec4 frag_color"));
+    }
+
+    #[test]
+    fn test_graph_generate_glsl_if() {
+        let mut graph = ShaderGraph::new();
+        graph.add_node(NodeKind::If);
+
+        let code = graph.generate_glsl().unwrap();
+        assert!(code.contains("?"));
+        assert!(code.contains(":"));
+    }
+
+    #[test]
+    fn test_graph_generate_glsl_switch() {
+        let mut graph = ShaderGraph::new();
+        graph.add_node(NodeKind::Switch { cases: 3 });
+
+        let code = graph.generate_glsl().unwrap();
+        assert!(code.contains("switch"));
+        assert!(code.contains("case"));
+    }
+
+    #[test]
+    fn test_graph_generate_glsl_cycle_error() {
+        let mut graph = ShaderGraph::new();
+        let a = graph.add_node(NodeKind::Add);
+        let b = graph.add_node(NodeKind::Add);
+        graph.add_edge(a, b, 0, 0);
+        graph.add_edge(b, a, 0, 0);
+
+        let result = graph.generate_glsl();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_graph_generate_glsl_empty() {
+        let graph = ShaderGraph::new();
+        let code = graph.generate_glsl().unwrap();
+        assert!(code.contains("#version 330"));
+    }
+
+    #[test]
+    fn test_graph_generate_glsl_pow_min_max() {
+        let mut graph = ShaderGraph::new();
+        graph.add_node(NodeKind::Pow);
+        graph.add_node(NodeKind::Min);
+        graph.add_node(NodeKind::Max);
+
+        let code = graph.generate_glsl().unwrap();
+        assert!(code.contains("pow("));
+        assert!(code.contains("min("));
+        assert!(code.contains("max("));
+    }
+
+    #[test]
+    fn test_graph_generate_glsl_floor_ceil_round() {
+        let mut graph = ShaderGraph::new();
+        graph.add_node(NodeKind::Floor);
+        graph.add_node(NodeKind::Ceil);
+        graph.add_node(NodeKind::Round);
+
+        let code = graph.generate_glsl().unwrap();
+        assert!(code.contains("floor("));
+        assert!(code.contains("ceil("));
+        assert!(code.contains("round("));
+    }
+
+    #[test]
+    fn test_graph_generate_glsl_distance() {
+        let mut graph = ShaderGraph::new();
+        graph.add_node(NodeKind::Distance);
+
+        let code = graph.generate_glsl().unwrap();
+        assert!(code.contains("distance("));
+    }
+
+    #[test]
+    fn test_graph_generate_glsl_negate() {
+        let mut graph = ShaderGraph::new();
+        graph.add_node(NodeKind::Negate);
+
+        let code = graph.generate_glsl().unwrap();
+        assert!(code.contains("-v"));
+    }
+
+    #[test]
+    fn test_graph_generate_glsl_sign() {
+        let mut graph = ShaderGraph::new();
+        graph.add_node(NodeKind::Sign);
+
+        let code = graph.generate_glsl().unwrap();
+        assert!(code.contains("sign("));
+    }
+
+    #[test]
+    fn test_graph_generate_glsl_log_exp() {
+        let mut graph = ShaderGraph::new();
+        graph.add_node(NodeKind::Log);
+        graph.add_node(NodeKind::Exp);
+
+        let code = graph.generate_glsl().unwrap();
+        assert!(code.contains("log("));
+        assert!(code.contains("exp("));
+    }
+
+    #[test]
+    fn test_graph_generate_glsl_tan() {
+        let mut graph = ShaderGraph::new();
+        graph.add_node(NodeKind::Tan);
+
+        let code = graph.generate_glsl().unwrap();
+        assert!(code.contains("tan("));
+    }
+
+    #[test]
+    fn test_graph_generate_glsl_to_srgb() {
+        let mut graph = ShaderGraph::new();
+        graph.add_node(NodeKind::ToSrgb);
+
+        let code = graph.generate_glsl().unwrap();
+        assert!(code.contains("pow("));
+        assert!(code.contains("2.2"));
+    }
+
+    #[test]
+    fn test_graph_generate_glsl_to_linear() {
+        let mut graph = ShaderGraph::new();
+        graph.add_node(NodeKind::ToLinear);
+
+        let code = graph.generate_glsl().unwrap();
+        assert!(code.contains("pow("));
+        assert!(code.contains("2.2"));
+    }
+
+    #[test]
+    fn test_graph_generate_glsl_uv_operations() {
+        let mut graph = ShaderGraph::new();
+        graph.add_node(NodeKind::Tiling);
+        graph.add_node(NodeKind::Offset);
+
+        let code = graph.generate_glsl().unwrap();
+        assert!(code.contains("uv"));
+    }
+
+    #[test]
+    fn test_graph_generate_glsl_pan() {
+        let mut graph = ShaderGraph::new();
+        graph.add_node(NodeKind::Pan);
+
+        let code = graph.generate_glsl().unwrap();
+        assert!(code.contains("time"));
+    }
+
+    #[test]
+    fn test_graph_generate_both_wgsl_and_glsl() {
+        let mut graph = ShaderGraph::new();
+        graph.add_node(NodeKind::ConstantFloat(1.0));
+        graph.add_node(NodeKind::ConstantVec3([1.0, 0.0, 0.0]));
+        graph.add_node(NodeKind::Add);
+
+        let wgsl = graph.generate_wgsl().unwrap();
+        let glsl = graph.generate_glsl().unwrap();
+
+        // WGSL uses f32, GLSL uses float
+        assert!(wgsl.contains("f32"));
+        assert!(glsl.contains("float"));
+        // WGSL uses vec3<f32>, GLSL uses vec3
+        assert!(wgsl.contains("vec3<f32>"));
+        assert!(!glsl.contains("vec3<f32>"));
+    }
+
+    #[test]
+    fn test_graph_generate_glsl_shadow_coord() {
+        let mut graph = ShaderGraph::new();
+        graph.add_node(NodeKind::FragmentShadowCoord);
+
+        let code = graph.generate_glsl().unwrap();
+        assert!(code.contains("shadow_coord"));
+    }
+
+    #[test]
+    fn test_graph_generate_glsl_vertex_tangent_uv1() {
+        let mut graph = ShaderGraph::new();
+        graph.add_node(NodeKind::VertexTangent);
+        graph.add_node(NodeKind::VertexUV1);
+
+        let code = graph.generate_glsl().unwrap();
+        assert!(code.contains("in_tangent"));
+        assert!(code.contains("in_uv1"));
+    }
+
+    #[test]
+    fn test_graph_generate_glsl_gamma() {
+        let mut graph = ShaderGraph::new();
+        graph.add_node(NodeKind::Gamma);
+
+        let code = graph.generate_glsl().unwrap();
+        assert!(code.contains("pow("));
     }
 
     #[test]
