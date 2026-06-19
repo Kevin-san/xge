@@ -2,7 +2,7 @@ use core::fmt;
 use core::marker::PhantomData;
 
 /// 类型安全句柄，使用索引 + 代际号机制避免悬挂引用
-#[derive(Copy, PartialEq, Eq, Hash)]
+#[derive(Copy)]
 pub struct Handle<T> {
     index: u32,
     generation: u32,
@@ -11,11 +11,26 @@ pub struct Handle<T> {
 
 impl<T> Clone for Handle<T> {
     fn clone(&self) -> Self {
-        Handle {
+        Self {
             index: self.index,
             generation: self.generation,
             _phantom: PhantomData,
         }
+    }
+}
+
+impl<T> PartialEq for Handle<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.index == other.index && self.generation == other.generation
+    }
+}
+
+impl<T> Eq for Handle<T> {}
+
+impl<T> core::hash::Hash for Handle<T> {
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+        self.index.hash(state);
+        self.generation.hash(state);
     }
 }
 
