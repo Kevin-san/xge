@@ -3,7 +3,9 @@
 //! 提供窗口、事件循环和输入抽象
 
 use engine_math::Vec2;
+use once_cell::sync::OnceCell;
 use std::collections::HashMap;
+use std::sync::Mutex;
 
 pub use winit::dpi::{LogicalPosition, LogicalSize, PhysicalPosition, PhysicalSize, Position};
 pub use winit::event::{DeviceEvent, Event, WindowEvent};
@@ -12,6 +14,168 @@ pub use winit::event_loop::{ControlFlow, EventLoop, EventLoopBuilder, EventLoopP
 pub use winit::keyboard::{KeyCode, ModifiersState, NamedKey};
 pub use winit::monitor::{MonitorHandle, VideoMode};
 pub use winit::window::{CursorGrabMode, CursorIcon, Fullscreen, Icon, Window, WindowLevel};
+
+/// 剪贴板错误类型
+#[derive(Debug, Clone, thiserror::Error)]
+pub enum ClipboardError {
+    /// 剪贴板系统未初始化或不可用
+    #[error("剪贴板系统未初始化或不可用: {0}")]
+    NotInitialized(String),
+
+    /// 系统剪贴板被其他程序占用
+    #[error("系统剪贴板被占用: {0}")]
+    SystemBusy(String),
+
+    /// 剪贴板内容为空或格式不支持
+    #[error("剪贴板内容为空或格式不支持")]
+    ContentUnavailable,
+
+    /// 文本编码错误
+    #[error("文本编码错误: {0}")]
+    EncodingError(String),
+
+    /// IO 错误
+    #[error("IO 错误: {0}")]
+    IoError(String),
+
+    /// 内存分配错误
+    #[error("内存分配错误: {0}")]
+    OutOfMemory(String),
+
+    /// 其他未知错误
+    #[error("剪贴板操作失败: {0}")]
+    Unknown(String),
+}
+
+/// 剪贴板访问器
+enum ClipboardState {
+    /// 已初始化
+    Ready(arboard::Clipboard),
+    /// 初始化失败
+    Failed(ClipboardError),
+}
+
+impl ClipboardState {
+    fn get(&mut self) -> Result<&mut arboard::Clipboard, ClipboardError> {
+        match self {
+            ClipboardState::Ready(cb) => Ok(cb),
+            ClipboardState::Failed(e) => Err(e.clone()),
+        }
+    }
+}
+
+/// 全局剪贴板状态
+static CLIPBOARD: OnceCell<Mutex<ClipboardState>> = OnceCell::new();
+
+/// 获取剪贴板实例
+fn get_clipboard() -> Result<std::sync::MutexGuard<'static, ClipboardState>, ClipboardError> {
+    // 初始化剪贴板（仅执行一次）
+    CLIPBOARD.get_or_init(|| Mutex::new(
+        match arboard::Clipboard::new() {
+            Ok(cb) => ClipboardState::Ready(cb),
+            Err(e) => ClipboardState::Failed(
+                ClipboardError::NotInitialized(format!(
+                    "无法访问系统剪贴板，可能是因为窗口未初始化或平台不支持: {:?}",
+                    e
+                ))
+            ),
+        }
+    ));
+
+    // 获取锁
+    CLIPBOARD.get().unwrap().lock().map_err(|e| {
+        ClipboardError::Unknown(format!("无法锁定剪贴板: {}", e))
+    })
+}
+
+/// 剪贴板模块
+pub mod clipboard {
+    use super::*;
+
+    /// 从系统剪贴板获取文本内容
+    ///
+    /// # 返回值
+    /// - `Ok(Some(text))` - 成功获取剪贴板文本
+    /// - `Ok(None)` - 剪贴板为空或不包含文本
+    /// - `Err(ClipboardError)` - 获取失败
+    pub fn get_text() -> Result<Option<String>, ClipboardError> {
+        let mut state = get_clipboard()?;
+        let clipboard = state.get()?;
+
+        match clipboard.get_text() {
+            Ok(text) => {
+                if text.is_empty() {
+                    Ok(None)
+                } else {
+                    Ok(Some(text))
+                }
+            }
+            Err(arboard::Error::ContentNotAvailable) => Ok(None),
+            Err(e) => {
+                let msg = format!("{:?}", e);
+                if msg.contains("not available") || msg.contains("empty") {
+                    Ok(None)
+                } else {
+                    Err(ClipboardError::Unknown(format!("读取剪贴板失败: {}", e)))
+                }
+            }
+        }
+    }
+
+    /// 设置系统剪贴板文本内容
+    ///
+    /// # 参数
+    /// - `text` - 要设置的文本内容
+    ///
+    /// # 返回值
+    /// - `Ok(())` - 成功设置剪贴板
+    /// - `Err(ClipboardError)` - 设置失败
+    pub fn set_text(text: &str) -> Result<(), ClipboardError> {
+        if text.is_empty() {
+            return Err(ClipboardError::ContentUnavailable);
+        }
+
+        let mut state = get_clipboard()?;
+        let clipboard = state.get()?;
+
+        clipboard
+            .set_text(text)
+            .map_err(|e| {
+                let msg = format!("{:?}", e);
+                if msg.contains("permission") || msg.contains("denied") {
+                    ClipboardError::SystemBusy("权限被拒绝，请重试".to_string())
+                } else if msg.contains("memory") || msg.contains("allocation") {
+                    ClipboardError::OutOfMemory("内存不足".to_string())
+                } else {
+                    ClipboardError::Unknown(format!("写入剪贴板失败: {}", e))
+                }
+            })
+    }
+
+    /// 检查剪贴板是否包含文本内容
+    ///
+    /// # 返回值
+    /// - `Ok(true)` - 剪贴板包含文本
+    /// - `Ok(false)` - 剪贴板为空或不包含文本
+    /// - `Err(ClipboardError)` - 检查失败
+    pub fn has_text() -> Result<bool, ClipboardError> {
+        Ok(get_text()?.is_some())
+    }
+
+    /// 清空剪贴板内容
+    ///
+    /// # 返回值
+    /// - `Ok(())` - 成功清空
+    /// - `Err(ClipboardError)` - 清空失败
+    pub fn clear() -> Result<(), ClipboardError> {
+        let mut state = get_clipboard()?;
+        let clipboard = state.get()?;
+
+        clipboard
+            .clear()
+            .map_err(|e| ClipboardError::Unknown(format!("清空剪贴板失败: {}", e)))
+    }
+}
 
 pub struct WindowBuilder {
     builder: winit::window::WindowBuilder,
@@ -143,16 +307,6 @@ impl WindowBuilder {
 impl Default for WindowBuilder {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-pub mod clipboard {
-    pub fn get_text() -> Option<String> {
-        None
-    }
-    #[allow(clippy::result_unit_err)]
-    pub fn set_text(_text: &str) -> Result<(), ()> {
-        Err(())
     }
 }
 
@@ -1150,5 +1304,136 @@ mod tests {
         module.clear();
         assert_eq!(module.input().mouse_delta(), Vec2::ZERO);
         assert_eq!(module.input().text(), "");
+    }
+
+    // ===== Clipboard 测试 =====
+    // 注意：某些测试需要 X11/Wayland 环境，在无显示器的 CI 环境中会失败
+
+    /// 检查剪贴板是否可用于测试
+    fn is_clipboard_available() -> bool {
+        // 尝试创建剪贴板实例
+        std::env::var("DISPLAY").is_ok()
+            || std::env::var("WAYLAND_DISPLAY").is_ok()
+            || cfg!(target_os = "windows")
+            || cfg!(target_os = "macos")
+    }
+
+    #[test]
+    fn test_clipboard_set_and_get_text() {
+        // 此测试需要 X11/Wayland 环境
+        if !is_clipboard_available() {
+            eprintln!("Skipping clipboard test: no display server available");
+            return;
+        }
+
+        // 设置剪贴板文本
+        let test_text = "Hello, Clipboard!";
+        clipboard::set_text(test_text).expect("set_text should succeed");
+
+        // 获取剪贴板文本
+        let result = clipboard::get_text().expect("get_text should succeed");
+        assert!(result.is_some(), "Expected Some(text), got None");
+        assert_eq!(result.unwrap(), test_text);
+    }
+
+    #[test]
+    fn test_clipboard_get_empty_when_no_content() {
+        if !is_clipboard_available() {
+            eprintln!("Skipping clipboard test: no display server available");
+            return;
+        }
+
+        // 清空剪贴板
+        clipboard::clear().expect("clear should succeed");
+
+        // 获取应该返回 None
+        let result = clipboard::get_text().expect("get_text should succeed");
+        assert!(result.is_none(), "Expected None for empty clipboard");
+    }
+
+    #[test]
+    fn test_clipboard_has_text() {
+        if !is_clipboard_available() {
+            eprintln!("Skipping clipboard test: no display server available");
+            return;
+        }
+
+        clipboard::clear().expect("clear should succeed");
+
+        // 清空后检查
+        let has_text = clipboard::has_text().expect("has_text should succeed");
+        assert!(!has_text, "Expected no text after clear");
+
+        // 设置后检查
+        clipboard::set_text("test").expect("set_text should succeed");
+        let has_text = clipboard::has_text().expect("has_text should succeed");
+        assert!(has_text, "Expected has_text to return true after setting text");
+    }
+
+    #[test]
+    fn test_clipboard_set_empty_text_returns_error() {
+        // 此测试不需要 X11，因为它测试的是空文本错误
+        let result = clipboard::set_text("");
+        assert!(result.is_err(), "set_text with empty string should return error");
+        assert!(matches!(result.unwrap_err(), ClipboardError::ContentUnavailable));
+    }
+
+    #[test]
+    fn test_clipboard_unicode_text() {
+        if !is_clipboard_available() {
+            eprintln!("Skipping clipboard test: no display server available");
+            return;
+        }
+
+        let unicode_text = "你好，世界！🎮 🔥 Rust游戏引擎";
+        clipboard::set_text(unicode_text).expect("set_text should succeed with unicode");
+
+        let result = clipboard::get_text().expect("get_text should succeed");
+        assert_eq!(result.unwrap(), unicode_text);
+    }
+
+    #[test]
+    fn test_clipboard_multiline_text() {
+        if !is_clipboard_available() {
+            eprintln!("Skipping clipboard test: no display server available");
+            return;
+        }
+
+        let multiline_text = "第一行\n第二行\n第三行";
+        clipboard::set_text(multiline_text).expect("set_text should succeed with multiline");
+
+        let result = clipboard::get_text().expect("get_text should succeed");
+        assert_eq!(result.unwrap(), multiline_text);
+    }
+
+    #[test]
+    fn test_clipboard_error_display() {
+        let error = ClipboardError::NotInitialized("test error".to_string());
+        let display = format!("{}", error);
+        assert!(display.contains("test error"));
+
+        let error2 = ClipboardError::ContentUnavailable;
+        let display2 = format!("{}", error2);
+        assert!(display2.contains("为空或格式不支持"));
+    }
+
+    #[test]
+    fn test_clipboard_error_io_error() {
+        let error = ClipboardError::IoError("test IO error".to_string());
+        let display = format!("{}", error);
+        assert!(display.contains("IO 错误"));
+        assert!(display.contains("test IO error"));
+    }
+
+    #[test]
+    fn test_clipboard_error_variants() {
+        use ClipboardError::*;
+        let _ = NotInitialized("test".to_string());
+        let _ = SystemBusy("busy".to_string());
+        let _ = ContentUnavailable;
+        let _ = EncodingError("encoding".to_string());
+        let _ = IoError("io".to_string());
+        let _ = OutOfMemory("oom".to_string());
+        let _ = Unknown("unknown".to_string());
     }
 }
