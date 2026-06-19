@@ -348,8 +348,7 @@ impl PhysicsWorld2D {
                 ColliderShape::Circle { radius },
                 ColliderShape::Aabb { half_extents } | ColliderShape::Rectangle { half_extents },
             ) => self.circle_box_collision(
-                index_a,
-                index_b,
+                (index_a, index_b),
                 world_pos_a,
                 world_pos_b,
                 *radius,
@@ -362,8 +361,7 @@ impl PhysicsWorld2D {
                 ColliderShape::Circle { radius },
             ) => {
                 let manifold = self.circle_box_collision(
-                    index_b,
-                    index_a,
+                    (index_b, index_a),
                     world_pos_b,
                     world_pos_a,
                     *radius,
@@ -423,8 +421,7 @@ impl PhysicsWorld2D {
     /// 圆形-矩形碰撞检测
     fn circle_box_collision(
         &self,
-        circle_index: usize,
-        box_index: usize,
+        indices: (usize, usize),
         circle_pos: Vec2,
         box_pos: Vec2,
         radius: f32,
@@ -432,6 +429,7 @@ impl PhysicsWorld2D {
         box_shape: &ColliderShape,
         box_rotation: f32,
     ) -> Option<Manifold> {
+        let (circle_index, box_index) = indices;
         // 对于 AABB，直接计算
         // 对于旋转矩形，需要将圆转换到矩形的局部坐标系
         let (local_circle_pos, is_rotated) = match box_shape {
