@@ -157,4 +157,77 @@ mod tests {
         timer.tick(1.5);
         assert!((timer.elapsed() - 0.0).abs() < 1e-6 || (timer.elapsed() - 0.5).abs() < 1e-6);
     }
+
+    // ============= Timer 更多测试 =============
+
+    #[test]
+    fn test_timer_once_starts_unfinished() {
+        let timer = Timer::new(1.0, TimerMode::Once);
+        assert!(!timer.finished());
+    }
+
+    #[test]
+    fn test_timer_repeat_triggers_multiple_times() {
+        let mut timer = Timer::new(0.5, TimerMode::Repeat);
+        let mut triggered = 0;
+        for _ in 0..10 {
+            if timer.tick(0.5) {
+                triggered += 1;
+            }
+        }
+        assert!(triggered > 0);
+    }
+
+    #[test]
+    fn test_timer_pause_then_resume() {
+        let mut timer = Timer::new(1.0, TimerMode::Once);
+        timer.pause();
+        timer.tick(0.5);
+        timer.resume();
+        timer.tick(0.5);
+        assert!(!timer.finished());
+    }
+
+    #[test]
+    fn test_timer_remaining_decreases() {
+        let mut timer = Timer::new(1.0, TimerMode::Once);
+        let r1 = timer.remaining();
+        timer.tick(0.2);
+        let r2 = timer.remaining();
+        assert!(r2 < r1);
+    }
+
+    #[test]
+    fn test_timer_zero_duration_finishes() {
+        let mut timer = Timer::new(0.0, TimerMode::Once);
+        assert!(timer.tick(0.1));
+    }
+
+    #[test]
+    fn test_timer_elapsed_start_zero() {
+        let timer = Timer::new(1.0, TimerMode::Once);
+        assert_eq!(timer.elapsed(), 0.0);
+    }
+
+    #[test]
+    fn test_timer_tick_increases_elapsed() {
+        let mut timer = Timer::new(5.0, TimerMode::Once);
+        timer.tick(1.0);
+        assert_eq!(timer.elapsed(), 1.0);
+    }
+
+    #[test]
+    fn test_timer_once_mode_finishes() {
+        let mut timer = Timer::new(0.5, TimerMode::Once);
+        timer.tick(0.5);
+        assert!(timer.finished());
+    }
+
+    #[test]
+    fn test_timer_reset_resets_elapsed() {
+        let mut timer = Timer::new(1.0, TimerMode::Once);
+        timer.tick(0.5);
+        timer.reset();
+        assert_eq!(timer.elapsed(), 0.0);
+    }
 }

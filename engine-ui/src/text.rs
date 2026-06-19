@@ -198,6 +198,7 @@ impl Default for TextRenderer {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use engine_render::Color;
 
     #[test]
     fn test_font_size_to_f32() {
@@ -244,5 +245,82 @@ mod tests {
         let (width, height) = renderer.measure_text("Hello World", &font);
         assert!(width > 0.0);
         assert!(height > 0.0);
+    }
+
+    #[test]
+    fn test_font_new_with_family() {
+        let font = Font::new("Verdana", FontSize::Small);
+        assert_eq!(font.family(), "Verdana");
+        assert_eq!(font.size(), FontSize::Small);
+        assert_eq!(font.size_f32(), 12.0);
+    }
+
+    #[test]
+    fn test_font_set_size() {
+        let mut font = Font::new("Arial", FontSize::Medium);
+        font.set_size(FontSize::Large);
+        assert_eq!(font.size(), FontSize::Large);
+        assert_eq!(font.size_f32(), 24.0);
+    }
+
+    #[test]
+    fn test_font_set_bold() {
+        let mut font = Font::new("Arial", FontSize::Medium);
+        assert!(!font.bold());
+        font.set_bold(true);
+        assert!(font.bold());
+        font.set_bold(false);
+        assert!(!font.bold());
+    }
+
+    #[test]
+    fn test_font_set_italic() {
+        let mut font = Font::new("Arial", FontSize::Medium);
+        assert!(!font.italic());
+        font.set_italic(true);
+        assert!(font.italic());
+    }
+
+    #[test]
+    fn test_font_set_color() {
+        let mut font = Font::new("Arial", FontSize::Medium);
+        font.set_color(Color::BLUE);
+        assert_eq!(font.color(), Color::BLUE);
+    }
+
+    #[test]
+    fn test_font_metrics_ascent_descent() {
+        let metrics = FontMetrics::new(16.0, 4.0, 20.0);
+        assert_eq!(metrics.ascent(), 16.0);
+        assert_eq!(metrics.descent(), 4.0);
+        assert_eq!(metrics.line_height(), 20.0);
+    }
+
+    #[test]
+    fn test_text_align_variants() {
+        let _l = TextAlign::Left;
+        let _c = TextAlign::Center;
+        let _r = TextAlign::Right;
+    }
+
+    #[test]
+    fn test_font_with_italic_chain() {
+        let font = Font::new("Arial", FontSize::Medium).with_italic();
+        assert!(font.italic());
+        assert!(!font.bold());
+    }
+
+    #[test]
+    fn test_font_metrics_default_char_width() {
+        let metrics = FontMetrics::new(16.0, 4.0, 20.0);
+        assert_eq!(metrics.char_width('x'), 8.0);
+    }
+
+    #[test]
+    fn test_font_metrics_measure_lines() {
+        let metrics = FontMetrics::new(16.0, 4.0, 20.0);
+        let (_w, h) = metrics.measure_text_lines("line1\nline2");
+        // 3 iterations: initial lines=1 + 2 split lines = 3 * 20 = 60
+        assert_eq!(h, 60.0);
     }
 }

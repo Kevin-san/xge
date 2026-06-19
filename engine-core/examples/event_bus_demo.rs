@@ -17,7 +17,7 @@ fn main() {
     println!("Subscribing handlers...");
 
     // 订阅事件
-    let handle1 = bus.subscribe(|event| {
+    let _handle1 = bus.subscribe(|event| {
         println!(
             "[Subscriber1] Player {} performed {}",
             event.player_id, event.action

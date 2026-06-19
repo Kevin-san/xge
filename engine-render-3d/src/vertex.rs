@@ -106,3 +106,96 @@ impl VertexLayoutExt {
     pub const COLOR_OFFSET: usize = 44;
     pub const STRIDE: usize = 60;
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use engine_math::{Vec2, Vec3};
+
+    #[test]
+    fn test_vertex_new() {
+        let v = Vertex::new(
+            Vec3::new(1.0, 2.0, 3.0),
+            Vec3::new(0.0, 1.0, 0.0),
+            Vec2::new(0.5, 0.75),
+        );
+        assert_eq!(v.position, Vec3::new(1.0, 2.0, 3.0));
+        assert_eq!(v.normal, Vec3::new(0.0, 1.0, 0.0));
+        assert_eq!(v.texcoord, Vec2::new(0.5, 0.75));
+    }
+
+    #[test]
+    fn test_vertex_default() {
+        let v = Vertex::default();
+        assert_eq!(v.position, Vec3::ZERO);
+        assert_eq!(v.normal, Vec3::ZERO);
+        assert_eq!(v.texcoord, Vec2::ZERO);
+    }
+
+    #[test]
+    fn test_vertex_position_accessor() {
+        let v = Vertex::new(Vec3::ONE, Vec3::Y, Vec2::ONE);
+        assert_eq!(v.position(), Vec3::ONE);
+    }
+
+    #[test]
+    fn test_vertex_normal_accessor() {
+        let v = Vertex::new(Vec3::ONE, Vec3::Y, Vec2::ONE);
+        assert_eq!(v.normal(), Vec3::Y);
+    }
+
+    #[test]
+    fn test_vertex_texcoord_accessor() {
+        let v = Vertex::new(Vec3::ONE, Vec3::Y, Vec2::ONE);
+        assert_eq!(v.texcoord(), Vec2::ONE);
+    }
+
+    #[test]
+    fn test_vertex_layout_stride() {
+        assert_eq!(VertexLayout::STRIDE, 32);
+    }
+
+    #[test]
+    fn test_vertex_layout_pos_offset() {
+        assert_eq!(VertexLayout::POS_OFFSET, 0);
+    }
+
+    #[test]
+    fn test_vertex_layout_normal_offset() {
+        assert_eq!(VertexLayout::NORMAL_OFFSET, 12);
+    }
+
+    #[test]
+    fn test_vertex_layout_uv_offset() {
+        assert_eq!(VertexLayout::UV_OFFSET, 24);
+    }
+
+    #[test]
+    fn test_vertex_ext_new() {
+        let v = VertexExt::new(Vec3::ONE, Vec3::Y, Vec2::ONE);
+        assert_eq!(v.position, Vec3::ONE);
+        assert_eq!(v.tangent, Vec3::ZERO);
+    }
+
+    #[test]
+    fn test_vertex_ext_with_tangent() {
+        let v = VertexExt::new(Vec3::ONE, Vec3::Y, Vec2::ONE)
+            .with_tangent(Vec3::X);
+        assert_eq!(v.tangent, Vec3::X);
+    }
+
+    #[test]
+    fn test_vertex_ext_with_color() {
+        let v = VertexExt::new(Vec3::ONE, Vec3::Y, Vec2::ONE)
+            .with_color([1.0, 0.5, 0.2, 1.0]);
+        assert_eq!(v.color, [1.0, 0.5, 0.2, 1.0]);
+    }
+
+    #[test]
+    fn test_vertex_ext_default() {
+        let v = VertexExt::default();
+        assert_eq!(v.position, Vec3::ZERO);
+        assert_eq!(v.tangent, Vec3::ZERO);
+        assert_eq!(v.color, [0.0, 0.0, 0.0, 0.0]);
+    }
+}

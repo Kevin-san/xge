@@ -136,4 +136,39 @@ mod tests {
         let entity2 = entity;
         assert_eq!(entity, entity2);
     }
+
+    #[test]
+    fn test_entity_new_id_generation() {
+        let entity = Entity::new(42, 3);
+        assert_eq!(entity.id(), 42);
+        assert_eq!(entity.generation(), 3);
+    }
+
+    #[test]
+    fn test_entity_null_is_null() {
+        let entity = Entity::null();
+        assert!(entity.is_null());
+    }
+
+    #[test]
+    fn test_entity_non_null_is_not_null() {
+        let entity = Entity::new(1, 1);
+        assert!(!entity.is_null());
+    }
+
+    #[test]
+    fn test_entity_equality() {
+        let e1 = Entity::new(10, 20);
+        let e2 = Entity::new(10, 20);
+        let e3 = Entity::new(10, 30);
+        assert_eq!(e1, e2);
+        assert_ne!(e1, e3);
+    }
+
+    #[test]
+    fn test_entity_different_ids() {
+        let e1 = Entity::new(1, 0);
+        let e2 = Entity::new(2, 0);
+        assert_ne!(e1.id(), e2.id());
+    }
 }

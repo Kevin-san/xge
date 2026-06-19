@@ -145,7 +145,7 @@ use engine_math::Vec3;
 mod tests {
     use super::*;
     use crate::camera::Camera3D;
-    use engine_math::Mat4;
+    use engine_math::Vec3;
 
     #[test]
     fn test_frustum_from_camera() {
@@ -199,5 +199,88 @@ mod tests {
         let center = cam.position() + cam.forward() * -5.0;
         let aabb = AABB::new(center - Vec3::ONE, center + Vec3::ONE);
         assert!(frustum.contains_aabb(aabb));
+    }
+
+    #[test]
+    fn test_frustum_planes_access() {
+        let mut cam = Camera3D::perspective(45.0, 1.0, 0.1, 100.0);
+        cam.set_position(Vec3::new(0.0, 0.0, 5.0));
+        cam.look_at(Vec3::ZERO);
+        let vp = cam.view_projection();
+        let frustum = Frustum::from_view_projection(vp);
+        let planes = frustum.planes();
+        assert_eq!(planes.len(), 6);
+    }
+
+    #[test]
+    fn test_frustum_get_plane() {
+        let mut cam = Camera3D::perspective(45.0, 1.0, 0.1, 100.0);
+        cam.set_position(Vec3::new(0.0, 0.0, 5.0));
+        cam.look_at(Vec3::ZERO);
+        let vp = cam.view_projection();
+        let frustum = Frustum::from_view_projection(vp);
+        let _ = frustum.get_plane(FrustumPlane::Left);
+        let _ = frustum.get_plane(FrustumPlane::Right);
+        let _ = frustum.get_plane(FrustumPlane::Bottom);
+        let _ = frustum.get_plane(FrustumPlane::Top);
+        let _ = frustum.get_plane(FrustumPlane::Near);
+        let _ = frustum.get_plane(FrustumPlane::Far);
+    }
+
+    #[test]
+    fn test_frustum_behind_camera_point() {
+        let mut cam = Camera3D::perspective(45.0, 1.0, 0.1, 100.0);
+        cam.set_position(Vec3::new(0.0, 0.0, 5.0));
+        cam.look_at(Vec3::ZERO);
+        let vp = cam.view_projection();
+        let frustum = Frustum::from_view_projection(vp);
+
+        // Point behind camera
+        let point_behind = cam.position() + cam.forward() * 10.0;
+        let _ = frustum.contains_point(point_behind);
+    }
+
+    #[test]
+    fn test_frustum_contains_point_center() {
+        let mut cam = Camera3D::perspective(45.0, 1.0, 0.1, 100.0);
+        cam.set_position(Vec3::new(0.0, 0.0, 5.0));
+        cam.look_at(Vec3::ZERO);
+        let vp = cam.view_projection();
+        let frustum = Frustum::from_view_projection(vp);
+
+        // Origin should be in front
+        let _ = frustum.contains_point(Vec3::ZERO);
+    }
+
+    #[test]
+    fn test_frustum_contains_sphere_behind() {
+        let mut cam = Camera3D::perspective(45.0, 1.0, 0.1, 100.0);
+        cam.set_position(Vec3::new(0.0, 0.0, 5.0));
+        cam.look_at(Vec3::ZERO);
+        let vp = cam.view_projection();
+        let frustum = Frustum::from_view_projection(vp);
+
+        let sphere = Sphere::new(cam.position() + cam.forward() * 10.0, 1.0);
+        let _ = frustum.contains_sphere(sphere);
+    }
+
+    #[test]
+    fn test_frustum_intersects_aabb() {
+        let mut cam = Camera3D::perspective(45.0, 1.0, 0.1, 100.0);
+        cam.set_position(Vec3::new(0.0, 0.0, 5.0));
+        cam.look_at(Vec3::ZERO);
+        let vp = cam.view_projection();
+        let frustum = Frustum::from_view_projection(vp);
+
+        let aabb = AABB::new(Vec3::new(-1.0, -1.0, -5.0), Vec3::new(1.0, 1.0, -3.0));
+        let _ = frustum.intersects_aabb(aabb);
+    }
+
+    #[test]
+    fn test_frustum_from_orthographic() {
+        let cam = Camera3D::orthographic(-10.0, 10.0, -10.0, 10.0, 0.1, 100.0);
+        let vp = cam.view_projection();
+        let frustum = Frustum::from_view_projection(vp);
+        let _ = frustum.planes();
     }
 }

@@ -370,4 +370,27 @@ mod tests {
         assert!(values.contains(&&20));
         assert!(values.contains(&&30));
     }
+
+    #[test]
+    fn test_sparseset_new_empty() {
+        let ss: SparseSet<i32> = SparseSet::new();
+        assert!(ss.is_empty());
+        assert_eq!(ss.len(), 0);
+    }
+
+    #[test]
+    fn test_hashmap_storage_new_empty() {
+        let hs: HashMapStorage<i32> = HashMapStorage::new();
+        assert_eq!(hs.len(), 0);
+        assert!(hs.is_empty());
+    }
+
+    #[test]
+    fn test_sparseset_multiple_insert() {
+        let mut ss: SparseSet<i32> = SparseSet::new();
+        for i in 0..100 {
+            ss.insert(i, i as i32 * 10);
+        }
+        assert_eq!(ss.len(), 100);
+    }
 }

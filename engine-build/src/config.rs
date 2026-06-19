@@ -391,10 +391,51 @@ mod tests {
     }
 
     #[test]
+    fn test_platform_target_triple() {
+        assert_eq!(PlatformTarget::Windows.target_triple(), "x86_64-pc-windows-msvc");
+        assert_eq!(PlatformTarget::MacOS.target_triple(), "x86_64-apple-darwin");
+        assert_eq!(PlatformTarget::Linux.target_triple(), "x86_64-unknown-linux-gnu");
+        assert_eq!(PlatformTarget::Web.target_triple(), "wasm32-unknown-unknown");
+    }
+
+    #[test]
+    fn test_platform_target_debug() {
+        let s = format!("{:?}", PlatformTarget::Windows);
+        assert!(s.contains("Windows"));
+    }
+
+    #[test]
+    fn test_miniapp_platform_debug() {
+        let s = format!("{:?}", MiniAppPlatform::WeChat);
+        assert!(s.contains("WeChat"));
+    }
+
+    #[test]
     fn test_profile_optimization() {
         assert_eq!(Profile::Debug.optimization_level(), 0);
         assert_eq!(Profile::Release.optimization_level(), 2);
         assert_eq!(Profile::Ship.optimization_level(), 3);
+    }
+
+    #[test]
+    fn test_profile_opt_level_string() {
+        assert_eq!(Profile::Debug.opt_level(), "0");
+        assert_eq!(Profile::Release.opt_level(), "2");
+        assert_eq!(Profile::Ship.opt_level(), "3");
+    }
+
+    #[test]
+    fn test_profile_debug_info() {
+        assert!(Profile::Debug.debug_info());
+        assert!(!Profile::Release.debug_info());
+        assert!(!Profile::Ship.debug_info());
+    }
+
+    #[test]
+    fn test_profile_strip_symbols() {
+        assert!(!Profile::Debug.strip_symbols());
+        assert!(Profile::Release.strip_symbols());
+        assert!(Profile::Ship.strip_symbols());
     }
 
     #[test]
@@ -405,19 +446,96 @@ mod tests {
     }
 
     #[test]
+    fn test_profile_cargo_args() {
+        let debug_args = Profile::Debug.cargo_args();
+        assert!(debug_args.iter().any(|a| a.contains("debug")));
+        let release_args = Profile::Release.cargo_args();
+        assert!(release_args.iter().any(|a| a.contains("release")));
+        let ship_args = Profile::Ship.cargo_args();
+        assert!(ship_args.iter().any(|a| a.contains("lto")));
+    }
+
+    #[test]
+    fn test_profile_debug() {
+        let s = format!("{:?}", Profile::Release);
+        assert!(s.contains("Release"));
+    }
+
+    #[test]
+    fn test_profile_default() {
+        let p: Profile = Default::default();
+        assert_eq!(p, Profile::Debug);
+    }
+
+    #[test]
+    fn test_orientation_default() {
+        let o: Orientation = Default::default();
+        assert_eq!(o, Orientation::Portrait);
+    }
+
+    #[test]
+    fn test_orientation_debug() {
+        let s = format!("{:?} {:?}", Orientation::Portrait, Orientation::Landscape);
+        assert!(s.contains("Portrait"));
+        assert!(s.contains("Landscape"));
+    }
+
+    #[test]
     fn test_permission_android() {
         assert_eq!(
             Permission::Internet.to_android_string(),
             "android.permission.INTERNET"
         );
+        assert_eq!(
+            Permission::Storage.to_android_string(),
+            "android.permission.READ_EXTERNAL_STORAGE"
+        );
+        assert_eq!(
+            Permission::Camera.to_android_string(),
+            "android.permission.CAMERA"
+        );
+        assert_eq!(
+            Permission::Microphone.to_android_string(),
+            "android.permission.RECORD_AUDIO"
+        );
+        assert_eq!(
+            Permission::Location.to_android_string(),
+            "android.permission.ACCESS_FINE_LOCATION"
+        );
+        assert_eq!(
+            Permission::Bluetooth.to_android_string(),
+            "android.permission.BLUETOOTH"
+        );
+        assert_eq!(Permission::NFC.to_android_string(), "android.permission.NFC");
     }
 
     #[test]
     fn test_permission_ios() {
         assert_eq!(
+            Permission::Internet.to_ios_string(),
+            "NSInternetPermission"
+        );
+        assert_eq!(
             Permission::Camera.to_ios_string(),
             "NSCameraUsageDescription"
         );
+        assert_eq!(
+            Permission::Location.to_ios_string(),
+            "NSLocationWhenInUseUsageDescription"
+        );
+        assert_eq!(
+            Permission::Bluetooth.to_ios_string(),
+            "NSBluetoothAlwaysUsageDescription"
+        );
+    }
+
+    #[test]
+    fn test_permission_debug_clone() {
+        let p = Permission::Internet;
+        let p2 = p;
+        assert_eq!(p, p2);
+        let s = format!("{:?}", p);
+        assert!(s.contains("Internet"));
     }
 
     #[test]
@@ -425,15 +543,57 @@ mod tests {
         let config = BuildConfig::default();
         assert_eq!(config.app_name(), "MyApp");
         assert_eq!(config.version(), "1.0.0");
+        assert_eq!(config.assets_dir(), std::path::Path::new("assets"));
+        assert_eq!(config.output_dir(), std::path::Path::new("build"));
+        assert_eq!(config.temp_dir(), std::path::Path::new("build/temp"));
     }
 
     #[test]
     fn test_build_config_builder() {
         let config = BuildConfig::new()
             .with_assets_dir("my_assets")
-            .with_output_dir("my_output");
+            .with_output_dir("my_output")
+            .with_temp_dir("my_temp");
         assert_eq!(config.assets_dir(), Path::new("my_assets"));
         assert_eq!(config.output_dir(), Path::new("my_output"));
+        assert_eq!(config.temp_dir(), Path::new("my_temp"));
+    }
+
+    #[test]
+    fn test_build_config_debug_fields() {
+        let config = BuildConfig::new();
+        let s = format!("{:?}", config);
+        assert!(s.contains("BuildConfig"));
+    }
+
+    #[test]
+    fn test_build_config_version_code() {
+        let config = BuildConfig::new();
+        assert_eq!(config.version_code(), 1);
+    }
+
+    #[test]
+    fn test_build_config_permissions_default() {
+        let config = BuildConfig::new();
+        assert!(config.permissions().is_empty());
+    }
+
+    #[test]
+    fn test_build_config_icons_default() {
+        let config = BuildConfig::new();
+        assert!(config.icons().is_empty());
+    }
+
+    #[test]
+    fn test_build_config_splash_default() {
+        let config = BuildConfig::new();
+        assert!(config.splash().is_none());
+    }
+
+    #[test]
+    fn test_build_config_profile_default() {
+        let config = BuildConfig::new();
+        assert_eq!(config.profile(), Profile::Debug);
     }
 
     #[test]

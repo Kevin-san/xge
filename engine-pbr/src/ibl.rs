@@ -314,7 +314,184 @@ mod tests {
     #[test]
     fn test_sample_brdf_lut() {
         let (f0_scale, geometry) = IBLBaker::sample_brdf_lut(0.5, 0.5);
-        assert!(f0_scale >= 0.0 && f0_scale <= 1.0);
-        assert!(geometry >= 0.0 && geometry <= 1.0);
+        assert!((0.0..=1.0).contains(&f0_scale));
+        assert!((0.0..=1.0).contains(&geometry));
+    }
+
+    #[test]
+    fn test_ibl_baker_new_defaults() {
+        let baker = IBLBaker::new();
+        // Check default values
+        assert_eq!(baker.irradiance_size, 32);
+        assert_eq!(baker.prefilter_size, 128);
+        assert_eq!(baker.prefilter_mips, 5);
+        assert_eq!(baker.brdf_lut_size, 256);
+    }
+
+    #[test]
+    fn test_cubemap_default_fields() {
+        let cm = CubeMap::default();
+        assert_eq!(cm.size, 0);
+        assert_eq!(cm.mip_levels, 0);
+        assert_eq!(cm.path, "");
+    }
+
+    #[test]
+    fn test_texture2d_default_fields() {
+        let tex = Texture2D::default();
+        assert_eq!(tex.width, 0);
+        assert_eq!(tex.height, 0);
+        assert_eq!(tex.mip_levels, 0);
+        assert_eq!(tex.path, "");
+    }
+
+    #[test]
+    fn test_environment_map_default_fields() {
+        let env = EnvironmentMap::default();
+        assert_eq!(env.skybox.size, 0);
+        assert_eq!(env.intensity, 0.0);
+    }
+
+    #[test]
+    fn test_environment_map_intensity_setter() {
+        let env = EnvironmentMap {
+            intensity: 3.0,
+            ..Default::default()
+        };
+        assert_eq!(env.intensity, 3.0);
+    }
+
+    #[test]
+    fn test_ibl_baker_bake_irradiance_path() {
+        let baker = IBLBaker::new();
+        let env = EnvironmentMap::from_hdr("test_env.hdr");
+        let irradiance = baker.bake_irradiance(&env);
+        assert_eq!(irradiance.path, "test_env.hdr_irradiance");
+    }
+
+    #[test]
+    fn test_ibl_baker_bake_prefilter_path() {
+        let baker = IBLBaker::new();
+        let env = EnvironmentMap::from_hdr("test_env.hdr");
+        let prefilter = baker.bake_prefilter(&env, 5);
+        assert_eq!(prefilter.path, "test_env.hdr_prefilter");
+        assert_eq!(prefilter.mip_levels, 5);
+    }
+
+    #[test]
+    fn test_ibl_baker_bake_brdf_lut_sizes() {
+        let baker = IBLBaker::new();
+        let lut = baker.bake_brdf_lut(256);
+        assert_eq!(lut.width, 256);
+        assert_eq!(lut.height, 256);
+    }
+
+    #[test]
+    fn test_ibl_baker_mip_levels_various_sizes() {
+        assert_eq!(IBLBaker::calculate_mip_levels(1), 1);
+        assert_eq!(IBLBaker::calculate_mip_levels(2), 2);
+        assert_eq!(IBLBaker::calculate_mip_levels(4), 3);
+        assert_eq!(IBLBaker::calculate_mip_levels(8), 4);
+        assert_eq!(IBLBaker::calculate_mip_levels(64), 7);
+        assert_eq!(IBLBaker::calculate_mip_levels(128), 8);
+        assert_eq!(IBLBaker::calculate_mip_levels(256), 9);
+        assert_eq!(IBLBaker::calculate_mip_levels(512), 10);
+        assert_eq!(IBLBaker::calculate_mip_levels(1024), 11);
+        assert_eq!(IBLBaker::calculate_mip_levels(2048), 12);
+    }
+
+    #[test]
+    fn test_ibl_baker_default_clone() {
+        let baker1 = IBLBaker::new();
+        let baker2 = baker1.clone();
+        assert_eq!(baker1.irradiance_size, baker2.irradiance_size);
+        assert_eq!(baker1.prefilter_size, baker2.prefilter_size);
+        assert_eq!(baker1.prefilter_mips, baker2.prefilter_mips);
+        assert_eq!(baker1.brdf_lut_size, baker2.brdf_lut_size);
+    }
+
+    #[test]
+    fn test_ibl_baker_debug() {
+        let baker = IBLBaker::new();
+        let _ = format!("{:?}", baker);
+    }
+
+    #[test]
+    fn test_cubemap_debug() {
+        let cm = CubeMap::default();
+        let _ = format!("{:?}", cm);
+    }
+
+    #[test]
+    fn test_texture2d_debug() {
+        let tex = Texture2D::default();
+        let _ = format!("{:?}", tex);
+    }
+
+    #[test]
+    fn test_environment_map_debug() {
+        let env = EnvironmentMap::default();
+        let _ = format!("{:?}", env);
+    }
+
+    #[test]
+    fn test_sample_irradiance_different_normals() {
+        let env = EnvironmentMap::from_hdr("test.hdr");
+        let result_up = IBLBaker::sample_irradiance(Vec3::new(0.0, 1.0, 0.0), &env);
+        let result_down = IBLBaker::sample_irradiance(Vec3::new(0.0, -1.0, 0.0), &env);
+        assert!(result_up.x >= 0.0);
+        assert!(result_down.x >= 0.0);
+    }
+
+    #[test]
+    fn test_sample_prefilter_roughness() {
+        let env = EnvironmentMap::from_hdr("test.hdr");
+        let result_low = IBLBaker::sample_prefilter(Vec3::new(0.0, 1.0, 0.0), 0.0, &env);
+        let result_high = IBLBaker::sample_prefilter(Vec3::new(0.0, 1.0, 0.0), 1.0, &env);
+        assert!(result_low.y >= 0.0);
+        assert!(result_high.y >= 0.0);
+    }
+
+    #[test]
+    fn test_sample_brdf_lut_bounds() {
+        // Test various n_dot_v and roughness values
+        let (scale1, geom1) = IBLBaker::sample_brdf_lut(0.0, 0.0);
+        let (scale2, geom2) = IBLBaker::sample_brdf_lut(1.0, 1.0);
+        assert!(scale1 >= 0.0);
+        assert!(geom1 >= 0.0);
+        assert!(scale2 >= 0.0);
+        assert!(geom2 >= 0.0);
+    }
+
+    #[test]
+    fn test_environment_map_paths() {
+        let env = EnvironmentMap::from_hdr("sky.hdr");
+        assert!(env.irradiance.path.contains("sky.hdr"));
+        assert!(env.prefilter.path.contains("sky.hdr"));
+        assert!(env.brdf_lut.path.contains("sky.hdr"));
+    }
+
+    #[test]
+    fn test_environment_map_sizes() {
+        let env = EnvironmentMap::from_hdr("test.hdr");
+        assert_eq!(env.skybox.size, 1024);
+        assert_eq!(env.irradiance.size, 32);
+        assert_eq!(env.prefilter.size, 128);
+        assert_eq!(env.brdf_lut.width, 256);
+        assert_eq!(env.brdf_lut.height, 256);
+    }
+
+    #[test]
+    fn test_environment_map_prefilter_mips() {
+        let env = EnvironmentMap::from_hdr("test.hdr");
+        assert_eq!(env.prefilter.mip_levels, 5);
+    }
+
+    #[test]
+    fn test_ibl_baker_bake_brdf_lut_non_empty_sizes() {
+        let baker = IBLBaker::new();
+        let lut = baker.bake_brdf_lut(256);
+        assert!(lut.width > 0);
+        assert!(lut.height > 0);
     }
 }

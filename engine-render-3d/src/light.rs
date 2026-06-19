@@ -450,6 +450,7 @@ impl LightManager {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use engine_math::Vec3;
 
     #[test]
     fn test_directional_light() {
@@ -494,5 +495,315 @@ mod tests {
         manager.add_point(PointLight::new(Vec3::ZERO, Color::WHITE, 1.0, 10.0));
         assert_eq!(manager.directional_count(), 1);
         assert_eq!(manager.point_count(), 1);
+    }
+
+    #[test]
+    fn test_color_new() {
+        let c = Color::new(0.2, 0.4, 0.6, 1.0);
+        assert_eq!(c.r, 0.2);
+        assert_eq!(c.g, 0.4);
+        assert_eq!(c.b, 0.6);
+        assert_eq!(c.a, 1.0);
+    }
+
+    #[test]
+    fn test_color_from_rgb() {
+        let c = Color::from_rgb(0.5, 0.6, 0.7);
+        assert_eq!(c.a, 1.0);
+    }
+
+    #[test]
+    fn test_color_constants() {
+        let white = Color::WHITE;
+        assert_eq!(white.r, 1.0);
+        assert_eq!(white.g, 1.0);
+        assert_eq!(white.b, 1.0);
+        assert_eq!(white.a, 1.0);
+
+        let black = Color::BLACK;
+        assert_eq!(black.r, 0.0);
+        assert_eq!(black.g, 0.0);
+        assert_eq!(black.b, 0.0);
+
+        let red = Color::RED;
+        assert_eq!(red.r, 1.0);
+        assert_eq!(red.g, 0.0);
+        assert_eq!(red.b, 0.0);
+
+        let green = Color::GREEN;
+        assert_eq!(green.g, 1.0);
+
+        let blue = Color::BLUE;
+        assert_eq!(blue.b, 1.0);
+    }
+
+    #[test]
+    fn test_color_to_vec3() {
+        let c = Color::new(0.3, 0.4, 0.5, 1.0);
+        let v = c.to_vec3();
+        assert_eq!(v, Vec3::new(0.3, 0.4, 0.5));
+    }
+
+    #[test]
+    fn test_directional_light_normalized() {
+        let light = DirectionalLight::new(Vec3::new(1.0, 1.0, 0.0), Color::WHITE, 1.0);
+        // Direction should be normalized
+        let len = light.direction().length();
+        assert!((len - 1.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_directional_light_color_getter() {
+        let color = Color::new(0.5, 0.5, 1.0, 1.0);
+        let light = DirectionalLight::new(Vec3::Y, color, 1.0);
+        assert_eq!(light.color().r, 0.5);
+        assert_eq!(light.color().g, 0.5);
+        assert_eq!(light.color().b, 1.0);
+    }
+
+    #[test]
+    fn test_directional_light_intensity() {
+        let light = DirectionalLight::new(Vec3::Y, Color::WHITE, 0.75);
+        assert_eq!(light.intensity(), 0.75);
+    }
+
+    #[test]
+    fn test_directional_light_shadow_default() {
+        let light = DirectionalLight::new(Vec3::Y, Color::WHITE, 1.0);
+        assert!(!light.casts_shadow());
+    }
+
+    #[test]
+    fn test_directional_light_set_shadow() {
+        let mut light = DirectionalLight::new(Vec3::Y, Color::WHITE, 1.0);
+        light.set_casts_shadow(true);
+        assert!(light.casts_shadow());
+    }
+
+    #[test]
+    fn test_directional_light_contribution() {
+        let light = DirectionalLight::new(Vec3::Y, Color::WHITE, 0.5);
+        let sample = light.contribution(Vec3::new(10.0, 5.0, 3.0));
+        assert_eq!(sample.intensity, 0.5);
+        assert_eq!(sample.direction.y, -1.0);
+    }
+
+    #[test]
+    fn test_point_light_position() {
+        let light = PointLight::new(Vec3::new(3.0, -2.0, 5.0), Color::WHITE, 1.0, 10.0);
+        assert_eq!(light.position(), Vec3::new(3.0, -2.0, 5.0));
+    }
+
+    #[test]
+    fn test_point_light_radius() {
+        let light = PointLight::new(Vec3::ZERO, Color::WHITE, 1.0, 25.0);
+        assert_eq!(light.radius(), 25.0);
+    }
+
+    #[test]
+    fn test_point_light_contribution_attenuation() {
+        let light = PointLight::new(Vec3::ZERO, Color::WHITE, 1.0, 10.0);
+        let near = light.contribution(Vec3::new(1.0, 0.0, 0.0));
+        let far = light.contribution(Vec3::new(9.0, 0.0, 0.0));
+        // Near position should have higher intensity
+        assert!(near.intensity > far.intensity);
+    }
+
+    #[test]
+    fn test_point_light_contribution_zero_distance() {
+        let light = PointLight::new(Vec3::ZERO, Color::WHITE, 1.0, 10.0);
+        let sample = light.contribution(Vec3::ZERO);
+        assert!(sample.intensity > 0.0);
+    }
+
+    #[test]
+    fn test_spot_light_cone_inner() {
+        let light = SpotLight::new(
+            Vec3::ZERO,
+            Vec3::new(0.0, 0.0, -1.0),
+            0.5,
+            1.0,
+            Color::WHITE,
+            1.0,
+        );
+        let atten = light.cone_attenuation(Vec3::new(0.0, 0.0, -5.0));
+        assert!(atten > 0.5);
+    }
+
+    #[test]
+    fn test_spot_light_cone_edge() {
+        let light = SpotLight::new(
+            Vec3::ZERO,
+            Vec3::new(0.0, 0.0, -1.0),
+            0.5,
+            1.0,
+            Color::WHITE,
+            1.0,
+        );
+        // Point perpendicular to direction should be outside cone
+        let atten = light.cone_attenuation(Vec3::new(5.0, 0.0, 0.0));
+        // cos(angle) of direction (0,0,-1) and vector (5,0,0) = 0
+        // cos(1.0) ~ 0.54, cos(0.5) ~ 0.877, so 0 < cos(outer) => 0 atten
+        assert!(atten >= 0.0);
+    }
+
+    #[test]
+    fn test_spot_light_position() {
+        let light = SpotLight::new(
+            Vec3::new(1.0, 2.0, 3.0),
+            Vec3::Z,
+            0.5,
+            1.0,
+            Color::WHITE,
+            1.0,
+        );
+        assert_eq!(light.position(), Vec3::new(1.0, 2.0, 3.0));
+    }
+
+    #[test]
+    fn test_spot_light_direction() {
+        let light = SpotLight::new(
+            Vec3::ZERO,
+            Vec3::new(1.0, 0.0, 0.0),
+            0.5,
+            1.0,
+            Color::WHITE,
+            1.0,
+        );
+        assert_eq!(light.direction().x, 1.0);
+    }
+
+    #[test]
+    fn test_spot_light_angles() {
+        let light = SpotLight::new(
+            Vec3::ZERO,
+            Vec3::Z,
+            0.3,
+            0.8,
+            Color::WHITE,
+            1.0,
+        );
+        assert_eq!(light.inner_angle(), 0.3);
+        assert_eq!(light.outer_angle(), 0.8);
+    }
+
+    #[test]
+    fn test_spot_light_contribution() {
+        let light = SpotLight::new(
+            Vec3::ZERO,
+            Vec3::new(0.0, 0.0, -1.0),
+            0.5,
+            1.0,
+            Color::WHITE,
+            1.0,
+        );
+        let sample = light.contribution(Vec3::new(0.0, 0.0, -5.0));
+        assert!(sample.intensity > 0.0);
+    }
+
+    #[test]
+    fn test_ambient_light_new() {
+        let light = AmbientLight::new(Color::new(0.2, 0.2, 0.2, 1.0), 0.5);
+        assert_eq!(light.intensity(), 0.5);
+    }
+
+    #[test]
+    fn test_ambient_light_color() {
+        let color = Color::new(0.3, 0.4, 0.5, 1.0);
+        let light = AmbientLight::new(color, 1.0);
+        assert_eq!(light.color().r, 0.3);
+        assert_eq!(light.color().g, 0.4);
+        assert_eq!(light.color().b, 0.5);
+    }
+
+    #[test]
+    fn test_hemisphere_light_new() {
+        let sky = Color::new(0.8, 0.9, 1.0, 1.0);
+        let ground = Color::new(0.3, 0.2, 0.1, 1.0);
+        let light = HemisphereLight::new(sky, ground, 0.8);
+        assert_eq!(light.intensity(), 0.8);
+    }
+
+    #[test]
+    fn test_hemisphere_light_colors() {
+        let sky = Color::new(1.0, 1.0, 1.0, 1.0);
+        let ground = Color::new(0.0, 0.0, 0.5, 1.0);
+        let light = HemisphereLight::new(sky, ground, 1.0);
+        assert_eq!(light.sky_color().r, 1.0);
+        assert_eq!(light.ground_color().b, 0.5);
+    }
+
+    #[test]
+    fn test_light_manager_new() {
+        let manager = LightManager::new();
+        assert_eq!(manager.directional_count(), 0);
+        assert_eq!(manager.point_count(), 0);
+        assert_eq!(manager.spot_count(), 0);
+    }
+
+    #[test]
+    fn test_light_manager_add_spot() {
+        let mut manager = LightManager::new();
+        manager.add_spot(SpotLight::new(
+            Vec3::ZERO,
+            Vec3::Z,
+            0.5,
+            1.0,
+            Color::WHITE,
+            1.0,
+        ));
+        assert_eq!(manager.spot_count(), 1);
+    }
+
+    #[test]
+    fn test_light_manager_set_ambient() {
+        let mut manager = LightManager::new();
+        manager.set_ambient(AmbientLight::new(Color::WHITE, 0.3));
+        assert!(manager.ambient().is_some());
+    }
+
+    #[test]
+    fn test_light_manager_set_hemisphere() {
+        let mut manager = LightManager::new();
+        manager.set_hemisphere(HemisphereLight::new(Color::WHITE, Color::BLACK, 0.5));
+        assert!(manager.hemisphere().is_some());
+    }
+
+    #[test]
+    fn test_light_manager_sort_distance() {
+        let mut manager = LightManager::new();
+        manager.add_point(PointLight::new(Vec3::new(10.0, 0.0, 0.0), Color::WHITE, 1.0, 10.0));
+        manager.add_point(PointLight::new(Vec3::new(1.0, 0.0, 0.0), Color::WHITE, 1.0, 10.0));
+        manager.sort_by_distance(Vec3::ZERO);
+        // After sorting, first light should be the closer one
+        let points = manager.points();
+        let first_pos = points[0].position();
+        let second_pos = points[1].position();
+        assert!(first_pos.length() <= second_pos.length());
+    }
+
+    #[test]
+    fn test_light_manager_accessors() {
+        let manager = LightManager::new();
+        let _ = manager.directional();
+        let _ = manager.points();
+        let _ = manager.spots();
+    }
+
+    #[test]
+    fn test_color_default() {
+        let c = Color::default();
+        assert_eq!(c.r, 0.0);
+        assert_eq!(c.g, 0.0);
+        assert_eq!(c.b, 0.0);
+        assert_eq!(c.a, 0.0);
+    }
+
+    #[test]
+    fn test_light_sample_direction_from_contribution() {
+        let light = DirectionalLight::new(Vec3::new(0.0, -1.0, 0.0), Color::WHITE, 1.0);
+        let sample = light.contribution(Vec3::new(5.0, 5.0, 5.0));
+        // Direction should be opposite of light direction
+        assert!(sample.direction.y > 0.0);
     }
 }

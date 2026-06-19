@@ -247,4 +247,91 @@ mod tests {
         let node = Camera2DNode::new("camera");
         assert_eq!(node.name(), "camera");
     }
+
+    // ============= Camera2D / Camera2DNode 更多测试 =============
+
+    #[test]
+    fn test_camera2d_is_current_toggle() {
+        let mut camera = Camera2D::new();
+        camera.set_current(true);
+        assert!(camera.is_current());
+        camera.set_current(false);
+        assert!(!camera.is_current());
+    }
+
+    #[test]
+    fn test_camera2d_with_camera_node() {
+        let mut camera = Camera2D::new();
+        camera.set_zoom(3.0);
+        let node = Camera2DNode::with_camera("cam", camera);
+        assert_eq!(node.camera().zoom(), 3.0);
+    }
+
+    #[test]
+    fn test_camera2d_node_set_camera() {
+        let mut node = Camera2DNode::new("cam");
+        let mut c = Camera2D::new();
+        c.set_zoom(0.5);
+        node.set_camera(c);
+        assert_eq!(node.camera().zoom(), 0.5);
+    }
+
+    #[test]
+    fn test_camera2d_node_camera_mut() {
+        let mut node = Camera2DNode::new("cam");
+        node.camera_mut().set_zoom(5.0);
+        assert_eq!(node.camera().zoom(), 5.0);
+    }
+
+    #[test]
+    fn test_camera2d_node_node2d_access() {
+        let node = Camera2DNode::new("cam");
+        assert_eq!(node.node2d().position(), Vec2::ZERO);
+    }
+
+    #[test]
+    fn test_camera2d_apply_transform_no_panic() {
+        let camera = Camera2D::new();
+        let dummy = Node2D::new("dummy");
+        camera.apply_transform(&dummy);
+    }
+
+    #[test]
+    fn test_camera2d_node_on_update() {
+        let mut node = Camera2DNode::new("cam");
+        node.on_update(0.016);
+    }
+
+    #[test]
+    fn test_camera2d_node_on_draw() {
+        let node = Camera2DNode::new("cam");
+        node.on_draw();
+    }
+
+    #[test]
+    fn test_camera2d_node_add_remove_child() {
+        let mut node = Camera2DNode::new("cam");
+        node.add_child(NodeHandle::new(1));
+        assert_eq!(node.children().len(), 1);
+        node.remove_child(NodeHandle::new(1));
+        assert_eq!(node.children().len(), 0);
+    }
+
+    #[test]
+    fn test_camera2d_node_set_paused_visible() {
+        let mut node = Camera2DNode::new("cam");
+        node.set_paused(true);
+        assert!(node.paused());
+        node.set_visible(false);
+        assert!(!node.visible());
+    }
+
+    #[test]
+    fn test_camera2d_node_detach_parent() {
+        let mut node = Camera2DNode::new("cam");
+        node.set_parent(Some(NodeHandle::new(5)));
+        assert!(node.parent().is_some());
+        node.detach();
+        assert!(node.parent().is_none());
+    }
 }

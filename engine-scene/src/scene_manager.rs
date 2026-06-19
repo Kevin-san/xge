@@ -167,4 +167,64 @@ mod tests {
         let manager = SceneManager::new();
         assert!(manager.current().is_none());
     }
+
+    // ============= SceneManager 更多测试 =============
+
+    #[test]
+    fn test_scene_manager_new() {
+        let manager = SceneManager::new();
+        assert!(manager.current().is_none());
+    }
+
+    #[test]
+    fn test_scene_manager_load_and_switch() {
+        let mut manager = SceneManager::new();
+        manager.load("scene1", SceneTree::new());
+        manager.switch_to("scene1");
+        assert!(manager.current().is_some());
+    }
+
+    #[test]
+    fn test_scene_manager_push_pop_with_names() {
+        let mut manager = SceneManager::new();
+        manager.load("scene1", SceneTree::new());
+        manager.load("scene2", SceneTree::new());
+        manager.switch_to("scene1");
+        manager.push("scene2");
+        manager.pop();
+        assert!(manager.current().is_some());
+    }
+
+    #[test]
+    fn test_scene_manager_pop_empty_stack() {
+        let mut manager = SceneManager::new();
+        manager.pop();
+    }
+
+    #[test]
+    fn test_scene_manager_set_transition() {
+        let mut manager = SceneManager::new();
+        manager.set_transition(Transition::None);
+        match manager.transition {
+            Transition::None => {}
+            _ => panic!("Expected None transition"),
+        }
+    }
+
+    #[test]
+    fn test_scene_manager_switch_to_nonexistent() {
+        let mut manager = SceneManager::new();
+        manager.switch_to("nonexistent");
+        assert!(manager.current().is_none());
+    }
+
+    #[test]
+    fn test_scene_manager_multiple_switches() {
+        let mut manager = SceneManager::new();
+        manager.load("scene1", SceneTree::new());
+        manager.switch_to("scene1");
+        manager.load("scene2", SceneTree::new());
+        manager.switch_to("scene2");
+        assert!(manager.current().is_some());
+    }
 }

@@ -618,4 +618,208 @@ mod tests {
         body.set_rotation(std::f32::consts::FRAC_PI_2);
         assert_eq!(body.rotation(), std::f32::consts::FRAC_PI_2);
     }
+
+    // ============= RigidBody2DBuilder 更多参数组合测试 =============
+
+    #[test]
+    fn test_builder_dynamic_with_mass_velocity() {
+        let body = RigidBody2DBuilder::dynamic()
+            .with_mass(5.0)
+            .with_velocity(Vec2::new(2.0, 3.0))
+            .build();
+        assert!(body.is_dynamic());
+        assert_eq!(body.mass(), 5.0);
+        assert_eq!(body.linear_velocity(), Vec2::new(2.0, 3.0));
+    }
+
+    #[test]
+    fn test_builder_static_with_position() {
+        let body = RigidBody2DBuilder::static_()
+            .with_position(Vec2::new(100.0, 200.0))
+            .build();
+        assert!(body.is_static());
+        assert_eq!(body.position(), Vec2::new(100.0, 200.0));
+        assert_eq!(body.linear_velocity(), Vec2::ZERO);
+    }
+
+    #[test]
+    fn test_builder_kinematic_with_rotation_angular_velocity() {
+        let body = RigidBody2DBuilder::kinematic()
+            .with_rotation(std::f32::consts::PI)
+            .with_angular_velocity(2.0)
+            .build();
+        assert!(body.is_kinematic());
+        assert_eq!(body.rotation(), std::f32::consts::PI);
+        assert_eq!(body.angular_velocity(), 2.0);
+    }
+
+    #[test]
+    fn test_builder_with_damping_chain() {
+        let body = RigidBody2DBuilder::dynamic()
+            .with_mass(10.0)
+            .with_position(Vec2::new(5.0, 5.0))
+            .with_velocity(Vec2::new(1.0, 0.0))
+            .with_rotation(0.5)
+            .with_angular_velocity(1.5)
+            .with_damping(0.1, 0.2)
+            .with_gravity_scale(1.5)
+            .build();
+        assert_eq!(body.mass(), 10.0);
+        assert_eq!(body.position(), Vec2::new(5.0, 5.0));
+        assert_eq!(body.linear_velocity(), Vec2::new(1.0, 0.0));
+        assert_eq!(body.rotation(), 0.5);
+        assert_eq!(body.angular_velocity(), 1.5);
+        assert_eq!(body.gravity_scale(), 1.5);
+    }
+
+    #[test]
+    fn test_builder_default_mass_positive() {
+        let body = RigidBody2DBuilder::dynamic().with_mass(3.0).build();
+        assert!(body.mass() > 0.0);
+    }
+
+    #[test]
+    fn test_builder_inertia_applied() {
+        let body = RigidBody2DBuilder::dynamic().with_inertia(2.5).build();
+        // 通过 apply_impulse_at_point 验证惯性生效
+        // 由于 inverse_inertia 是 1/inertia，这里验证它在构建后不为零
+        assert!(body.inertia() > 0.0);
+    }
+
+    #[test]
+    fn test_builder_zero_mass_not_allowed_for_static_default_is_static() {
+        let body = RigidBody2DBuilder::static_().build();
+        assert_eq!(body.mass(), 0.0);
+    }
+
+    #[test]
+    fn test_builder_dynamic_position_offset() {
+        let body = RigidBody2DBuilder::dynamic()
+            .with_position(Vec2::new(-10.0, -20.0))
+            .build();
+        assert_eq!(body.position().x, -10.0);
+        assert_eq!(body.position().y, -20.0);
+    }
+
+    #[test]
+    fn test_builder_static_is_not_dynamic() {
+        let body = RigidBody2DBuilder::static_().build();
+        assert!(!body.is_dynamic());
+    }
+
+    #[test]
+    fn test_builder_dynamic_is_not_static() {
+        let body = RigidBody2DBuilder::dynamic().build();
+        assert!(!body.is_static());
+    }
+
+    #[test]
+    fn test_rigid_body_get_type_static() {
+        let body = RigidBody2D::new(RigidBodyType::Static);
+        assert_eq!(body.body_type(), RigidBodyType::Static);
+    }
+
+    #[test]
+    fn test_rigid_body_get_type_kinematic() {
+        let body = RigidBody2D::new(RigidBodyType::Kinematic);
+        assert_eq!(body.body_type(), RigidBodyType::Kinematic);
+    }
+
+    #[test]
+    fn test_rigid_body_apply_force_at_point() {
+        let mut body = RigidBody2DBuilder::dynamic()
+            .with_mass(1.0)
+            .with_inertia(1.0)
+            .build();
+        body.apply_force_at_point(Vec2::new(10.0, 0.0), Vec2::new(0.0, 1.0));
+        // 力累加
+        assert_eq!(body.force().x, 10.0);
+    }
+
+    #[test]
+    fn test_rigid_body_apply_torque() {
+        let mut body = RigidBody2DBuilder::dynamic()
+            .with_mass(1.0)
+            .build();
+        body.apply_torque(5.0);
+        body.update_velocity(1.0);
+        // 由于有扭矩影响角速度
+        assert!(body.angular_velocity() != 0.0);
+    }
+
+    #[test]
+    fn test_rigid_body_set_position_moves() {
+        let mut body = RigidBody2DBuilder::dynamic().build();
+        body.set_position(Vec2::new(42.0, 42.0));
+        assert_eq!(body.position(), Vec2::new(42.0, 42.0));
+    }
+
+    #[test]
+    fn test_rigid_body_set_linear_velocity() {
+        let mut body = RigidBody2DBuilder::dynamic().build();
+        body.set_linear_velocity(Vec2::new(3.0, 4.0));
+        assert_eq!(body.linear_velocity(), Vec2::new(3.0, 4.0));
+    }
+
+    #[test]
+    fn test_rigid_body_set_angular_velocity() {
+        let mut body = RigidBody2DBuilder::dynamic().build();
+        body.set_angular_velocity(5.0);
+        assert_eq!(body.angular_velocity(), 5.0);
+    }
+
+    #[test]
+    fn test_rigid_body_set_gravity_scale_zero() {
+        let mut body = RigidBody2D::new(RigidBodyType::Dynamic);
+        body.set_gravity_scale(0.0);
+        assert_eq!(body.gravity_scale(), 0.0);
+    }
+
+    #[test]
+    fn test_rigid_body_enabled_toggle() {
+        let mut body = RigidBody2D::new(RigidBodyType::Dynamic);
+        assert!(body.is_enabled());
+        body.set_enabled(false);
+        assert!(!body.is_enabled());
+        body.set_enabled(true);
+        assert!(body.is_enabled());
+    }
+
+    #[test]
+    fn test_rigid_body_transform_matrix_initial() {
+        let body = RigidBody2DBuilder::dynamic()
+            .with_position(Vec2::ZERO)
+            .with_rotation(0.0)
+            .build();
+        let (a, b, c, d, e, f) = body.transform_matrix();
+        // 单位矩阵: [1, 0, 0, 0, 1, 0]
+        assert_eq!(a, 1.0);
+        assert_eq!(b, 0.0);
+        assert_eq!(c, 0.0);
+        assert_eq!(d, 0.0);
+        assert_eq!(e, 1.0);
+        assert_eq!(f, 0.0);
+    }
+
+    #[test]
+    fn test_rigid_body_state_roundtrip() {
+        let mut body = RigidBody2DBuilder::dynamic()
+            .with_position(Vec2::new(1.0, 2.0))
+            .with_velocity(Vec2::new(3.0, 4.0))
+            .with_rotation(std::f32::consts::FRAC_PI_4)
+            .with_angular_velocity(1.0)
+            .build();
+        let state = body.state();
+        assert_eq!(state.position, Vec2::new(1.0, 2.0));
+        assert_eq!(state.linear_velocity, Vec2::new(3.0, 4.0));
+        assert_eq!(state.rotation, std::f32::consts::FRAC_PI_4);
+        body.set_state(RigidBodyState {
+            position: Vec2::new(5.0, 6.0),
+            rotation: 0.0,
+            linear_velocity: Vec2::ZERO,
+            angular_velocity: 0.0,
+        });
+        assert_eq!(body.position(), Vec2::new(5.0, 6.0));
+        assert_eq!(body.linear_velocity(), Vec2::ZERO);
+    }
 }

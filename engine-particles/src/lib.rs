@@ -2566,9 +2566,11 @@ mod tests {
 
     #[test]
     fn test_particle_update() {
-        let mut p = Particle::default();
-        p.velocity = Vec3::new(1.0, 0.0, 0.0);
-        p.lifetime = 5.0;
+        let mut p = Particle {
+            velocity: Vec3::new(1.0, 0.0, 0.0),
+            lifetime: 5.0,
+            ..Default::default()
+        };
         p.update(1.0);
         assert_eq!(p.position, Vec3::new(1.0, 0.0, 0.0));
         assert_eq!(p.age, 1.0);
@@ -2676,7 +2678,6 @@ mod tests {
         assert_eq!(module.gravity, DEFAULT_GRAVITY);
 
         let mut particle = Particle::default();
-        particle.velocity = Vec3::ZERO;
         let mut ctx = ModuleContext::new(1.0, 0.0, Vec3::ZERO);
         module.apply(&mut particle, 1.0, &mut ctx);
         assert!((particle.velocity.y - DEFAULT_GRAVITY).abs() < 1e-6);
@@ -2694,8 +2695,10 @@ mod tests {
     #[test]
     fn test_drag_module() {
         let module = DragModule::new(0.5);
-        let mut particle = Particle::default();
-        particle.velocity = Vec3::new(10.0, 10.0, 10.0);
+        let mut particle = Particle {
+            velocity: Vec3::new(10.0, 10.0, 10.0),
+            ..Default::default()
+        };
         let mut ctx = ModuleContext::new(1.0, 0.0, Vec3::ZERO);
         module.apply(&mut particle, 1.0, &mut ctx);
         assert_eq!(particle.velocity, Vec3::new(5.0, 5.0, 5.0));
@@ -2704,9 +2707,11 @@ mod tests {
     #[test]
     fn test_color_over_life_module() {
         let module = ColorOverLifeModule::new(alloc::vec![(0.0, Rgba::BLACK), (1.0, Rgba::WHITE),]);
-        let mut particle = Particle::default();
-        particle.age = 0.5;
-        particle.lifetime = 1.0;
+        let mut particle = Particle {
+            age: 0.5,
+            lifetime: 1.0,
+            ..Default::default()
+        };
         let mut ctx = ModuleContext::new(0.0, 0.0, Vec3::ZERO);
         module.apply(&mut particle, 0.0, &mut ctx);
         assert!((particle.color.r - 0.5).abs() < 1e-6);
@@ -2715,10 +2720,12 @@ mod tests {
     #[test]
     fn test_size_over_life_module() {
         let module = SizeOverLifeModule::new(alloc::vec![(0.0, 1.0), (1.0, 0.0),]);
-        let mut particle = Particle::default();
-        particle.age = 0.5;
-        particle.lifetime = 1.0;
-        particle.size = Vec2::ONE;
+        let mut particle = Particle {
+            age: 0.5,
+            lifetime: 1.0,
+            size: Vec2::ONE,
+            ..Default::default()
+        };
         let mut ctx = ModuleContext::new(0.0, 0.0, Vec3::ZERO);
         module.apply(&mut particle, 0.0, &mut ctx);
         assert!((particle.size.x - 0.5).abs() < 1e-6);
@@ -2745,9 +2752,11 @@ mod tests {
     #[test]
     fn test_collision_module_sphere() {
         let module = CollisionModule::new(alloc::vec![ParticleCollider::Sphere(Vec3::ZERO, 1.0),]);
-        let mut particle = Particle::default();
-        particle.position = Vec3::new(0.5, 0.0, 0.0);
-        particle.velocity = Vec3::new(-1.0, 0.0, 0.0);
+        let mut particle = Particle {
+            position: Vec3::new(0.5, 0.0, 0.0),
+            velocity: Vec3::new(-1.0, 0.0, 0.0),
+            ..Default::default()
+        };
         let mut ctx = ModuleContext::new(0.0, 0.0, Vec3::ZERO);
         module.apply(&mut particle, 0.0, &mut ctx);
         assert!(particle.velocity.x > 0.0);
@@ -2757,9 +2766,11 @@ mod tests {
     fn test_kill_module_aabb() {
         let module =
             KillModule::by_outside_aabb(Vec3::new(-1.0, -1.0, -1.0), Vec3::new(1.0, 1.0, 1.0));
-        let mut particle = Particle::default();
-        particle.position = Vec3::new(2.0, 0.0, 0.0);
-        particle.lifetime = 5.0;
+        let mut particle = Particle {
+            position: Vec3::new(2.0, 0.0, 0.0),
+            lifetime: 5.0,
+            ..Default::default()
+        };
         let mut ctx = ModuleContext::new(0.0, 0.0, Vec3::ZERO);
         module.apply(&mut particle, 0.0, &mut ctx);
         assert!(!particle.is_alive());
@@ -2768,9 +2779,11 @@ mod tests {
     #[test]
     fn test_kill_module_min_speed() {
         let module = KillModule::by_min_speed(1.0);
-        let mut particle = Particle::default();
-        particle.velocity = Vec3::new(0.1, 0.0, 0.0);
-        particle.lifetime = 5.0;
+        let mut particle = Particle {
+            velocity: Vec3::new(0.1, 0.0, 0.0),
+            lifetime: 5.0,
+            ..Default::default()
+        };
         let mut ctx = ModuleContext::new(0.0, 0.0, Vec3::ZERO);
         module.apply(&mut particle, 0.0, &mut ctx);
         assert!(!particle.is_alive());
@@ -2936,7 +2949,7 @@ mod tests {
         let mut rng = SimpleRng::new(42);
         for _ in 0..100 {
             let v = rng.range(0.0, 1.0);
-            assert!(v >= 0.0 && v <= 1.0);
+            assert!((0.0..=1.0).contains(&v));
         }
     }
 }

@@ -231,4 +231,101 @@ mod tests {
         let node = Area2DNode::new("area");
         assert_eq!(node.name(), "area");
     }
+
+    // ============= Area2D 更多测试 =============
+
+    #[test]
+    fn test_area2d_with_shape_rectangle() {
+        let area = Area2D::with_shape(ColliderShape::Rectangle { width: 10.0, height: 10.0 });
+        assert!(area.is_sensor);
+    }
+
+    #[test]
+    fn test_area2d_with_shape_circle() {
+        let area = Area2D::with_shape(ColliderShape::Circle { radius: 5.0 });
+        assert!(area.is_sensor);
+    }
+
+    #[test]
+    fn test_area2d_entered_bodies_add_remove() {
+        let mut area = Area2D::new("area");
+        let handle = BodyHandle::new(1);
+        area.add_entered_body(handle);
+        area.add_entered_body(handle);
+        assert_eq!(area.entered_bodies().len(), 1);
+        area.remove_entered_body(&handle);
+        assert_eq!(area.entered_bodies().len(), 0);
+    }
+
+    #[test]
+    fn test_area2d_position_offset() {
+        let mut area = Area2D::new("area");
+        area.position_offset = Vec2::new(5.0, 5.0);
+        assert_eq!(area.position_offset, Vec2::new(5.0, 5.0));
+    }
+
+    #[test]
+    fn test_area2d_node_area_access() {
+        let node = Area2DNode::new("area");
+        assert!(node.area().entered_bodies().is_empty());
+    }
+
+    #[test]
+    fn test_area2d_node_area_mut() {
+        let mut node = Area2DNode::new("area");
+        node.area_mut().add_entered_body(BodyHandle::new(1));
+        assert_eq!(node.area().entered_bodies().len(), 1);
+    }
+
+    #[test]
+    fn test_area2d_node_on_update_draw() {
+        let mut node = Area2DNode::new("area");
+        node.on_update(0.016);
+        node.on_draw();
+    }
+
+    #[test]
+    fn test_area2d_node_add_remove_child() {
+        let mut node = Area2DNode::new("area");
+        node.add_child(NodeHandle::new(1));
+        assert_eq!(node.children().len(), 1);
+        node.remove_child(NodeHandle::new(1));
+        assert_eq!(node.children().len(), 0);
+    }
+
+    #[test]
+    fn test_area2d_node_paused_visible() {
+        let mut node = Area2DNode::new("area");
+        node.set_paused(true);
+        assert!(node.paused());
+        node.set_visible(false);
+        assert!(!node.visible());
+    }
+
+    #[test]
+    fn test_area2d_node_detach() {
+        let mut node = Area2DNode::new("area");
+        node.set_parent(Some(NodeHandle::new(1)));
+        assert!(node.parent().is_some());
+        node.detach();
+        assert!(node.parent().is_none());
+    }
+
+    #[test]
+    fn test_body_handle_index() {
+        let h = BodyHandle::new(42);
+        assert_eq!(h.index(), 42);
+    }
+
+    #[test]
+    fn test_body_handle_null() {
+        let h = BodyHandle::null();
+        assert!(h.is_null());
+    }
+
+    #[test]
+    fn test_area2d_with_shape_sensor_flag() {
+        let area = Area2D::with_shape(ColliderShape::Rectangle { width: 10.0, height: 10.0 });
+        assert!(area.is_sensor);
+    }
 }

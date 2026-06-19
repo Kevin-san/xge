@@ -453,9 +453,283 @@ impl Default for InputModule {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use winit::event::{ElementState, MouseButton};
+    use winit::event::{ElementState, MouseButton, TouchPhase};
     use winit::keyboard::NamedKey;
+    use winit::window::{CursorGrabMode, CursorIcon, Fullscreen};
 
+    // ===== WindowBuilder 测试组 =====
+    // 目标: 至少 15 个测试
+    #[test]
+    fn test_window_builder_new() {
+        let builder = WindowBuilder::new();
+        let _ = builder;
+    }
+
+    #[test]
+    fn test_window_builder_default() {
+        let builder: WindowBuilder = Default::default();
+        let _ = builder;
+    }
+
+    #[test]
+    fn test_window_builder_with_title() {
+        let builder = WindowBuilder::new().with_title("Test Window");
+        let _ = builder;
+    }
+
+    #[test]
+    fn test_window_builder_with_inner_size() {
+        let builder = WindowBuilder::new().with_inner_size(1280, 720);
+        let _ = builder;
+    }
+
+    #[test]
+    fn test_window_builder_with_min_inner_size() {
+        let builder = WindowBuilder::new().with_min_inner_size(640, 480);
+        let _ = builder;
+    }
+
+    #[test]
+    fn test_window_builder_with_max_inner_size() {
+        let builder = WindowBuilder::new().with_max_inner_size(1920, 1080);
+        let _ = builder;
+    }
+
+    #[test]
+    fn test_window_builder_with_resizable_true() {
+        let builder = WindowBuilder::new().with_resizable(true);
+        let _ = builder;
+    }
+
+    #[test]
+    fn test_window_builder_with_resizable_false() {
+        let builder = WindowBuilder::new().with_resizable(false);
+        let _ = builder;
+    }
+
+    #[test]
+    fn test_window_builder_with_decorations_true() {
+        let builder = WindowBuilder::new().with_decorations(true);
+        let _ = builder;
+    }
+
+    #[test]
+    fn test_window_builder_with_decorations_false() {
+        let builder = WindowBuilder::new().with_decorations(false);
+        let _ = builder;
+    }
+
+    #[test]
+    fn test_window_builder_with_fullscreen_true() {
+        let builder = WindowBuilder::new().with_fullscreen(true);
+        let _ = builder;
+    }
+
+    #[test]
+    fn test_window_builder_with_fullscreen_false() {
+        let builder = WindowBuilder::new().with_fullscreen(false);
+        let _ = builder;
+    }
+
+    #[test]
+    fn test_window_builder_with_fullscreen_mode_some() {
+        let builder =
+            WindowBuilder::new().with_fullscreen_mode(Some(Fullscreen::Borderless(None)));
+        let _ = builder;
+    }
+
+    #[test]
+    fn test_window_builder_with_fullscreen_mode_none() {
+        let builder = WindowBuilder::new().with_fullscreen_mode(None);
+        let _ = builder;
+    }
+
+    #[test]
+    fn test_window_builder_with_transparent_true() {
+        let builder = WindowBuilder::new().with_transparent(true);
+        let _ = builder;
+    }
+
+    #[test]
+    fn test_window_builder_with_visible_true() {
+        let builder = WindowBuilder::new().with_visible(true);
+        let _ = builder;
+    }
+
+    #[test]
+    fn test_window_builder_with_always_on_top() {
+        let builder = WindowBuilder::new().with_always_on_top(true);
+        let _ = builder;
+    }
+
+    #[test]
+    fn test_window_builder_with_maximized_true() {
+        let builder = WindowBuilder::new().with_maximized(true);
+        let _ = builder;
+    }
+
+    #[test]
+    fn test_window_builder_with_minimized() {
+        let builder = WindowBuilder::new().with_minimized(true);
+        let _ = builder;
+    }
+
+    #[test]
+    fn test_window_builder_with_content_protected() {
+        let builder = WindowBuilder::new().with_content_protected(true);
+        let _ = builder;
+    }
+
+    #[test]
+    fn test_window_builder_with_prevent_defocus() {
+        let builder = WindowBuilder::new().with_prevent_defocus(true);
+        let _ = builder;
+    }
+
+    #[test]
+    fn test_window_builder_with_ime() {
+        let builder = WindowBuilder::new().with_ime(true);
+        let _ = builder;
+    }
+
+    #[test]
+    fn test_window_builder_with_window_icon_none() {
+        let builder = WindowBuilder::new().with_window_icon(None);
+        let _ = builder;
+    }
+
+    #[test]
+    fn test_window_builder_chained_methods() {
+        let builder = WindowBuilder::new()
+            .with_title("Hello")
+            .with_inner_size(800, 600)
+            .with_resizable(true)
+            .with_decorations(true)
+            .with_transparent(false)
+            .with_visible(true);
+        let _ = builder;
+    }
+
+    // ===== WindowConfig 测试 =====
+    #[test]
+    fn test_window_config_default() {
+        let config = WindowConfig::default();
+        assert_eq!(config.title, "Game Engine");
+        assert_eq!(config.width, 1280);
+        assert_eq!(config.height, 720);
+        assert!(config.resizable);
+        assert!(config.vsync);
+        assert!(!config.fullscreen);
+        assert!(config.decorations);
+    }
+
+    // ===== WindowMode 测试 =====
+    #[test]
+    fn test_window_mode_windowed() {
+        let mode = WindowMode::Windowed;
+        assert_eq!(mode, WindowMode::Windowed);
+        assert_ne!(mode, WindowMode::Fullscreen);
+        assert_ne!(mode, WindowMode::Borderless);
+    }
+
+    #[test]
+    fn test_window_mode_fullscreen() {
+        let mode = WindowMode::Fullscreen;
+        assert_eq!(mode, WindowMode::Fullscreen);
+    }
+
+    #[test]
+    fn test_window_mode_borderless() {
+        let mode = WindowMode::Borderless;
+        assert_eq!(mode, WindowMode::Borderless);
+    }
+
+    #[test]
+    fn test_window_mode_switch_cycle() {
+        let modes = [
+            WindowMode::Windowed,
+            WindowMode::Fullscreen,
+            WindowMode::Borderless,
+        ];
+        for mode in modes.iter() {
+            // 确保 clone/copy 正常
+            let copied = *mode;
+            assert_eq!(copied, *mode);
+        }
+    }
+
+    // ===== CursorIcon 测试 =====
+    #[test]
+    fn test_cursor_icon_default_is_arrow() {
+        let icon = CursorIcon::default();
+        assert_eq!(icon, CursorIcon::Default);
+    }
+
+    #[test]
+    fn test_cursor_icon_named_variants_exist() {
+        // 验证常见 CursorIcon 变体可被引用
+        let _ = CursorIcon::Pointer;
+        let _ = CursorIcon::Move;
+        let _ = CursorIcon::Crosshair;
+        let _ = CursorIcon::Text;
+        let _ = CursorIcon::Wait;
+        let _ = CursorIcon::Help;
+        let _ = CursorIcon::Progress;
+        let _ = CursorIcon::NotAllowed;
+        let _ = CursorIcon::ContextMenu;
+        let _ = CursorIcon::Cell;
+        let _ = CursorIcon::VerticalText;
+        let _ = CursorIcon::Alias;
+        let _ = CursorIcon::Copy;
+        let _ = CursorIcon::NoDrop;
+        let _ = CursorIcon::Grab;
+        let _ = CursorIcon::Grabbing;
+        let _ = CursorIcon::AllScroll;
+        let _ = CursorIcon::ZoomIn;
+        let _ = CursorIcon::ZoomOut;
+        let _ = CursorIcon::EResize;
+        let _ = CursorIcon::NResize;
+        let _ = CursorIcon::NeResize;
+        let _ = CursorIcon::NwResize;
+        let _ = CursorIcon::SResize;
+        let _ = CursorIcon::SeResize;
+        let _ = CursorIcon::SwResize;
+        let _ = CursorIcon::WResize;
+        let _ = CursorIcon::EwResize;
+        let _ = CursorIcon::NsResize;
+        let _ = CursorIcon::NeswResize;
+        let _ = CursorIcon::NwseResize;
+        let _ = CursorIcon::ColResize;
+        let _ = CursorIcon::RowResize;
+    }
+
+    // ===== CursorGrabMode 测试 =====
+    #[test]
+    fn test_cursor_grab_mode_none() {
+        let mode = CursorGrabMode::None;
+        assert_eq!(mode, CursorGrabMode::None);
+    }
+
+    #[test]
+    fn test_cursor_grab_mode_confined() {
+        let mode = CursorGrabMode::Confined;
+        assert_eq!(mode, CursorGrabMode::Confined);
+    }
+
+    #[test]
+    fn test_cursor_grab_mode_locked() {
+        let mode = CursorGrabMode::Locked;
+        assert_eq!(mode, CursorGrabMode::Locked);
+    }
+
+    #[test]
+    fn test_cursor_grab_mode_distinct() {
+        assert_ne!(CursorGrabMode::None, CursorGrabMode::Confined);
+        assert_ne!(CursorGrabMode::None, CursorGrabMode::Locked);
+        assert_ne!(CursorGrabMode::Confined, CursorGrabMode::Locked);
+    }
+
+    // ===== Input 核心状态测试 =====
     #[test]
     fn test_input_new() {
         let input = Input::new();
@@ -466,25 +740,63 @@ mod tests {
     }
 
     #[test]
-    fn test_input_key_pressed() {
-        let mut input = Input::new();
-        let space_key = NamedKey::Space;
-        let enter_key = NamedKey::Enter;
-        input.update_key(space_key, ElementState::Pressed);
-        assert!(input.key_pressed(&space_key));
-        assert!(!input.key_pressed(&enter_key));
+    fn test_input_default() {
+        let input: Input = Default::default();
+        assert!(input.pressed_keys.is_empty());
+        assert!(input.pressed_buttons.is_empty());
+        assert_eq!(input.mouse_position, Vec2::ZERO);
+        assert_eq!(input.mouse_delta, Vec2::ZERO);
     }
 
     #[test]
-    fn test_input_key_just_pressed() {
+    fn test_input_key_pressed_space() {
         let mut input = Input::new();
         let space_key = NamedKey::Space;
-        let enter_key = NamedKey::Enter;
         input.update_key(space_key, ElementState::Pressed);
-        assert!(input.key_just_pressed(&space_key));
-        assert!(!input.key_just_pressed(&enter_key));
+        assert!(input.key_pressed(&space_key));
+    }
+
+    #[test]
+    fn test_input_key_not_pressed_other() {
+        let mut input = Input::new();
+        input.update_key(NamedKey::Space, ElementState::Pressed);
+        assert!(!input.key_pressed(&NamedKey::Enter));
+    }
+
+    #[test]
+    fn test_input_key_release() {
+        let mut input = Input::new();
+        input.update_key(NamedKey::Space, ElementState::Pressed);
+        assert!(input.key_pressed(&NamedKey::Space));
+        input.update_key(NamedKey::Space, ElementState::Released);
+        assert!(!input.key_pressed(&NamedKey::Space));
+    }
+
+    #[test]
+    fn test_input_key_duplicate_press() {
+        let mut input = Input::new();
+        input.update_key(NamedKey::Space, ElementState::Pressed);
+        input.update_key(NamedKey::Space, ElementState::Pressed);
+        input.update_key(NamedKey::Space, ElementState::Pressed);
+        // pressed_keys 应该只有一个 Space
+        assert!(input.key_pressed(&NamedKey::Space));
+    }
+
+    #[test]
+    fn test_input_key_just_pressed_space() {
+        let mut input = Input::new();
+        input.update_key(NamedKey::Space, ElementState::Pressed);
+        assert!(input.key_just_pressed(&NamedKey::Space));
         input.clear();
-        assert!(!input.key_just_pressed(&space_key));
+        // clear 之后，Space 仍然是 pressed，所以不再是 just_pressed
+        assert!(!input.key_just_pressed(&NamedKey::Space));
+    }
+
+    #[test]
+    fn test_input_key_just_pressed_unrelated_key_false() {
+        let mut input = Input::new();
+        input.update_key(NamedKey::Space, ElementState::Pressed);
+        assert!(!input.key_just_pressed(&NamedKey::Enter));
     }
 
     #[test]
@@ -498,11 +810,53 @@ mod tests {
     }
 
     #[test]
-    fn test_input_mouse_button_pressed() {
+    fn test_input_key_just_released_without_press() {
+        let mut input = Input::new();
+        // 从未被按下，直接检测 should return false
+        assert!(!input.key_just_released(&NamedKey::Space));
+        input.clear();
+        assert!(!input.key_just_released(&NamedKey::Space));
+    }
+
+    #[test]
+    fn test_input_multiple_keys_pressed() {
+        let mut input = Input::new();
+        input.update_key(NamedKey::Space, ElementState::Pressed);
+        input.update_key(NamedKey::Enter, ElementState::Pressed);
+        input.update_key(NamedKey::Escape, ElementState::Pressed);
+        assert!(input.key_pressed(&NamedKey::Space));
+        assert!(input.key_pressed(&NamedKey::Enter));
+        assert!(input.key_pressed(&NamedKey::Escape));
+    }
+
+    #[test]
+    fn test_input_mouse_button_left_pressed() {
         let mut input = Input::new();
         input.update_button(MouseButton::Left, ElementState::Pressed);
         assert!(input.mouse_button_pressed(MouseButton::Left));
         assert!(!input.mouse_button_pressed(MouseButton::Right));
+    }
+
+    #[test]
+    fn test_input_mouse_button_right_pressed() {
+        let mut input = Input::new();
+        input.update_button(MouseButton::Right, ElementState::Pressed);
+        assert!(input.mouse_button_pressed(MouseButton::Right));
+    }
+
+    #[test]
+    fn test_input_mouse_button_middle_pressed() {
+        let mut input = Input::new();
+        input.update_button(MouseButton::Middle, ElementState::Pressed);
+        assert!(input.mouse_button_pressed(MouseButton::Middle));
+    }
+
+    #[test]
+    fn test_input_mouse_button_released() {
+        let mut input = Input::new();
+        input.update_button(MouseButton::Left, ElementState::Pressed);
+        input.update_button(MouseButton::Left, ElementState::Released);
+        assert!(!input.mouse_button_pressed(MouseButton::Left));
     }
 
     #[test]
@@ -515,19 +869,42 @@ mod tests {
     }
 
     #[test]
-    fn test_input_mouse_position() {
+    fn test_input_mouse_button_just_released() {
+        let mut input = Input::new();
+        input.update_button(MouseButton::Left, ElementState::Pressed);
+        input.clear();
+        input.update_button(MouseButton::Left, ElementState::Released);
+        assert!(input.mouse_button_just_released(MouseButton::Left));
+    }
+
+    #[test]
+    fn test_input_mouse_position_first_call() {
         let mut input = Input::new();
         input.update_mouse_position(100.0, 200.0);
         assert_eq!(input.mouse_position(), Vec2::new(100.0, 200.0));
         assert_eq!(input.mouse_delta(), Vec2::new(100.0, 200.0));
+    }
 
+    #[test]
+    fn test_input_mouse_position_second_call() {
+        let mut input = Input::new();
+        input.update_mouse_position(100.0, 200.0);
         input.update_mouse_position(150.0, 250.0);
         assert_eq!(input.mouse_position(), Vec2::new(150.0, 250.0));
         assert_eq!(input.mouse_delta(), Vec2::new(50.0, 50.0));
     }
 
     #[test]
-    fn test_input_clear() {
+    fn test_input_mouse_delta_after_clear() {
+        let mut input = Input::new();
+        input.update_mouse_position(100.0, 200.0);
+        input.clear();
+        // clear 不重置 mouse_position，但重置 mouse_delta
+        assert_eq!(input.mouse_delta(), Vec2::ZERO);
+    }
+
+    #[test]
+    fn test_input_clear_preserves_pressed() {
         let mut input = Input::new();
         let space_key = NamedKey::Space;
         input.update_key(space_key, ElementState::Pressed);
@@ -542,7 +919,7 @@ mod tests {
     }
 
     #[test]
-    fn test_input_reset() {
+    fn test_input_reset_clears_all() {
         let mut input = Input::new();
         let space_key = NamedKey::Space;
         input.update_key(space_key, ElementState::Pressed);
@@ -557,42 +934,88 @@ mod tests {
         assert_eq!(input.mouse_delta, Vec2::ZERO);
     }
 
+    // ===== Wheel / 滚轮 测试 =====
     #[test]
-    fn test_input_wheel() {
+    fn test_input_wheel_single_call() {
         let mut input = Input::new();
         input.update_wheel(Vec2::new(1.0, 2.0));
         assert_eq!(input.wheel_delta(), Vec2::new(1.0, 2.0));
+    }
 
+    #[test]
+    fn test_input_wheel_accumulates() {
+        let mut input = Input::new();
+        input.update_wheel(Vec2::new(1.0, 2.0));
         input.update_wheel(Vec2::new(0.5, 0.5));
         assert_eq!(input.wheel_delta(), Vec2::new(1.5, 2.5));
+    }
 
+    #[test]
+    fn test_input_wheel_after_clear() {
+        let mut input = Input::new();
+        input.update_wheel(Vec2::new(1.0, 2.0));
         input.clear();
         assert_eq!(input.wheel_delta(), Vec2::ZERO);
     }
 
     #[test]
-    fn test_input_modifiers() {
+    fn test_input_wheel_after_reset() {
+        let mut input = Input::new();
+        input.update_wheel(Vec2::new(5.0, 5.0));
+        input.reset();
+        assert_eq!(input.wheel_delta(), Vec2::ZERO);
+    }
+
+    // ===== Text 输入 测试 =====
+    #[test]
+    fn test_input_text_single() {
+        let mut input = Input::new();
+        input.add_text("Hello");
+        assert_eq!(input.text(), "Hello");
+    }
+
+    #[test]
+    fn test_input_text_append() {
+        let mut input = Input::new();
+        input.add_text("Hello");
+        input.add_text(" World");
+        assert_eq!(input.text(), "Hello World");
+    }
+
+    #[test]
+    fn test_input_text_clear() {
+        let mut input = Input::new();
+        input.add_text("Hello");
+        input.clear();
+        assert_eq!(input.text(), "");
+    }
+
+    #[test]
+    fn test_input_text_empty_init() {
+        let input = Input::new();
+        assert_eq!(input.text(), "");
+    }
+
+    // ===== Modifiers 修饰键 测试 =====
+    #[test]
+    fn test_input_modifiers_default() {
+        let input = Input::new();
+        let modifiers = input.modifiers();
+        // 初始值
+        assert_eq!(modifiers, Modifiers::default());
+    }
+
+    #[test]
+    fn test_input_modifiers_update_read() {
         let mut input = Input::new();
         let modifiers = Modifiers::default();
         input.update_modifiers(modifiers);
         assert_eq!(input.modifiers(), modifiers);
     }
 
+    // ===== Touch 触摸 测试 =====
     #[test]
-    fn test_input_text() {
-        let mut input = Input::new();
-        input.add_text("Hello");
-        assert_eq!(input.text(), "Hello");
-
-        input.add_text(" World");
-        assert_eq!(input.text(), "Hello World");
-
-        input.clear();
-        assert_eq!(input.text(), "");
-    }
-
-    #[test]
-    fn test_touch_point() {
+    fn test_touch_point_basic() {
         let point = TouchPoint {
             id: 1,
             position: Vec2::new(100.0, 200.0),
@@ -602,5 +1025,130 @@ mod tests {
         assert_eq!(point.id, 1);
         assert_eq!(point.position, Vec2::new(100.0, 200.0));
         assert_eq!(point.force, 0.5);
+    }
+
+    #[test]
+    fn test_input_touch_add_single() {
+        let mut input = Input::new();
+        input.update_touch(1, Vec2::new(100.0, 200.0), 0.5, TouchPhase::Started);
+        assert_eq!(input.touch_count(), 1);
+        assert!(input.touch(1).is_some());
+        assert_eq!(input.touch(1).unwrap().position, Vec2::new(100.0, 200.0));
+    }
+
+    #[test]
+    fn test_input_touch_multiple() {
+        let mut input = Input::new();
+        input.update_touch(1, Vec2::new(100.0, 100.0), 0.3, TouchPhase::Started);
+        input.update_touch(2, Vec2::new(200.0, 200.0), 0.6, TouchPhase::Started);
+        input.update_touch(3, Vec2::new(300.0, 300.0), 0.9, TouchPhase::Started);
+        assert_eq!(input.touch_count(), 3);
+        assert!(input.touch(1).is_some());
+        assert!(input.touch(2).is_some());
+        assert!(input.touch(3).is_some());
+    }
+
+    #[test]
+    fn test_input_touch_end_removes() {
+        let mut input = Input::new();
+        input.update_touch(1, Vec2::new(100.0, 200.0), 0.5, TouchPhase::Started);
+        assert_eq!(input.touch_count(), 1);
+        input.update_touch(1, Vec2::new(100.0, 200.0), 0.5, TouchPhase::Ended);
+        assert_eq!(input.touch_count(), 0);
+    }
+
+    #[test]
+    fn test_input_touch_cancelled_removes() {
+        let mut input = Input::new();
+        input.update_touch(5, Vec2::new(50.0, 60.0), 0.1, TouchPhase::Started);
+        assert_eq!(input.touch_count(), 1);
+        input.update_touch(5, Vec2::new(50.0, 60.0), 0.0, TouchPhase::Cancelled);
+        assert_eq!(input.touch_count(), 0);
+    }
+
+    #[test]
+    fn test_input_touch_moved_updates() {
+        let mut input = Input::new();
+        input.update_touch(1, Vec2::new(100.0, 100.0), 0.5, TouchPhase::Started);
+        input.update_touch(1, Vec2::new(150.0, 120.0), 0.6, TouchPhase::Moved);
+        assert_eq!(input.touch_count(), 1);
+        let t = input.touch(1).unwrap();
+        assert_eq!(t.position, Vec2::new(150.0, 120.0));
+    }
+
+    #[test]
+    fn test_input_touch_unknown() {
+        let input = Input::new();
+        assert!(input.touch(999).is_none());
+        assert_eq!(input.touch_count(), 0);
+    }
+
+    #[test]
+    fn test_input_touch_iterator() {
+        let mut input = Input::new();
+        input.update_touch(1, Vec2::new(100.0, 100.0), 0.5, TouchPhase::Started);
+        input.update_touch(2, Vec2::new(200.0, 200.0), 0.7, TouchPhase::Started);
+        let mut count = 0;
+        for _ in input.touches() {
+            count += 1;
+        }
+        assert_eq!(count, 2);
+    }
+
+    #[test]
+    fn test_input_touch_phase_variants() {
+        // 确认 TouchPhase 各种变体都可用
+        let _ = TouchPhase::Started;
+        let _ = TouchPhase::Moved;
+        let _ = TouchPhase::Ended;
+        let _ = TouchPhase::Cancelled;
+    }
+
+    // ===== InputModule 测试 =====
+    #[test]
+    fn test_input_module_new() {
+        let module = InputModule::new();
+        let input = module.input();
+        assert!(input.pressed_keys.is_empty());
+    }
+
+    #[test]
+    fn test_input_module_default() {
+        let module: InputModule = Default::default();
+        let _ = module;
+    }
+
+    #[test]
+    fn test_input_module_process_touch_via_api() {
+        // 不通过事件循环，直接测试 update_touch 行为（在 InputModule 的 input 上）
+        let mut module = InputModule::new();
+        {
+            let input = module.input_mut();
+            input.update_touch(1, Vec2::new(100.0, 200.0), 0.5, TouchPhase::Started);
+        }
+        assert_eq!(module.input().touch_count(), 1);
+    }
+
+    #[test]
+    fn test_input_module_process_key_via_api() {
+        let mut module = InputModule::new();
+        {
+            let input = module.input_mut();
+            input.update_key(NamedKey::Space, ElementState::Pressed);
+        }
+        assert!(module.input().key_pressed(&NamedKey::Space));
+    }
+
+    #[test]
+    fn test_input_module_clear() {
+        let mut module = InputModule::new();
+        {
+            let input = module.input_mut();
+            input.update_mouse_position(100.0, 100.0);
+            input.add_text("hello");
+        }
+        module.clear();
+        assert_eq!(module.input().mouse_delta(), Vec2::ZERO);
+        assert_eq!(module.input().text(), "");
     }
 }

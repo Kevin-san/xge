@@ -366,7 +366,6 @@ mod tests {
     fn test_sprite_new() {
         let handle = Handle::<Texture2D>::null();
         let sprite = Sprite::new(handle);
-        // Cannot compare handles directly since Texture2D doesn't implement PartialEq
         assert!(sprite.source_rect().is_none());
         assert_eq!(sprite.color(), Color::WHITE);
         assert!(!sprite.flip_x());
@@ -387,6 +386,83 @@ mod tests {
         assert_eq!(sprite.color(), Color::RED);
         assert!(sprite.flip_x());
         assert_eq!(sprite.anchor(), Vec2::ZERO);
+    }
+
+    #[test]
+    fn test_sprite_with_flip_y() {
+        let handle = Handle::<Texture2D>::null();
+        let sprite = Sprite::from_texture(handle).with_flip_y(true);
+        assert!(sprite.flip_y());
+    }
+
+    #[test]
+    fn test_sprite_from_texture_rect() {
+        let handle = Handle::<Texture2D>::null();
+        let rect = Rect::new(10.0, 20.0, 64.0, 64.0);
+        let sprite = Sprite::from_texture_rect(handle, rect);
+        assert_eq!(sprite.source_rect(), Some(rect));
+    }
+
+    #[test]
+    fn test_sprite_set_source_rect() {
+        let handle = Handle::<Texture2D>::null();
+        let mut sprite = Sprite::from_texture(handle);
+        let rect = Rect::new(0.0, 0.0, 32.0, 32.0);
+        sprite.set_source_rect(Some(rect));
+        assert_eq!(sprite.source_rect(), Some(rect));
+        sprite.set_source_rect(None);
+        assert!(sprite.source_rect().is_none());
+    }
+
+    #[test]
+    fn test_sprite_set_color() {
+        let handle = Handle::<Texture2D>::null();
+        let mut sprite = Sprite::from_texture(handle);
+        sprite.set_color(Color::BLUE);
+        assert_eq!(sprite.color(), Color::BLUE);
+    }
+
+    #[test]
+    fn test_sprite_set_flip_x() {
+        let handle = Handle::<Texture2D>::null();
+        let mut sprite = Sprite::from_texture(handle);
+        sprite.set_flip_x(true);
+        assert!(sprite.flip_x());
+        sprite.set_flip_x(false);
+        assert!(!sprite.flip_x());
+    }
+
+    #[test]
+    fn test_sprite_set_flip_y() {
+        let handle = Handle::<Texture2D>::null();
+        let mut sprite = Sprite::from_texture(handle);
+        sprite.set_flip_y(true);
+        assert!(sprite.flip_y());
+    }
+
+    #[test]
+    fn test_sprite_set_anchor() {
+        let handle = Handle::<Texture2D>::null();
+        let mut sprite = Sprite::from_texture(handle);
+        sprite.set_anchor(Vec2::new(0.25, 0.75));
+        assert_eq!(sprite.anchor(), Vec2::new(0.25, 0.75));
+    }
+
+    #[test]
+    fn test_sprite_size_from_rect() {
+        let handle = Handle::<Texture2D>::null();
+        let rect = Rect::new(0.0, 0.0, 64.0, 32.0);
+        let sprite = Sprite::from_texture_rect(handle, rect);
+        let size = sprite.size();
+        assert_eq!(size.x, 64.0);
+        assert_eq!(size.y, 32.0);
+    }
+
+    #[test]
+    fn test_sprite_default_anchor_0_5() {
+        let handle = Handle::<Texture2D>::null();
+        let sprite = Sprite::from_texture(handle);
+        assert_eq!(sprite.anchor(), Vec2::new(0.5, 0.5));
     }
 
     #[test]
@@ -412,6 +488,42 @@ mod tests {
     }
 
     #[test]
+    fn test_sprite_builder_with_flip() {
+        let handle = Handle::<Texture2D>::null();
+        let sprite = SpriteBuilder::new()
+            .with_texture(handle)
+            .with_flip(true, false)
+            .build()
+            .unwrap();
+        assert!(sprite.flip_x());
+        assert!(!sprite.flip_y());
+    }
+
+    #[test]
+    fn test_sprite_builder_with_anchor() {
+        let handle = Handle::<Texture2D>::null();
+        let sprite = SpriteBuilder::new()
+            .with_texture(handle)
+            .with_anchor(Vec2::new(0.25, 0.75))
+            .build()
+            .unwrap();
+        assert_eq!(sprite.anchor(), Vec2::new(0.25, 0.75));
+    }
+
+    #[test]
+    fn test_sprite_builder_with_size() {
+        let handle = Handle::<Texture2D>::null();
+        let sprite = SpriteBuilder::new()
+            .with_texture(handle)
+            .with_size(Vec2::new(256.0, 128.0))
+            .build()
+            .unwrap();
+        let size = sprite.size();
+        assert_eq!(size.x, 256.0);
+        assert_eq!(size.y, 128.0);
+    }
+
+    #[test]
     fn test_rect() {
         let rect = Rect::new(10.0, 20.0, 100.0, 50.0);
         assert_eq!(rect.left(), 10.0);
@@ -426,6 +538,17 @@ mod tests {
         let rect = Rect::new(0.0, 0.0, 100.0, 100.0);
         assert!(rect.contains(Vec2::new(50.0, 50.0)));
         assert!(!rect.contains(Vec2::new(150.0, 50.0)));
+        assert!(!rect.contains(Vec2::new(50.0, 150.0)));
+        assert!(!rect.contains(Vec2::new(-10.0, -10.0)));
+    }
+
+    #[test]
+    fn test_rect_contains_edges() {
+        let rect = Rect::new(0.0, 0.0, 100.0, 100.0);
+        // Origin point (top-left corner)
+        assert!(rect.contains(Vec2::new(0.0, 0.0)));
+        // Bottom-right corner
+        assert!(rect.contains(Vec2::new(100.0, 100.0)));
     }
 
     #[test]
@@ -433,5 +556,22 @@ mod tests {
         let rect = Rect::from_size(50.0, 100.0);
         assert_eq!(rect.width, 50.0);
         assert_eq!(rect.height, 100.0);
+        assert_eq!(rect.x, 0.0);
+        assert_eq!(rect.y, 0.0);
+    }
+
+    #[test]
+    fn test_rect_default() {
+        let rect: Rect = Default::default();
+        assert_eq!(rect.x, 0.0);
+        assert_eq!(rect.y, 0.0);
+        assert_eq!(rect.width, 0.0);
+        assert_eq!(rect.height, 0.0);
+    }
+
+    #[test]
+    fn test_rect_center_of_unit_rect() {
+        let rect = Rect::new(0.0, 0.0, 2.0, 2.0);
+        assert_eq!(rect.center(), Vec2::new(1.0, 1.0));
     }
 }

@@ -547,4 +547,233 @@ mod tests {
         let code = graph.generate_wgsl().unwrap();
         assert!(code.contains("f32"));
     }
+
+    #[test]
+    fn test_graph_node_kind_input() {
+        let kind = NodeKind::Input {
+            name: "albedo".to_string(),
+            ty: ShaderNodeType::Vec3,
+        };
+        if let NodeKind::Input { name, ty } = kind {
+            assert_eq!(name, "albedo");
+            assert_eq!(ty, ShaderNodeType::Vec3);
+        } else {
+            panic!("Wrong node kind");
+        }
+    }
+
+    #[test]
+    fn test_graph_node_kind_output() {
+        let kind = NodeKind::Output {
+            name: "out".to_string(),
+            ty: ShaderNodeType::Color,
+        };
+        if let NodeKind::Output { name, ty } = kind {
+            assert_eq!(name, "out");
+            assert_eq!(ty, ShaderNodeType::Color);
+        } else {
+            panic!("Wrong node kind");
+        }
+    }
+
+    #[test]
+    fn test_graph_constant_vec2() {
+        let kind = NodeKind::ConstantVec2([0.5, 0.75]);
+        if let NodeKind::ConstantVec2(v) = kind {
+            assert_eq!(v, [0.5, 0.75]);
+        } else {
+            panic!("Wrong node kind");
+        }
+    }
+
+    #[test]
+    fn test_graph_constant_vec3() {
+        let kind = NodeKind::ConstantVec3([1.0, 0.5, 0.2]);
+        if let NodeKind::ConstantVec3(v) = kind {
+            assert_eq!(v, [1.0, 0.5, 0.2]);
+        } else {
+            panic!("Wrong node kind");
+        }
+    }
+
+    #[test]
+    fn test_graph_constant_vec4() {
+        let kind = NodeKind::ConstantVec4([1.0, 0.5, 0.2, 0.8]);
+        if let NodeKind::ConstantVec4(v) = kind {
+            assert_eq!(v, [1.0, 0.5, 0.2, 0.8]);
+        } else {
+            panic!("Wrong node kind");
+        }
+    }
+
+    #[test]
+    fn test_graph_constant_color() {
+        let kind = NodeKind::ConstantColor([1.0, 0.0, 0.0, 1.0]);
+        if let NodeKind::ConstantColor(v) = kind {
+            assert_eq!(v, [1.0, 0.0, 0.0, 1.0]);
+        } else {
+            panic!("Wrong node kind");
+        }
+    }
+
+    #[test]
+    fn test_graph_constant_bool() {
+        let kind = NodeKind::ConstantBool(true);
+        if let NodeKind::ConstantBool(v) = kind {
+            assert!(v);
+        } else {
+            panic!("Wrong node kind");
+        }
+    }
+
+    #[test]
+    fn test_graph_node_kind_texture_sample() {
+        let kind = NodeKind::TextureSample {
+            name: "tex".to_string(),
+        };
+        if let NodeKind::TextureSample { name } = kind {
+            assert_eq!(name, "tex");
+        } else {
+            panic!("Wrong node kind");
+        }
+    }
+
+    #[test]
+    fn test_graph_node_kind_normal_map() {
+        let kind = NodeKind::NormalMap { strength: 2.0 };
+        if let NodeKind::NormalMap { strength } = kind {
+            assert_eq!(strength, 2.0);
+        } else {
+            panic!("Wrong node kind");
+        }
+    }
+
+    #[test]
+    fn test_graph_node_kind_custom() {
+        let kind = NodeKind::Custom {
+            name: "func".to_string(),
+            code: "fn func() {}".to_string(),
+        };
+        if let NodeKind::Custom { name, code } = kind {
+            assert_eq!(name, "func");
+            assert_eq!(code, "fn func() {}");
+        } else {
+            panic!("Wrong node kind");
+        }
+    }
+
+    #[test]
+    fn test_graph_node_kind_swizzle() {
+        let kind = NodeKind::Swizzle {
+            pattern: "rgb".to_string(),
+        };
+        if let NodeKind::Swizzle { pattern } = kind {
+            assert_eq!(pattern, "rgb");
+        } else {
+            panic!("Wrong node kind");
+        }
+    }
+
+    #[test]
+    fn test_graph_add_multiple_nodes() {
+        let mut graph = ShaderGraph::new();
+        let id1 = graph.add_node(NodeKind::ConstantFloat(1.0));
+        let id2 = graph.add_node(NodeKind::ConstantFloat(2.0));
+        let id3 = graph.add_node(NodeKind::Add);
+        let _edge1 = graph.add_edge(id1, id3, 0, 0);
+        let _edge2 = graph.add_edge(id2, id3, 0, 1);
+
+        assert_eq!(graph.nodes().len(), 3);
+        assert_eq!(graph.edges().len(), 2);
+    }
+
+    #[test]
+    fn test_graph_remove_node_removes_edges() {
+        let mut graph = ShaderGraph::new();
+        let id1 = graph.add_node(NodeKind::ConstantFloat(1.0));
+        let id2 = graph.add_node(NodeKind::Add);
+        let _edge = graph.add_edge(id1, id2, 0, 0);
+
+        assert_eq!(graph.nodes().len(), 2);
+        assert_eq!(graph.edges().len(), 1);
+
+        graph.remove_node(id1);
+        assert_eq!(graph.nodes().len(), 1);
+        assert_eq!(graph.edges().len(), 0);
+    }
+
+    #[test]
+    fn test_graph_validate_empty() {
+        let graph = ShaderGraph::new();
+        assert!(graph.validate().is_ok());
+    }
+
+    #[test]
+    fn test_graph_validate_with_cycle_fails() {
+        let mut graph = ShaderGraph::new();
+        let a = graph.add_node(NodeKind::Add);
+        let b = graph.add_node(NodeKind::Add);
+        graph.add_edge(a, b, 0, 0);
+        graph.add_edge(b, a, 0, 0);
+
+        assert!(graph.validate().is_err());
+    }
+
+    #[test]
+    fn test_graph_validate_with_valid_graph() {
+        let mut graph = ShaderGraph::new();
+        let a = graph.add_node(NodeKind::ConstantFloat(1.0));
+        let b = graph.add_node(NodeKind::ConstantFloat(2.0));
+        let c = graph.add_node(NodeKind::Add);
+        graph.add_edge(a, c, 0, 0);
+        graph.add_edge(b, c, 0, 1);
+
+        assert!(graph.validate().is_ok());
+    }
+
+    #[test]
+    fn test_graph_topological_order_long_chain() {
+        let mut graph = ShaderGraph::new();
+        let nodes: Vec<NodeId> = (0..5)
+            .map(|_| graph.add_node(NodeKind::ConstantFloat(1.0)))
+            .collect();
+        for i in 0..4 {
+            graph.add_edge(nodes[i], nodes[i + 1], 0, 0);
+        }
+        let _order = graph.topological_order().unwrap();
+        // Just verify topological order succeeds for a chain graph
+    }
+
+    #[test]
+    fn test_graph_node_id_type() {
+        let nid = NodeId(42);
+        assert_eq!(nid.0, 42);
+    }
+
+    #[test]
+    fn test_graph_edge_id_type() {
+        let eid = EdgeId(7);
+        assert_eq!(eid.0, 7);
+    }
+
+    #[test]
+    fn test_graph_json_empty_roundtrip() {
+        let graph = ShaderGraph::new();
+        let json = graph.to_json().unwrap();
+        let parsed = ShaderGraph::from_json(&json).unwrap();
+        assert_eq!(parsed.nodes().len(), 0);
+        assert_eq!(parsed.edges().len(), 0);
+    }
+
+    #[test]
+    fn test_graph_node_default() {
+        let n: NodeId = NodeId::default();
+        assert_eq!(n.0, 0);
+    }
+
+    #[test]
+    fn test_graph_edge_default() {
+        let e: EdgeId = EdgeId::default();
+        assert_eq!(e.0, 0);
+    }
 }

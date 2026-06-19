@@ -314,4 +314,224 @@ mod tests {
         mat.set_sheen_vec3(Vec3::new(0.2, 0.3, 0.4));
         assert_eq!(mat.sheen_vec3(), Vec3::new(0.2, 0.3, 0.4));
     }
+
+    #[test]
+    fn test_material_default_values() {
+        let mat = PbrMaterial::default();
+        assert_eq!(mat.albedo, [1.0, 1.0, 1.0]);
+        assert_eq!(mat.metallic, 0.0);
+        assert_eq!(mat.roughness, 0.5);
+        assert_eq!(mat.alpha_mode, AlphaMode::Opaque);
+        assert_eq!(mat.alpha_cutoff, 0.5);
+        assert!(!mat.double_sided);
+        assert!(mat.casts_shadow);
+        assert!(mat.receives_shadow);
+    }
+
+    #[test]
+    fn test_material_new() {
+        let mat = PbrMaterial::new();
+        assert_eq!(mat.albedo, [1.0, 1.0, 1.0]);
+    }
+
+    #[test]
+    fn test_material_flags_with_height_map() {
+        let mat = PbrMaterial {
+            height_map: Some("height.png".to_string()),
+            parallax_strength: 0.5,
+            ..PbrMaterial::default()
+        };
+        let flags = mat.flags();
+        assert!(flags.contains(PbrMaterialFlags::HAS_HEIGHT_MAP));
+        assert!(flags.contains(PbrMaterialFlags::USE_PARALLAX));
+    }
+
+    #[test]
+    fn test_material_flags_height_map_no_parallax() {
+        let mat = PbrMaterial {
+            height_map: Some("height.png".to_string()),
+            parallax_strength: 0.0,
+            ..PbrMaterial::default()
+        };
+        let flags = mat.flags();
+        assert!(flags.contains(PbrMaterialFlags::HAS_HEIGHT_MAP));
+        assert!(!flags.contains(PbrMaterialFlags::USE_PARALLAX));
+    }
+
+    #[test]
+    fn test_material_flags_with_anisotropy() {
+        let mat = PbrMaterial {
+            anisotropy: 1.0,
+            ..PbrMaterial::default()
+        };
+        let flags = mat.flags();
+        assert!(flags.contains(PbrMaterialFlags::USE_ANISOTROPY));
+    }
+
+    #[test]
+    fn test_material_flags_with_sheen() {
+        let mat = PbrMaterial {
+            sheen: [1.0, 0.0, 0.0],
+            sheen_roughness: 0.3,
+            ..PbrMaterial::default()
+        };
+        let flags = mat.flags();
+        assert!(flags.contains(PbrMaterialFlags::USE_SHEEN));
+    }
+
+    #[test]
+    fn test_material_flags_with_subsurface() {
+        let mat = PbrMaterial {
+            subsurface: 0.5,
+            ..PbrMaterial::default()
+        };
+        let flags = mat.flags();
+        assert!(flags.contains(PbrMaterialFlags::USE_SUBSURFACE));
+    }
+
+    #[test]
+    fn test_material_flags_with_emissive_map() {
+        let mat = PbrMaterial {
+            emissive_map: Some("emissive.png".to_string()),
+            ..PbrMaterial::default()
+        };
+        let flags = mat.flags();
+        assert!(flags.contains(PbrMaterialFlags::HAS_EMISSIVE_MAP));
+    }
+
+    #[test]
+    fn test_material_flags_with_metallic_map() {
+        let mat = PbrMaterial {
+            metallic_map: Some("metallic.png".to_string()),
+            ..PbrMaterial::default()
+        };
+        let flags = mat.flags();
+        assert!(flags.contains(PbrMaterialFlags::HAS_METALLIC_MAP));
+    }
+
+    #[test]
+    fn test_material_flags_with_roughness_map() {
+        let mat = PbrMaterial {
+            roughness_map: Some("roughness.png".to_string()),
+            ..PbrMaterial::default()
+        };
+        let flags = mat.flags();
+        assert!(flags.contains(PbrMaterialFlags::HAS_ROUGHNESS_MAP));
+    }
+
+    #[test]
+    fn test_material_flags_with_ao_map() {
+        let mat = PbrMaterial {
+            ao_map: Some("ao.png".to_string()),
+            ..PbrMaterial::default()
+        };
+        let flags = mat.flags();
+        assert!(flags.contains(PbrMaterialFlags::HAS_AO_MAP));
+    }
+
+    #[test]
+    fn test_material_json_multiple_textures() {
+        let mat = PbrMaterial {
+            albedo: [0.8, 0.2, 0.1],
+            metallic: 0.9,
+            roughness: 0.3,
+            albedo_map: Some("albedo.png".to_string()),
+            normal_map: Some("normal.png".to_string()),
+            metallic_map: Some("metallic.png".to_string()),
+            roughness_map: Some("roughness.png".to_string()),
+            ao_map: Some("ao.png".to_string()),
+            emissive_map: Some("emissive.png".to_string()),
+            height_map: Some("height.png".to_string()),
+            clear_coat: 0.5,
+            clear_coat_roughness: 0.2,
+            anisotropy: 0.1,
+            sheen: [1.0, 0.0, 0.0],
+            sheen_roughness: 0.5,
+            subsurface: 0.2,
+            parallax_strength: 0.1,
+            alpha_mode: AlphaMode::Mask,
+            alpha_cutoff: 0.3,
+            double_sided: true,
+            casts_shadow: false,
+            receives_shadow: false,
+            ..PbrMaterial::default()
+        };
+        let json = mat.to_json().unwrap();
+        let parsed = PbrMaterial::from_json(&json).unwrap();
+        assert_eq!(mat.albedo, parsed.albedo);
+        assert_eq!(mat.metallic, parsed.metallic);
+        assert_eq!(mat.alpha_cutoff, parsed.alpha_cutoff);
+    }
+
+    #[test]
+    fn test_material_alpha_mode_mask() {
+        let mat = PbrMaterial {
+            alpha_mode: AlphaMode::Mask,
+            ..PbrMaterial::default()
+        };
+        assert_eq!(mat.alpha_mode, AlphaMode::Mask);
+    }
+
+    #[test]
+    fn test_material_alpha_mode_blend() {
+        let mat = PbrMaterial {
+            alpha_mode: AlphaMode::Blend,
+            ..PbrMaterial::default()
+        };
+        assert_eq!(mat.alpha_mode, AlphaMode::Blend);
+    }
+
+    #[test]
+    fn test_material_emissive_fields() {
+        let mat = PbrMaterial {
+            emissive: [1.0, 0.8, 0.2],
+            emissive_intensity: 2.0,
+            ..PbrMaterial::default()
+        };
+        assert_eq!(mat.emissive_vec3(), Vec3::new(1.0, 0.8, 0.2));
+        assert_eq!(mat.emissive_intensity, 2.0);
+    }
+
+    #[test]
+    fn test_material_clear_coat_fields() {
+        let mat = PbrMaterial {
+            clear_coat: 0.8,
+            clear_coat_roughness: 0.1,
+            ..PbrMaterial::default()
+        };
+        assert_eq!(mat.clear_coat, 0.8);
+        assert_eq!(mat.clear_coat_roughness, 0.1);
+    }
+
+    #[test]
+    fn test_material_parallax_without_height() {
+        let mat = PbrMaterial {
+            parallax_strength: 0.5,
+            height_map: None,
+            ..PbrMaterial::default()
+        };
+        let flags = mat.flags();
+        // Without height map, parallax flag should not be set
+        assert!(!flags.contains(PbrMaterialFlags::USE_PARALLAX));
+    }
+
+    #[test]
+    fn test_material_double_sided_flag() {
+        let mat = PbrMaterial {
+            double_sided: true,
+            ..PbrMaterial::default()
+        };
+        assert!(mat.double_sided);
+    }
+
+    #[test]
+    fn test_material_shadow_flags_combinations() {
+        let mat = PbrMaterial {
+            casts_shadow: false,
+            receives_shadow: true,
+            ..PbrMaterial::default()
+        };
+        assert!(!mat.casts_shadow);
+        assert!(mat.receives_shadow);
+    }
 }

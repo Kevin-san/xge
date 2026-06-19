@@ -221,6 +221,7 @@ fn mat_to_quat(mat: Mat4) -> Quat {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use engine_math::{Vec3, Mat4};
 
     #[test]
     fn test_transform_identity() {
@@ -257,5 +258,114 @@ mod tests {
         let b = Transform3D::from_translation(Vec3::ONE);
         let mid = Transform3D::lerp(&a, &b, 0.5);
         assert_eq!(mid.translation(), Vec3::splat(0.5));
+    }
+
+    #[test]
+    fn test_transform_new() {
+        let t = Transform3D::new();
+        assert_eq!(t.translation(), Vec3::ZERO);
+    }
+
+    #[test]
+    fn test_transform_from_rotation() {
+        let t = Transform3D::from_rotation(Quat::IDENTITY);
+        assert_eq!(t.translation(), Vec3::ZERO);
+        assert_eq!(t.scale(), Vec3::ONE);
+    }
+
+    #[test]
+    fn test_transform_from_scale() {
+        let t = Transform3D::from_scale(Vec3::new(2.0, 2.0, 2.0));
+        assert_eq!(t.scale(), Vec3::new(2.0, 2.0, 2.0));
+    }
+
+    #[test]
+    fn test_transform_scale_by() {
+        let mut t = Transform3D::new();
+        t.scale_by(Vec3::new(2.0, 3.0, 4.0));
+        assert_eq!(t.scale(), Vec3::new(2.0, 3.0, 4.0));
+    }
+
+    #[test]
+    fn test_transform_translate() {
+        let mut t = Transform3D::new();
+        t.translate(Vec3::new(1.0, 2.0, 3.0));
+        assert_eq!(t.translation(), Vec3::new(1.0, 2.0, 3.0));
+    }
+
+    #[test]
+    fn test_transform_rotate() {
+        let mut t = Transform3D::new();
+        t.rotate(Quat::IDENTITY);
+        assert_eq!(t.rotation(), Quat::IDENTITY);
+    }
+
+    #[test]
+    fn test_transform_matrix_identity() {
+        let t = Transform3D::IDENTITY;
+        let m = t.matrix();
+        assert_eq!(m.cols[0][0], 1.0);
+        assert_eq!(m.cols[1][1], 1.0);
+        assert_eq!(m.cols[2][2], 1.0);
+        assert_eq!(m.cols[3][3], 1.0);
+    }
+
+    #[test]
+    fn test_transform_inverse_non_identity() {
+        let t = Transform3D::from_translation(Vec3::new(5.0, 3.0, 2.0));
+        let m = t.matrix();
+        let inv = t.inverse_matrix();
+        let result = m * inv;
+        // Should be approximately identity
+        for i in 0..4 {
+            for j in 0..4 {
+                let expected = if i == j { 1.0 } else { 0.0 };
+                assert!((result.cols[i][j] - expected).abs() < 1e-4);
+            }
+        }
+    }
+
+    #[test]
+    fn test_transform_transform_point_translation() {
+        let t = Transform3D::from_translation(Vec3::new(5.0, 5.0, 5.0));
+        let p = t.transform_point(Vec3::ZERO);
+        assert_eq!(p, Vec3::new(5.0, 5.0, 5.0));
+    }
+
+    #[test]
+    fn test_transform_transform_vector_scale() {
+        let t = Transform3D::from_scale(Vec3::new(2.0, 3.0, 4.0));
+        let v = t.transform_vector(Vec3::ONE);
+        assert_eq!(v, Vec3::new(2.0, 3.0, 4.0));
+    }
+
+    #[test]
+    fn test_transform_transform_direction_rot() {
+        let t = Transform3D::from_rotation(Quat::IDENTITY);
+        let v = t.transform_direction(Vec3::X);
+        assert_eq!(v, Vec3::X);
+    }
+
+    #[test]
+    fn test_transform_look_at() {
+        let mut t = Transform3D::new();
+        t.look_at(Vec3::new(10.0, 0.0, 0.0), Vec3::Y);
+        // After looking at +X, forward should point towards +X
+    }
+
+    #[test]
+    fn test_transform_lerp_t0() {
+        let a = Transform3D::from_translation(Vec3::ZERO);
+        let b = Transform3D::from_translation(Vec3::new(10.0, 10.0, 10.0));
+        let result = Transform3D::lerp(&a, &b, 0.0);
+        assert_eq!(result.translation(), Vec3::ZERO);
+    }
+
+    #[test]
+    fn test_transform_lerp_t1() {
+        let a = Transform3D::from_translation(Vec3::ZERO);
+        let b = Transform3D::from_translation(Vec3::new(10.0, 10.0, 10.0));
+        let result = Transform3D::lerp(&a, &b, 1.0);
+        assert_eq!(result.translation(), Vec3::new(10.0, 10.0, 10.0));
     }
 }

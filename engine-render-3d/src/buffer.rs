@@ -113,3 +113,122 @@ impl IndexBuffer {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use engine_math::{Vec2, Vec3};
+
+    #[test]
+    fn test_index_format_u16_size() {
+        assert_eq!(IndexFormat::U16.byte_size(), 2);
+    }
+
+    #[test]
+    fn test_index_format_u32_size() {
+        assert_eq!(IndexFormat::U32.byte_size(), 4);
+    }
+
+    #[test]
+    fn test_vertex_buffer_new() {
+        let vertices = vec![
+            Vertex::new(Vec3::ZERO, Vec3::Y, Vec2::ZERO),
+            Vertex::new(Vec3::X, Vec3::Y, Vec2::X),
+        ];
+        let vb = VertexBuffer::new(vertices);
+        assert_eq!(vb.len(), 2);
+    }
+
+    #[test]
+    fn test_vertex_buffer_is_empty() {
+        let vb = VertexBuffer::new(Vec::new());
+        assert!(vb.is_empty());
+    }
+
+    #[test]
+    fn test_vertex_buffer_size_bytes() {
+        let vertices = vec![
+            Vertex::new(Vec3::ZERO, Vec3::Y, Vec2::ZERO),
+            Vertex::new(Vec3::X, Vec3::Y, Vec2::X),
+        ];
+        let vb = VertexBuffer::new(vertices);
+        // stride = 32 bytes, 2 vertices
+        assert_eq!(vb.size_bytes(), 64);
+    }
+
+    #[test]
+    fn test_vertex_buffer_vertices_access() {
+        let vertices = vec![Vertex::new(Vec3::ONE, Vec3::Y, Vec2::ONE)];
+        let vb = VertexBuffer::new(vertices);
+        let verts = vb.vertices();
+        assert_eq!(verts[0].position, Vec3::ONE);
+    }
+
+    #[test]
+    fn test_index_buffer_new_u32() {
+        let indices = vec![0u32, 1, 2, 3, 4, 5];
+        let ib = IndexBuffer::new(indices);
+        assert_eq!(ib.index_count(), 6);
+        assert_eq!(ib.format(), IndexFormat::U32);
+    }
+
+    #[test]
+    fn test_index_buffer_new_u16() {
+        let indices = vec![0u16, 1, 2];
+        let ib = IndexBuffer::new_u16(indices);
+        assert_eq!(ib.index_count(), 3);
+        assert_eq!(ib.format(), IndexFormat::U16);
+    }
+
+    #[test]
+    fn test_index_buffer_u16_size_bytes() {
+        let indices = vec![0u16, 1, 2, 3, 4, 5];
+        let ib = IndexBuffer::new_u16(indices);
+        // 6 indices * 2 bytes
+        assert_eq!(ib.size_bytes(), 12);
+    }
+
+    #[test]
+    fn test_index_buffer_u32_size_bytes() {
+        let indices = vec![0u32, 1, 2, 3, 4, 5];
+        let ib = IndexBuffer::new(indices);
+        // 6 indices * 4 bytes
+        assert_eq!(ib.size_bytes(), 24);
+    }
+
+    #[test]
+    fn test_index_buffer_indices_access() {
+        let indices = vec![10u32, 20, 30];
+        let ib = IndexBuffer::new(indices);
+        assert_eq!(ib.indices(), &[10, 20, 30]);
+    }
+
+    #[test]
+    fn test_index_buffer_as_bytes_u32() {
+        let indices = vec![1u32];
+        let ib = IndexBuffer::new(indices);
+        let bytes = ib.as_bytes();
+        assert_eq!(bytes.len(), 4);
+    }
+
+    #[test]
+    fn test_index_buffer_as_bytes_u16() {
+        let indices = vec![1u16, 2u16];
+        let ib = IndexBuffer::new_u16(indices);
+        let bytes = ib.as_bytes();
+        assert_eq!(bytes.len(), 4);
+    }
+
+    #[test]
+    fn test_vertex_buffer_empty_size_bytes() {
+        let vb = VertexBuffer::new(Vec::new());
+        assert_eq!(vb.size_bytes(), 0);
+    }
+
+    #[test]
+    fn test_index_buffer_empty_u32() {
+        let ib = IndexBuffer::new(Vec::new());
+        assert_eq!(ib.index_count(), 0);
+        assert_eq!(ib.size_bytes(), 0);
+    }
+}

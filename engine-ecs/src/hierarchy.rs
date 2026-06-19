@@ -319,4 +319,47 @@ mod tests {
 
         assert!(world.get_parent(child).is_none());
     }
+
+    #[test]
+    fn test_parent_child_multiple_children() {
+        let mut world = World::new();
+        let parent = world.spawn();
+        let child1 = world.spawn();
+        let child2 = world.spawn();
+        let child3 = world.spawn();
+        world.set_parent(child1, Some(parent));
+        world.set_parent(child2, Some(parent));
+        world.set_parent(child3, Some(parent));
+        let children = world.get_children(parent).unwrap();
+        assert_eq!(children.entities.len(), 3);
+    }
+
+    #[test]
+    fn test_three_level_hierarchy() {
+        let mut world = World::new();
+        let root = world.spawn();
+        let mid = world.spawn();
+        let leaf = world.spawn();
+        world.set_parent(mid, Some(root));
+        world.set_parent(leaf, Some(mid));
+        let ancestors = world.get_ancestors(leaf);
+        assert!(ancestors.contains(&root));
+    }
+
+    #[test]
+    fn test_get_parent_none() {
+        let mut world = World::new();
+        let e = world.spawn();
+        assert!(world.get_parent(e).is_none());
+    }
+
+    #[test]
+    fn test_children_is_owned() {
+        let mut world = World::new();
+        let parent = world.spawn();
+        let child = world.spawn();
+        world.set_parent(child, Some(parent));
+        // children 字段存在验证
+        assert_eq!(world.get_children(parent).iter().count(), 1);
+    }
 }

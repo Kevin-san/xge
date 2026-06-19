@@ -168,13 +168,90 @@ mod tests {
     }
 
     #[test]
+    fn test_render_stats_new() {
+        let stats = RenderStats::new();
+        assert_eq!(stats.draw_calls, 0);
+        assert_eq!(stats.vertices, 0);
+        assert_eq!(stats.indices, 0);
+        assert_eq!(stats.batches, 0);
+    }
+
+    #[test]
     fn test_render_stats_reset() {
         let mut stats = RenderStats::new();
         stats.add_draw_call(5);
         stats.add_vertices(100);
+        stats.add_indices(200);
+        stats.add_batch(10);
+        stats.add_texture_switch();
+
         stats.reset();
+
         assert_eq!(stats.draw_calls, 0);
         assert_eq!(stats.vertices, 0);
+        assert_eq!(stats.indices, 0);
+        assert_eq!(stats.batches, 0);
+        assert_eq!(stats.texture_switches, 0);
+    }
+
+    #[test]
+    fn test_render_stats_add_draw_call() {
+        let mut stats = RenderStats::new();
+        stats.add_draw_call(3);
+        assert_eq!(stats.draw_calls, 3);
+        stats.add_draw_call(2);
+        assert_eq!(stats.draw_calls, 5);
+    }
+
+    #[test]
+    fn test_render_stats_add_vertices() {
+        let mut stats = RenderStats::new();
+        stats.add_vertices(100);
+        stats.add_vertices(250);
+        assert_eq!(stats.vertices, 350);
+    }
+
+    #[test]
+    fn test_render_stats_add_indices() {
+        let mut stats = RenderStats::new();
+        stats.add_indices(500);
+        assert_eq!(stats.indices, 500);
+    }
+
+    #[test]
+    fn test_render_stats_add_batch() {
+        let mut stats = RenderStats::new();
+        stats.add_batch(5);
+        assert_eq!(stats.batches, 5);
+    }
+
+    #[test]
+    fn test_render_stats_add_texture_switch() {
+        let mut stats = RenderStats::new();
+        stats.add_texture_switch();
+        stats.add_texture_switch();
+        assert_eq!(stats.texture_switches, 2);
+    }
+
+    #[test]
+    fn test_render_stats_set_draw_calls() {
+        let mut stats = RenderStats::new();
+        stats.set_draw_calls(42);
+        assert_eq!(stats.draw_calls, 42);
+    }
+
+    #[test]
+    fn test_render_stats_set_vertices() {
+        let mut stats = RenderStats::new();
+        stats.set_vertices(1234);
+        assert_eq!(stats.vertices, 1234);
+    }
+
+    #[test]
+    fn test_render_stats_set_indices() {
+        let mut stats = RenderStats::new();
+        stats.set_indices(5678);
+        assert_eq!(stats.indices, 5678);
     }
 
     #[test]
@@ -188,5 +265,15 @@ mod tests {
         holder.reset();
         let stats = holder.get();
         assert_eq!(stats.draw_calls, 0);
+    }
+
+    #[test]
+    fn test_render_stats_holder_batch_and_indices() {
+        let holder = RenderStatsHolder::new();
+        holder.add_batch(5);
+        holder.add_indices(100);
+        let stats = holder.get();
+        assert_eq!(stats.batches, 5);
+        assert_eq!(stats.indices, 100);
     }
 }

@@ -349,12 +349,9 @@ impl PhysicsWorld2D {
                 ColliderShape::Aabb { half_extents } | ColliderShape::Rectangle { half_extents },
             ) => self.circle_box_collision(
                 (index_a, index_b),
-                world_pos_a,
-                world_pos_b,
-                *radius,
-                *half_extents,
+                (world_pos_a, *radius),
+                (world_pos_b, *half_extents, rot_b),
                 collider_b.shape(),
-                rot_b,
             ),
             (
                 ColliderShape::Aabb { half_extents } | ColliderShape::Rectangle { half_extents },
@@ -362,12 +359,9 @@ impl PhysicsWorld2D {
             ) => {
                 let manifold = self.circle_box_collision(
                     (index_b, index_a),
-                    world_pos_b,
-                    world_pos_a,
-                    *radius,
-                    *half_extents,
+                    (world_pos_b, *radius),
+                    (world_pos_a, *half_extents, rot_a),
                     collider_a.shape(),
-                    rot_a,
                 );
                 // 反转法线方向
                 manifold.map(|m| {
@@ -422,14 +416,13 @@ impl PhysicsWorld2D {
     fn circle_box_collision(
         &self,
         indices: (usize, usize),
-        circle_pos: Vec2,
-        box_pos: Vec2,
-        radius: f32,
-        half_extents: Vec2,
+        circle: (Vec2, f32),
+        rect: (Vec2, Vec2, f32),
         box_shape: &ColliderShape,
-        box_rotation: f32,
     ) -> Option<Manifold> {
         let (circle_index, box_index) = indices;
+        let (circle_pos, radius) = circle;
+        let (box_pos, half_extents, box_rotation) = rect;
         // 对于 AABB，直接计算
         // 对于旋转矩形，需要将圆转换到矩形的局部坐标系
         let (local_circle_pos, is_rotated) = match box_shape {

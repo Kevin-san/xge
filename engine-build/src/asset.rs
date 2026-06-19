@@ -436,10 +436,54 @@ mod tests {
     }
 
     #[test]
+    fn test_asset_kind_from_extension_case_insensitive() {
+        // 大写扩展名也应当被识别
+        assert_eq!(
+            AssetKind::from_extension(Some("PNG".as_ref())),
+            AssetKind::Texture
+        );
+        assert_eq!(
+            AssetKind::from_extension(Some("Mp3".as_ref())),
+            AssetKind::Audio
+        );
+    }
+
+    #[test]
+    fn test_asset_kind_from_extension_none() {
+        match AssetKind::from_extension(None) {
+            AssetKind::Custom(_) => {}
+            _ => panic!("expected Custom for None extension"),
+        }
+    }
+
+    #[test]
+    fn test_asset_kind_as_str() {
+        assert_eq!(AssetKind::Texture.as_str(), "texture");
+        assert_eq!(AssetKind::Audio.as_str(), "audio");
+        assert_eq!(AssetKind::Model.as_str(), "model");
+        assert_eq!(AssetKind::Scene.as_str(), "scene");
+        assert_eq!(AssetKind::Prefab.as_str(), "prefab");
+        assert_eq!(AssetKind::Font.as_str(), "font");
+    }
+
+    #[test]
     fn test_asset_manifest_new() {
         let manifest = AssetManifest::new();
         assert_eq!(manifest.version, "1.0.0");
         assert!(manifest.entries.is_empty());
+    }
+
+    #[test]
+    fn test_asset_manifest_add() {
+        let mut manifest = AssetManifest::new();
+        manifest.add(AssetEntry {
+            path: PathBuf::from("test.png"),
+            hash: "abc".to_string(),
+            size: 100,
+            kind: AssetKind::Texture,
+            dependencies: vec![],
+        });
+        assert_eq!(manifest.entries().len(), 1);
     }
 
     #[test]
@@ -459,14 +503,36 @@ mod tests {
     }
 
     #[test]
-    fn test_diff_result_empty() {
-        let diff = DiffResult {
-            added: Vec::new(),
-            modified: Vec::new(),
-            removed: Vec::new(),
-        };
-        assert!(diff.is_empty());
-        assert_eq!(diff.total_changes(), 0);
+    fn test_asset_manifest_json_empty() {
+        let manifest = AssetManifest::new();
+        let json = manifest.to_json();
+        assert!(!json.is_empty());
+        let parsed = AssetManifest::from_json(&json).unwrap();
+        assert!(parsed.entries.is_empty());
+    }
+
+    #[test]
+    fn test_asset_manifest_json_invalid() {
+        let result = AssetManifest::from_json("not json at all!!!");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_asset_manifest_save_load() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("manifest.json");
+        let mut manifest = AssetManifest::new();
+        manifest.add(AssetEntry {
+            path: PathBuf::from("x.png"),
+            hash: "h".to_string(),
+            size: 42,
+            kind: AssetKind::Texture,
+            dependencies: vec![],
+        });
+        manifest.save(&path).unwrap();
+        assert!(path.exists());
+        let loaded = AssetManifest::load(&path).unwrap();
+        assert_eq!(loaded.entries.len(), 1);
     }
 
     #[test]
@@ -510,6 +576,51 @@ mod tests {
     }
 
     #[test]
+    fn test_diff_result_empty() {
+        let diff = DiffResult {
+            added: Vec::new(),
+            modified: Vec::new(),
+            removed: Vec::new(),
+        };
+        assert!(diff.is_empty());
+        assert_eq!(diff.total_changes(), 0);
+    }
+
+    #[test]
+    fn test_diff_result_total_changes() {
+        let diff = DiffResult {
+            added: vec![AssetEntry {
+                path: PathBuf::from("a"),
+                hash: "h".to_string(),
+                size: 1,
+                kind: AssetKind::Texture,
+                dependencies: vec![],
+            }],
+            modified: vec![AssetEntry {
+                path: PathBuf::from("b"),
+                hash: "h2".to_string(),
+                size: 2,
+                kind: AssetKind::Texture,
+                dependencies: vec![],
+            }],
+            removed: vec![PathBuf::from("c")],
+        };
+        assert_eq!(diff.total_changes(), 3);
+        assert!(!diff.is_empty());
+    }
+
+    #[test]
+    fn test_diff_result_debug() {
+        let diff = DiffResult {
+            added: vec![],
+            modified: vec![],
+            removed: vec![],
+        };
+        let s = format!("{:?}", diff);
+        assert!(s.contains("DiffResult"));
+    }
+
+    #[test]
     fn test_asset_pipeline_scan() {
         let dir = tempdir().unwrap();
         // Create test files
@@ -519,5 +630,138 @@ mod tests {
         let mut pipeline = AssetPipeline::new(dir.path());
         pipeline.scan().unwrap();
         assert!(!pipeline.entries.is_empty());
+    }
+
+    #[test]
+    fn test_asset_pipeline_scan_empty() {
+        let dir = tempdir().unwrap();
+        let mut pipeline = AssetPipeline::new(dir.path());
+        pipeline.scan().unwrap();
+        // 无文件也应当成功，entries 为空
+        assert!(pipeline.entries.is_empty());
+    }
+
+    #[test]
+    fn test_asset_pipeline_import_all() {
+        let dir = tempdir().unwrap();
+        fs::write(dir.path().join("a.png"), b"data").unwrap();
+        let mut pipeline = AssetPipeline::new(dir.path());
+        pipeline.scan().unwrap();
+        pipeline.import_all().unwrap();
+        assert!(!pipeline.entries.is_empty());
+        // 确保 hash 非空
+        for e in &pipeline.entries {
+            assert!(!e.hash.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_asset_pipeline_process_all() {
+        let mut pipeline = AssetPipeline::new("/tmp/nonexistent_for_test");
+        pipeline.process_all().unwrap();
+    }
+
+    #[test]
+    fn test_asset_pipeline_incremental_hash() {
+        let dir = tempdir().unwrap();
+        fs::write(dir.path().join("a.png"), b"aaa").unwrap();
+        let mut pipeline = AssetPipeline::new(dir.path());
+        pipeline.scan().unwrap();
+        let hash = pipeline.incremental_hash();
+        assert_eq!(hash.len(), 64); // SHA256 hex
+    }
+
+    #[test]
+    fn test_asset_pipeline_changed_files() {
+        let dir = tempdir().unwrap();
+        fs::write(dir.path().join("a.png"), b"aaa").unwrap();
+        let mut pipeline = AssetPipeline::new(dir.path());
+        pipeline.scan().unwrap();
+
+        let before = std::time::SystemTime::now() - std::time::Duration::from_secs(3600);
+        let changed = pipeline.changed_files(before);
+        assert!(!changed.is_empty());
+
+        let future = std::time::SystemTime::now() + std::time::Duration::from_secs(3600);
+        let no_changes = pipeline.changed_files(future);
+        assert!(no_changes.is_empty());
+    }
+
+    #[test]
+    fn test_asset_pipeline_package() {
+        let dir = tempdir().unwrap();
+        let src = dir.path().join("src");
+        let out = dir.path().join("out");
+        fs::create_dir_all(&src).unwrap();
+        fs::write(src.join("a.png"), b"aaa").unwrap();
+
+        let mut pipeline = AssetPipeline::new(&src);
+        pipeline.scan().unwrap();
+        let result_path = pipeline.package(&out).unwrap();
+        assert!(result_path.exists());
+        assert!(out.join("assets.manifest").exists());
+        assert!(out.join("a.png").exists());
+    }
+
+    #[test]
+    fn test_asset_entry_fields() {
+        let entry = AssetEntry {
+            path: PathBuf::from("a/b.png"),
+            hash: "hash!".to_string(),
+            size: 42,
+            kind: AssetKind::Texture,
+            dependencies: vec![PathBuf::from("dep.png")],
+        };
+        assert_eq!(entry.path(), Path::new("a/b.png"));
+        assert_eq!(entry.hash(), "hash!");
+        assert_eq!(entry.size(), 42);
+        assert_eq!(entry.kind(), AssetKind::Texture);
+    }
+
+    #[test]
+    fn test_asset_entry_debug_clone() {
+        let entry = AssetEntry {
+            path: PathBuf::from("x"),
+            hash: "h".to_string(),
+            size: 1,
+            kind: AssetKind::Texture,
+            dependencies: vec![],
+        };
+        let cloned = entry.clone();
+        assert_eq!(entry.hash, cloned.hash);
+        let s = format!("{:?}", entry);
+        assert!(s.contains("AssetEntry"));
+    }
+
+    #[test]
+    fn test_asset_compress_defaults() {
+        let a = AssetCompress::default();
+        assert_eq!(a, AssetCompress::None);
+        let e = AssetEncrypt::default();
+        assert_eq!(e, AssetEncrypt::None);
+    }
+
+    #[test]
+    fn test_asset_compress_debug() {
+        let s = format!("{:?}", AssetCompress::Zstd);
+        assert!(s.contains("Zstd"));
+        let s2 = format!("{:?}", AssetEncrypt::AesGcm256);
+        assert!(s2.contains("AesGcm256"));
+    }
+
+    #[test]
+    fn test_asset_pipeline_import_alias() {
+        let dir = tempdir().unwrap();
+        fs::write(dir.path().join("x.txt"), b"hello").unwrap();
+        let mut p = AssetPipeline::new(dir.path());
+        p.scan().unwrap();
+        p.import().unwrap();
+        assert_eq!(p.entries.len(), 1);
+    }
+
+    #[test]
+    fn test_asset_pipeline_process_alias() {
+        let mut p = AssetPipeline::new("/tmp/nothing");
+        p.process().unwrap();
     }
 }

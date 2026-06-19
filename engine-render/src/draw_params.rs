@@ -131,8 +131,50 @@ mod tests {
     }
 
     #[test]
+    fn test_blend_mode_gl_enum_multiply() {
+        let (src, dst) = BlendMode::Multiply.to_gl_enum();
+        assert_eq!(src, glow::DST_COLOR);
+        assert_eq!(dst, glow::ONE_MINUS_SRC_ALPHA);
+    }
+
+    #[test]
+    fn test_blend_mode_gl_enum_invert() {
+        let (src, dst) = BlendMode::Invert.to_gl_enum();
+        assert_eq!(src, glow::ONE_MINUS_DST_COLOR);
+        assert_eq!(dst, glow::ZERO);
+    }
+
+    #[test]
+    fn test_blend_mode_gl_enum_premultiplied() {
+        let (src, dst) = BlendMode::PreMultiplied.to_gl_enum();
+        assert_eq!(src, glow::ONE);
+        assert_eq!(dst, glow::ONE_MINUS_SRC_ALPHA);
+    }
+
+    #[test]
+    fn test_blend_mode_gl_enum_none() {
+        let (src, dst) = BlendMode::None.to_gl_enum();
+        assert_eq!(src, glow::ONE);
+        assert_eq!(dst, glow::ZERO);
+    }
+
+    #[test]
+    fn test_blend_mode_default_is_none() {
+        let mode: BlendMode = Default::default();
+        assert_eq!(mode, BlendMode::None);
+    }
+
+    #[test]
     fn test_draw_params_default() {
         let params = DrawParams::default();
+        assert_eq!(params.color, Color::WHITE);
+        assert_eq!(params.blend_mode, BlendMode::Alpha);
+        assert_eq!(params.z_order, 0.0);
+    }
+
+    #[test]
+    fn test_draw_params_new() {
+        let params = DrawParams::new();
         assert_eq!(params.color, Color::WHITE);
         assert_eq!(params.blend_mode, BlendMode::Alpha);
         assert_eq!(params.z_order, 0.0);
@@ -147,5 +189,23 @@ mod tests {
         assert_eq!(params.color, Color::RED);
         assert_eq!(params.blend_mode, BlendMode::Additive);
         assert_eq!(params.z_order, 1.0);
+    }
+
+    #[test]
+    fn test_draw_params_builder_chain_multiple() {
+        let params = DrawParams::new()
+            .with_color(Color::BLUE)
+            .with_blend_mode(BlendMode::Multiply)
+            .with_z_order(2.5)
+            .with_z_order(5.0);
+        assert_eq!(params.color, Color::BLUE);
+        assert_eq!(params.blend_mode, BlendMode::Multiply);
+        assert_eq!(params.z_order, 5.0);
+    }
+
+    #[test]
+    fn test_draw_params_z_order_negative() {
+        let params = DrawParams::new().with_z_order(-1.0);
+        assert_eq!(params.z_order, -1.0);
     }
 }

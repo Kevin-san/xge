@@ -92,6 +92,20 @@ mod tests {
     }
 
     #[test]
+    fn test_hash_consistency() {
+        let hash1 = Hash::sha256(b"test");
+        let hash2 = Hash::sha256(b"test");
+        assert_eq!(hash1, hash2);
+    }
+
+    #[test]
+    fn test_hash_differs_by_input() {
+        let h1 = Hash::sha256(b"a");
+        let h2 = Hash::sha256(b"b");
+        assert_ne!(h1, h2);
+    }
+
+    #[test]
     fn test_hash_file() {
         let dir = tempdir().unwrap();
         let file_path = dir.path().join("test.txt");
@@ -99,6 +113,24 @@ mod tests {
 
         let hash = Hash::hash_file(&file_path).unwrap();
         assert_eq!(hash.len(), 64);
+    }
+
+    #[test]
+    fn test_hash_file_missing() {
+        let dir = tempdir().unwrap();
+        let missing = dir.path().join("missing.txt");
+        let result = Hash::hash_file(&missing);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_hash_file_consistency() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("test.txt");
+        fs::write(&file_path, b"content").unwrap();
+        let h1 = Hash::hash_file(&file_path).unwrap();
+        let h2 = Hash::hash_file(&file_path).unwrap();
+        assert_eq!(h1, h2);
     }
 
     #[test]
@@ -112,9 +144,34 @@ mod tests {
     }
 
     #[test]
-    fn test_hash_consistency() {
-        let hash1 = Hash::sha256(b"test");
-        let hash2 = Hash::sha256(b"test");
-        assert_eq!(hash1, hash2);
+    fn test_hash_dir_consistency() {
+        let dir = tempdir().unwrap();
+        fs::write(dir.path().join("a.txt"), b"a").unwrap();
+        let h1 = Hash::hash_dir(dir.path()).unwrap();
+        let h2 = Hash::hash_dir(dir.path()).unwrap();
+        assert_eq!(h1, h2);
+    }
+
+    #[test]
+    fn test_hash_with_prefix() {
+        let h = Hash::hash_with_prefix("my-prefix", b"data");
+        assert_eq!(h.len(), 64);
+        // 相同输入应一致
+        let h2 = Hash::hash_with_prefix("my-prefix", b"data");
+        assert_eq!(h, h2);
+    }
+
+    #[test]
+    fn test_hash_with_prefix_different_prefixes() {
+        let h1 = Hash::hash_with_prefix("prefix_a", b"data");
+        let h2 = Hash::hash_with_prefix("prefix_b", b"data");
+        assert_ne!(h1, h2);
+    }
+
+    #[test]
+    fn test_hash_with_prefix_different_data() {
+        let h1 = Hash::hash_with_prefix("prefix", b"data_a");
+        let h2 = Hash::hash_with_prefix("prefix", b"data_b");
+        assert_ne!(h1, h2);
     }
 }

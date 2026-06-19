@@ -321,6 +321,14 @@ mod tests {
     }
 
     #[test]
+    fn test_sprite_batch_with_capacity() {
+        let handle = Handle::<Texture2D>::null();
+        let batch = SpriteBatch::with_capacity(handle, 100);
+        assert_eq!(batch.capacity(), 100);
+        assert_eq!(batch.len(), 0);
+    }
+
+    #[test]
     fn test_sprite_batch_add() {
         let handle = Handle::<Texture2D>::null();
         let mut batch = SpriteBatch::with_capacity(handle.clone(), 100);
@@ -335,6 +343,23 @@ mod tests {
     }
 
     #[test]
+    fn test_sprite_batch_add_multiple() {
+        let handle = Handle::<Texture2D>::null();
+        let mut batch = SpriteBatch::with_capacity(handle.clone(), 100);
+
+        let sprite =
+            Sprite::from_texture(handle).with_source_rect(Rect::new(0.0, 0.0, 32.0, 32.0));
+
+        batch.add(&sprite, Vec2::new(0.0, 0.0));
+        batch.add(&sprite, Vec2::new(100.0, 100.0));
+        batch.add(&sprite, Vec2::new(200.0, 200.0));
+
+        assert_eq!(batch.len(), 3);
+        assert_eq!(batch.vertex_count(), 12);
+        assert_eq!(batch.index_count(), 18);
+    }
+
+    #[test]
     fn test_sprite_batch_clear() {
         let handle = Handle::<Texture2D>::null();
         let mut batch = SpriteBatch::new(handle.clone());
@@ -345,18 +370,47 @@ mod tests {
         batch.clear();
         assert!(batch.is_empty());
         assert_eq!(batch.vertices().len(), 0);
+        assert_eq!(batch.indices().len(), 0);
     }
 
     #[test]
-    fn test_sprite_batch_capacity() {
+    fn test_sprite_batch_vertices_and_indices_slices() {
+        let handle = Handle::<Texture2D>::null();
+        let mut batch = SpriteBatch::with_capacity(handle.clone(), 100);
+        let sprite =
+            Sprite::from_texture(handle).with_source_rect(Rect::new(0.0, 0.0, 32.0, 32.0));
+        batch.add(&sprite, Vec2::ZERO);
+
+        let verts = batch.vertices();
+        let indices = batch.indices();
+        assert!(!verts.is_empty());
+        assert!(!indices.is_empty());
+    }
+
+    #[test]
+    fn test_sprite_batch_capacity_zero() {
         let handle = Handle::<Texture2D>::null();
         let batch = SpriteBatch::with_capacity(handle, 500);
         assert_eq!(batch.capacity(), 500);
     }
 
     #[test]
+    fn test_sprite_batch_set_texture() {
+        let h1 = Handle::<Texture2D>::null();
+        let h2 = Handle::<Texture2D>::null();
+        let mut batch = SpriteBatch::new(h1);
+        batch.set_texture(h2);
+    }
+
+    #[test]
     fn test_batch_renderer() {
         let renderer = BatchRenderer::new();
         assert_eq!(renderer.batches(), 0);
+    }
+
+    #[test]
+    fn test_batch_renderer_new() {
+        let renderer = BatchRenderer::new();
+        let _ = renderer;
     }
 }

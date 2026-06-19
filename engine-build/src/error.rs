@@ -182,6 +182,7 @@ mod tests {
         let io_err = io::Error::new(io::ErrorKind::NotFound, "file not found");
         let build_err: BuildError = io_err.into();
         assert!(build_err.is_io());
+        assert_eq!(build_err.code(), "IO_001");
     }
 
     #[test]
@@ -194,5 +195,62 @@ mod tests {
     fn test_build_error_asset_not_found() {
         let err = BuildError::asset_not_found(PathBuf::from("test.png"));
         assert_eq!(err.code(), "ASSET_001");
+    }
+
+    #[test]
+    fn test_build_error_crypto() {
+        let err = BuildError::crypto_error("crypto failed".to_string());
+        assert_eq!(err.code(), "CRYPTO_001");
+    }
+
+    #[test]
+    fn test_build_error_signature() {
+        let err = BuildError::signature_error("bad signature".to_string());
+        assert_eq!(err.code(), "SIG_001");
+    }
+
+    #[test]
+    fn test_build_error_build_failed() {
+        let err = BuildError::build_failed("compile", "type error", None);
+        assert_eq!(err.code(), "BUILD_001");
+    }
+
+    #[test]
+    fn test_build_error_config() {
+        let err = BuildError::config_error("missing field".to_string());
+        assert_eq!(err.code(), "CONFIG_001");
+    }
+
+    #[test]
+    fn test_build_error_path() {
+        let err = BuildError::Path("invalid path".to_string());
+        assert_eq!(err.code(), "PATH_001");
+    }
+
+    #[test]
+    fn test_build_error_other() {
+        let err = BuildError::Other("generic".to_string());
+        assert_eq!(err.code(), "OTHER_001");
+    }
+
+    #[test]
+    fn test_build_error_debug_display() {
+        let err = BuildError::io_error("io issue".to_string());
+        let debug_s = format!("{:?}", err);
+        assert!(debug_s.contains("Io"));
+        let display_s = format!("{}", err);
+        assert!(display_s.contains("IO error"));
+    }
+
+    #[test]
+    fn test_build_error_from_strip_prefix() {
+        use std::path::Path;
+        // 触发 strip_prefix 错误
+        let p1 = Path::new("/a/b");
+        let p2 = Path::new("/c/d");
+        if let Err(e) = p1.strip_prefix(p2) {
+            let be: BuildError = e.into();
+            assert_eq!(be.code(), "PATH_001");
+        }
     }
 }

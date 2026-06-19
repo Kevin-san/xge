@@ -198,4 +198,141 @@ mod tests {
         node.set_sprite(Sprite::new(2));
         assert_eq!(node.sprite().texture_id, 2);
     }
+
+    // ============= Sprite2D 更多测试 =============
+
+    #[test]
+    fn test_sprite_new_defaults() {
+        let sprite = Sprite::new(42);
+        assert_eq!(sprite.texture_id, 42);
+        assert!(!sprite.flip_x);
+        assert!(!sprite.flip_y);
+    }
+
+    #[test]
+    fn test_sprite_with_region() {
+        let sprite = Sprite::with_region(1, 10.0, 20.0, 30.0, 40.0);
+        assert_eq!(sprite.texture_id, 1);
+        assert_eq!(sprite.region.x, 10.0);
+        assert_eq!(sprite.region.y, 20.0);
+        assert_eq!(sprite.region.width, 30.0);
+        assert_eq!(sprite.region.height, 40.0);
+    }
+
+    #[test]
+    fn test_sprite2d_node2d_access() {
+        let sprite = Sprite::new(1);
+        let node = Sprite2D::new("sprite", sprite);
+        assert_eq!(node.node2d().name(), "sprite");
+    }
+
+    #[test]
+    fn test_sprite2d_node2d_mut_position() {
+        let sprite = Sprite::new(1);
+        let mut node = Sprite2D::new("sprite", sprite);
+        node.node2d_mut().set_position(Vec2::new(5.0, 6.0));
+        assert_eq!(node.node2d().position(), Vec2::new(5.0, 6.0));
+    }
+
+    #[test]
+    fn test_sprite2d_is_visible_by_default() {
+        let sprite = Sprite::new(1);
+        let node = Sprite2D::new("sprite", sprite);
+        assert!(node.visible());
+    }
+
+    #[test]
+    fn test_sprite2d_set_paused() {
+        let sprite = Sprite::new(1);
+        let mut node = Sprite2D::new("sprite", sprite);
+        node.set_paused(true);
+        assert!(node.paused());
+        node.set_paused(false);
+        assert!(!node.paused());
+    }
+
+    #[test]
+    fn test_sprite2d_children_empty_by_default() {
+        let sprite = Sprite::new(1);
+        let node = Sprite2D::new("sprite", sprite);
+        assert!(node.children().is_empty());
+    }
+
+    #[test]
+    fn test_sprite2d_add_child() {
+        let sprite = Sprite::new(1);
+        let mut node = Sprite2D::new("sprite", sprite);
+        node.add_child(NodeHandle::new(10));
+        assert_eq!(node.children().len(), 1);
+    }
+
+    #[test]
+    fn test_sprite2d_on_update_no_panic() {
+        let sprite = Sprite::new(1);
+        let mut node = Sprite2D::new("sprite", sprite);
+        node.on_update(1.0 / 60.0);
+    }
+
+    #[test]
+    fn test_sprite2d_on_draw_no_panic() {
+        let sprite = Sprite::new(1);
+        let node = Sprite2D::new("sprite", sprite);
+        node.on_draw();
+    }
+
+    #[test]
+    fn test_sprite2d_on_ready_on_destroy() {
+        let sprite = Sprite::new(1);
+        let mut node = Sprite2D::new("sprite", sprite);
+        node.on_ready();
+        node.on_destroy();
+    }
+
+    #[test]
+    fn test_sprite2d_set_visible() {
+        let sprite = Sprite::new(1);
+        let mut node = Sprite2D::new("sprite", sprite);
+        node.set_visible(false);
+        assert!(!node.visible());
+        node.set_visible(true);
+        assert!(node.visible());
+    }
+
+    #[test]
+    fn test_sprite2d_set_name() {
+        let sprite = Sprite::new(1);
+        let mut node = Sprite2D::new("sprite", sprite);
+        node.set_name("sprite_renamed".to_string());
+        assert_eq!(node.name(), "sprite_renamed");
+    }
+
+    #[test]
+    fn test_sprite2d_set_parent_detach() {
+        let sprite = Sprite::new(1);
+        let mut node = Sprite2D::new("sprite", sprite);
+        node.set_parent(Some(NodeHandle::new(1)));
+        assert!(node.parent().is_some());
+        node.detach();
+        assert!(node.parent().is_none());
+    }
+
+    #[test]
+    fn test_sprite2d_remove_child() {
+        let sprite = Sprite::new(1);
+        let mut node = Sprite2D::new("sprite", sprite);
+        node.add_child(NodeHandle::new(1));
+        node.add_child(NodeHandle::new(2));
+        assert_eq!(node.children().len(), 2);
+        node.remove_child(NodeHandle::new(1));
+        assert_eq!(node.children().len(), 1);
+    }
+
+    #[test]
+    fn test_sprite2d_sprite_mut() {
+        let sprite = Sprite::new(1);
+        let mut node = Sprite2D::new("sprite", sprite);
+        node.sprite_mut().texture_id = 99;
+        assert_eq!(node.sprite().texture_id, 99);
+    }
 }
+

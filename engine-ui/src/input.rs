@@ -307,6 +307,8 @@ impl Default for UiInput {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use engine_ecs::{Events, World};
+    use engine_math::Vec2;
 
     #[test]
     fn test_ui_event_creation() {
@@ -343,5 +345,104 @@ mod tests {
 
         let click_event = UiEvent::new(UiEventType::Click, entity);
         assert!(!click_event.is_keyboard_event());
+    }
+
+    #[test]
+    fn test_ui_input_new_default() {
+        let input = UiInput::new();
+        assert_eq!(input.mouse_position(), Vec2::ZERO);
+        assert!(input.hovered_entity().is_none());
+        assert!(input.focused_entity().is_none());
+    }
+
+    #[test]
+    fn test_ui_input_set_mouse_position() {
+        let mut input = UiInput::new();
+        input.set_mouse_position(Vec2::new(100.0, 200.0));
+        assert_eq!(input.mouse_position(), Vec2::new(100.0, 200.0));
+    }
+
+    #[test]
+    fn test_ui_input_set_hovered_entity() {
+        let mut input = UiInput::new();
+        let entity = Entity::new(1, 0);
+        input.set_hovered_entity(Some(entity));
+        assert_eq!(input.hovered_entity(), Some(entity));
+        input.set_hovered_entity(None);
+        assert!(input.hovered_entity().is_none());
+    }
+
+    #[test]
+    fn test_ui_input_set_focused_entity() {
+        let mut input = UiInput::new();
+        let entity = Entity::new(2, 0);
+        input.set_focused_entity(Some(entity));
+        assert_eq!(input.focused_entity(), Some(entity));
+    }
+
+    #[test]
+    fn test_ui_event_set_mouse_position() {
+        let entity = Entity::new(0, 0);
+        let mut event = UiEvent::new(UiEventType::MouseMove, entity);
+        event.set_mouse_position(Vec2::new(50.0, 75.0));
+        assert_eq!(event.mouse_position(), Vec2::new(50.0, 75.0));
+    }
+
+    #[test]
+    fn test_ui_event_set_text() {
+        let entity = Entity::new(0, 0);
+        let mut event = UiEvent::new(UiEventType::TextInput, entity);
+        event.set_text("hello");
+        assert_eq!(event.text(), "hello");
+    }
+
+    #[test]
+    fn test_ui_event_set_delta() {
+        let entity = Entity::new(0, 0);
+        let mut event = UiEvent::new(UiEventType::MouseWheel, entity);
+        event.set_delta(Vec2::new(0.0, 5.0));
+        assert_eq!(event.delta(), Vec2::new(0.0, 5.0));
+    }
+
+    #[test]
+    fn test_ui_input_process_mouse_move_over_root() {
+        let mut world = World::new();
+        let root_entity = world.spawn();
+        world.insert(root_entity, crate::ui_node::UiNode::new(crate::ui_node::UiNodeType::Root));
+        world.insert(
+            root_entity,
+            crate::ui_node::UiRoot::new(root_entity, Vec2::new(800.0, 600.0)),
+        );
+        let mut events = Events::<UiEvent>::new();
+        let mut input = UiInput::new();
+        input.process_mouse_move(&world, Vec2::new(100.0, 100.0), root_entity, &mut events);
+        assert!(input.hovered_entity().is_some());
+    }
+
+    #[test]
+    fn test_ui_event_type_focus_in_out() {
+        let entity = Entity::new(0, 0);
+        let focus_in = UiEvent::new(UiEventType::FocusIn, entity);
+        assert_eq!(focus_in.event_type(), UiEventType::FocusIn);
+        let focus_out = UiEvent::new(UiEventType::FocusOut, entity);
+        assert_eq!(focus_out.event_type(), UiEventType::FocusOut);
+    }
+
+    #[test]
+    fn test_ui_input_process_key_down_sends_event() {
+        let mut events = Events::<UiEvent>::new();
+        let mut input = UiInput::new();
+        let entity = Entity::new(1, 0);
+        input.set_focused_entity(Some(entity));
+        input.process_text_input("hello", &mut events);
+        assert_eq!(events.len(), 1);
+    }
+
+    #[test]
+    fn test_ui_input_no_focus_no_key_event() {
+        let mut events = Events::<UiEvent>::new();
+        let mut input = UiInput::new();
+        input.process_text_input("hello", &mut events);
+        assert_eq!(events.len(), 0);
     }
 }

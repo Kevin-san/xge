@@ -152,4 +152,24 @@ mod tests {
         // Schedule 运行完成无 panic 即为通过
         schedule.run(&mut world, &mut resources);
     }
+
+    #[test]
+    fn test_schedule_new_empty() {
+        let schedule = Schedule::new();
+        assert!(schedule.stages.is_empty());
+    }
+
+    #[test]
+    fn test_schedule_add_multiple_stages() {
+        let mut schedule = Schedule::new();
+        schedule.add_stage("a", SystemStage::single_threaded("a"));
+        schedule.add_stage("b", SystemStage::single_threaded("b"));
+        assert_eq!(schedule.stages.len(), 2);
+    }
+
+    #[test]
+    fn test_system_stage_new() {
+        let stage = SystemStage::single_threaded("mystage");
+        assert!(!stage.name.is_empty());
+    }
 }

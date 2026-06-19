@@ -187,9 +187,9 @@ mod tests {
     fn test_time_delta() {
         let mut time = Time::new();
         std::thread::sleep(std::time::Duration::from_millis(16));
-        let steps = time.tick();
+        let _steps = time.tick();
         assert!(time.delta_seconds() > 0.0);
-        assert!(steps.steps() >= 0);
+        // steps.steps()返回usize，可能为0或正整数
     }
 
     #[test]

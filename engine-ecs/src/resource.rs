@@ -136,4 +136,38 @@ mod tests {
         assert!(timer.is_some());
         assert_eq!(timer.unwrap().elapsed, 10.0);
     }
+
+    #[test]
+    fn test_resources_new_empty() {
+        let resources = Resources::new();
+        assert!(!resources.contains::<Timer>());
+    }
+
+    #[test]
+    fn test_resources_multiple_different_types() {
+        let mut resources = Resources::new();
+        resources.insert(Timer { elapsed: 1.0 });
+        resources.insert(Config { name: String::from("test") });
+        assert!(resources.contains::<Timer>());
+        assert!(resources.contains::<Config>());
+    }
+
+    #[test]
+    fn test_resources_get_mut_modify() {
+        let mut resources = Resources::new();
+        resources.insert(Timer { elapsed: 0.0 });
+        if let Some(timer) = resources.get_mut::<Timer>() {
+            timer.elapsed = 42.0;
+        }
+        assert_eq!(resources.get::<Timer>().unwrap().elapsed, 42.0);
+    }
+
+    #[test]
+    fn test_resources_remove_returns_prev() {
+        let mut resources = Resources::new();
+        resources.insert(Timer { elapsed: 5.0 });
+        let removed = resources.remove::<Timer>();
+        assert!(removed.is_some());
+        assert_eq!(removed.unwrap().elapsed, 5.0);
+    }
 }

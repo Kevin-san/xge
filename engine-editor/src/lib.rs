@@ -1537,6 +1537,9 @@ fn node_to_entity(node: NodeHandle) -> Entity {
 mod tests {
     use super::*;
 
+    // ====================================================================
+    // EditorSelection
+    // ====================================================================
     #[test]
     fn test_editor_selection_basic() {
         let mut selection = EditorSelection::new();
@@ -1587,6 +1590,75 @@ mod tests {
     }
 
     #[test]
+    fn test_editor_selection_first_last() {
+        let mut selection = EditorSelection::new();
+        assert!(selection.first().is_none());
+        assert!(selection.last().is_none());
+
+        let e1 = Entity::new(1, 0);
+        selection.add(e1);
+        assert_eq!(selection.first(), Some(e1));
+        assert_eq!(selection.last(), Some(e1));
+    }
+
+    #[test]
+    fn test_editor_selection_iter() {
+        let mut selection = EditorSelection::new();
+        let e1 = Entity::new(1, 0);
+        let e2 = Entity::new(2, 0);
+        selection.add(e1);
+        selection.add(e2);
+        let count = selection.iter().count();
+        assert_eq!(count, 2);
+    }
+
+    #[test]
+    fn test_editor_selection_entities_ref() {
+        let mut selection = EditorSelection::new();
+        let e1 = Entity::new(1, 0);
+        selection.add(e1);
+        assert_eq!(selection.entities().len(), 1);
+    }
+
+    #[test]
+    fn test_editor_selection_replace_with_select() {
+        let mut selection = EditorSelection::new();
+        let e1 = Entity::new(1, 0);
+        let e2 = Entity::new(2, 0);
+        selection.add(e1);
+        selection.select(e2);
+        assert_eq!(selection.len(), 1);
+        assert!(selection.contains(e2));
+    }
+
+    #[test]
+    fn test_editor_selection_changed_event() {
+        let old = HashSet::new();
+        let new: HashSet<Entity> = [Entity::new(1, 0)].iter().copied().collect();
+        let event = EditorSelectionChanged::new(old.clone(), new.clone());
+        assert_eq!(event.old().len(), 0);
+        assert_eq!(event.new_selection().len(), 1);
+    }
+
+    #[test]
+    fn test_editor_selection_remove_nonexistent() {
+        let mut selection = EditorSelection::new();
+        let e1 = Entity::new(1, 0);
+        selection.remove(e1); // 不应该 panic
+        assert!(selection.is_empty());
+    }
+
+    #[test]
+    fn test_editor_selection_contains_nonexistent() {
+        let selection = EditorSelection::new();
+        let e1 = Entity::new(99, 0);
+        assert!(!selection.contains(e1));
+    }
+
+    // ====================================================================
+    // EditorSettings / EditorTheme / KeyBindings
+    // ====================================================================
+    #[test]
     fn test_editor_settings_default() {
         let settings = EditorSettings::default();
         assert_eq!(settings.theme, EditorTheme::Dark);
@@ -1603,6 +1675,192 @@ mod tests {
         assert_eq!(settings.theme(), EditorTheme::Light);
     }
 
+    #[test]
+    fn test_editor_settings_auto_save() {
+        let mut settings = EditorSettings::new();
+        assert!(!settings.auto_save());
+        settings.set_auto_save(true);
+        assert!(settings.auto_save());
+    }
+
+    #[test]
+    fn test_editor_settings_auto_save_interval() {
+        let mut settings = EditorSettings::new();
+        assert_eq!(settings.auto_save_interval().as_secs(), DEFAULT_AUTO_SAVE_INTERVAL_SECS);
+        settings.set_auto_save_interval(Duration::from_secs(60));
+        assert_eq!(settings.auto_save_interval().as_secs(), 60);
+    }
+
+    #[test]
+    fn test_editor_settings_font_size_default() {
+        let settings = EditorSettings::new();
+        assert_eq!(settings.font_size, DEFAULT_FONT_SIZE);
+    }
+
+    #[test]
+    fn test_editor_settings_save_load() {
+        let dir = std::env::temp_dir();
+        let path = dir.join("editor_settings_test.json");
+        let settings = EditorSettings::new();
+        settings.save(&path).unwrap();
+        let loaded = EditorSettings::load(&path).unwrap();
+        assert_eq!(settings.theme(), loaded.theme());
+        assert_eq!(settings.font_size, loaded.font_size);
+        assert_eq!(settings.default_create_path, loaded.default_create_path);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn test_editor_theme_default() {
+        let t: EditorTheme = Default::default();
+        assert_eq!(t, EditorTheme::Dark);
+    }
+
+    #[test]
+    fn test_editor_theme_debug_clone() {
+        let t = EditorTheme::Dark;
+        let t2 = t;
+        assert_eq!(t, t2);
+        let _ = format!("{:?}", t);
+    }
+
+    #[test]
+    fn test_editor_settings_external_tools() {
+        let settings = EditorSettings::new();
+        assert!(settings.external_tools.vscode_path.is_none());
+        assert!(settings.external_tools.git_path.is_none());
+        assert!(settings.external_tools.cargo_path.is_none());
+    }
+
+    #[test]
+    fn test_key_bindings() {
+        let mut bindings = KeyBindings::new();
+
+        bindings.set("save", vec!["Ctrl+S".to_string()]);
+        assert_eq!(bindings.get("save"), Some(&["Ctrl+S".to_string()][..]));
+
+        bindings.remove("save");
+        assert!(bindings.get("save").is_none());
+    }
+
+    #[test]
+    fn test_key_bindings_get_nonexistent() {
+        let bindings = KeyBindings::new();
+        assert!(bindings.get("unknown").is_none());
+    }
+
+    // ====================================================================
+    // EditorMode / EditorTool
+    // ====================================================================
+    #[test]
+    fn test_editor_mode() {
+        let mut app = EditorApp::new();
+        assert_eq!(app.mode(), EditorMode::Edit);
+
+        app.set_mode(EditorMode::Play);
+        assert_eq!(app.mode(), EditorMode::Play);
+
+        app.set_mode(EditorMode::Paused);
+        assert_eq!(app.mode(), EditorMode::Paused);
+    }
+
+    #[test]
+    fn test_editor_mode_default() {
+        let m: EditorMode = Default::default();
+        assert_eq!(m, EditorMode::Edit);
+    }
+
+    #[test]
+    fn test_editor_tool() {
+        let mut app = EditorApp::new();
+        assert_eq!(app.tool(), EditorTool::Select);
+
+        app.set_tool(EditorTool::Move);
+        assert_eq!(app.tool(), EditorTool::Move);
+
+        app.set_tool(EditorTool::Rotate);
+        assert_eq!(app.tool(), EditorTool::Rotate);
+
+        app.set_tool(EditorTool::Scale);
+        assert_eq!(app.tool(), EditorTool::Scale);
+    }
+
+    #[test]
+    fn test_editor_tool_default() {
+        let t: EditorTool = Default::default();
+        assert_eq!(t, EditorTool::Select);
+    }
+
+    // ====================================================================
+    // EditorState - 创建/切换模式
+    // ====================================================================
+    #[test]
+    fn test_editor_state_new() {
+        let state = EditorState::new();
+        // 有一个根节点
+        assert_eq!(state.scene.node_count(), 1);
+        assert!(state.selection.is_empty());
+        assert!(state.action_stack.is_empty());
+    }
+
+    #[test]
+    fn test_editor_state_default() {
+        let state: EditorState = Default::default();
+        assert_eq!(state.scene.node_count(), 1);
+    }
+
+    #[test]
+    fn test_editor_state_new_scene() {
+        let mut state = EditorState::new();
+        let initial_count = state.scene.node_count();
+
+        // 添加节点
+        let _node = state.scene.add_2d_node(state.scene.root(), "test");
+        assert!(state.scene.node_count() > initial_count);
+
+        // 新建场景
+        state.new_scene();
+        assert_eq!(state.scene.node_count(), 1); // 只有根节点
+        assert!(state.selection.is_empty());
+        assert!(state.action_stack.is_empty());
+    }
+
+    #[test]
+    fn test_editor_state_tick() {
+        let mut state = EditorState::new();
+        state.tick(0.016);
+        // tick 不应该 panic，场景应当保持有效
+        assert_eq!(state.scene.node_count(), 1);
+    }
+
+    #[test]
+    fn test_editor_state_panel_visibility() {
+        let mut state = EditorState::new();
+
+        assert!(state.is_panel_visible("hierarchy"));
+        assert!(state.is_panel_visible("inspector"));
+
+        state.hide_panel("hierarchy");
+        assert!(!state.is_panel_visible("hierarchy"));
+
+        state.toggle_panel("hierarchy");
+        assert!(state.is_panel_visible("hierarchy"));
+
+        state.reset_layout();
+        assert!(state.is_panel_visible("hierarchy"));
+        assert!(state.is_panel_visible("inspector"));
+    }
+
+    #[test]
+    fn test_editor_state_panel_unknown_default_visible() {
+        let state = EditorState::new();
+        // 未注册的面板默认可见
+        assert!(state.is_panel_visible("unknown_panel"));
+    }
+
+    // ====================================================================
+    // EditorAction / ActionStack - 撤销/重做
+    // ====================================================================
     #[test]
     fn test_editor_action_stack_basic() {
         let stack = EditorActionStack::new(10);
@@ -1675,6 +1933,117 @@ mod tests {
     }
 
     #[test]
+    fn test_editor_action_stack_default() {
+        let stack: EditorActionStack = Default::default();
+        assert_eq!(stack.max_len(), DEFAULT_ACTION_STACK_MAX_LEN);
+    }
+
+    #[test]
+    fn test_editor_action_stack_push_clears_redo() {
+        let mut stack = EditorActionStack::new(10);
+        stack.push(Box::new(CreateNodeAction::new(None, "a".to_string())));
+        // 先放入一个重做操作
+        stack.push_redo(Box::new(CreateNodeAction::new(None, "b".to_string())));
+        assert!(stack.can_redo());
+        // 再 push 新操作应该清空 redo
+        stack.push(Box::new(CreateNodeAction::new(None, "c".to_string())));
+        assert!(!stack.can_redo());
+    }
+
+    // 具体 Action 测试
+    #[test]
+    fn test_create_node_action_apply() {
+        let mut state = EditorState::new();
+        let mut action = CreateNodeAction::new(None, "child".to_string());
+        let before = state.scene.node_count();
+        action.apply(&mut state);
+        assert_eq!(state.scene.node_count(), before + 1);
+        assert!(!action.node.is_null());
+    }
+
+    #[test]
+    fn test_delete_node_action_apply_undo() {
+        let mut state = EditorState::new();
+        let parent = state.scene.root();
+        let child = state.scene.add_2d_node(parent, "to_remove");
+        let before = state.scene.node_count();
+
+        let mut action = DeleteNodeAction::new(child, Some(parent), "to_remove".to_string());
+        action.apply(&mut state);
+        assert_eq!(state.scene.node_count(), before - 1);
+
+        action.undo(&mut state);
+        assert_eq!(state.scene.node_count(), before);
+    }
+
+    #[test]
+    fn test_rename_node_action_apply_undo() {
+        let mut state = EditorState::new();
+        let parent = state.scene.root();
+        let node = state.scene.add_2d_node(parent, "original");
+
+        let mut action = RenameNodeAction::new(node, "original".to_string(), "renamed".to_string());
+        action.apply(&mut state);
+
+        if let Some(n) = state.scene.get_node(node) {
+            assert_eq!(n.name(), "renamed");
+        }
+
+        action.undo(&mut state);
+        if let Some(n) = state.scene.get_node(node) {
+            assert_eq!(n.name(), "original");
+        }
+    }
+
+    #[test]
+    fn test_rename_node_action_name_ref() {
+        let action = RenameNodeAction::new(NodeHandle::null(), "old".to_string(), "new".to_string());
+        assert_eq!(action.old_name, "old");
+        assert_eq!(action.new_name, "new");
+    }
+
+    #[test]
+    fn test_batch_action() {
+        let mut state = EditorState::new();
+        let mut batch = BatchAction::new(vec![
+            Box::new(CreateNodeAction::new(None, "node1".to_string())),
+            Box::new(CreateNodeAction::new(None, "node2".to_string())),
+        ]);
+
+        batch.apply(&mut state);
+        assert!(state.scene.node_count() > 1);
+
+        batch.undo(&mut state);
+    }
+
+    #[test]
+    fn test_batch_action_name() {
+        let batch = BatchAction::new(vec![]);
+        assert_eq!(batch.name(), "BatchAction");
+    }
+
+    #[test]
+    fn test_create_node_action_name() {
+        let a = CreateNodeAction::new(None, "x".to_string());
+        assert_eq!(a.name(), "CreateNode");
+    }
+
+    #[test]
+    fn test_delete_node_action_name() {
+        let a = DeleteNodeAction::new(NodeHandle::null(), None, "x".to_string());
+        assert_eq!(a.name(), "DeleteNode");
+    }
+
+    #[test]
+    fn test_action_mergeable_default_false() {
+        let a = CreateNodeAction::new(None, "x".to_string());
+        assert!(!a.mergeable());
+    }
+
+    // ====================================================================
+    // EditorClipboard - 复制/粘贴
+    // ====================================================================
+    #[test]
     fn test_editor_clipboard() {
         let mut clipboard = EditorClipboard::new();
         assert!(clipboard.is_empty());
@@ -1688,66 +2057,81 @@ mod tests {
     }
 
     #[test]
-    fn test_editor_mode() {
-        let mut app = EditorApp::new();
-        assert_eq!(app.mode(), EditorMode::Edit);
+    fn test_editor_clipboard_asset_paths() {
+        let mut clipboard = EditorClipboard::new();
+        assert!(clipboard.asset_paths().is_empty());
 
-        app.set_mode(EditorMode::Play);
-        assert_eq!(app.mode(), EditorMode::Play);
-
-        app.set_mode(EditorMode::Paused);
-        assert_eq!(app.mode(), EditorMode::Paused);
+        let paths = vec![PathBuf::from("a.png"), PathBuf::from("b.png")];
+        clipboard.copy_asset_paths(&paths);
+        assert!(!clipboard.is_empty());
+        assert_eq!(clipboard.asset_paths().len(), 2);
     }
 
     #[test]
-    fn test_editor_tool() {
-        let mut app = EditorApp::new();
-        assert_eq!(app.tool(), EditorTool::Select);
+    fn test_editor_clipboard_clear_two_kinds() {
+        let mut clipboard = EditorClipboard::new();
+        clipboard.copy_nodes(&[NodeHandle::new(1)]);
+        clipboard.copy_asset_paths(&[PathBuf::from("a.png")]);
+        assert!(!clipboard.is_empty());
+        clipboard.clear();
+        assert!(clipboard.is_empty());
+        assert!(clipboard.nodes().is_empty());
+        assert!(clipboard.asset_paths().is_empty());
+    }
 
-        app.set_tool(EditorTool::Move);
-        assert_eq!(app.tool(), EditorTool::Move);
-
-        app.set_tool(EditorTool::Rotate);
-        assert_eq!(app.tool(), EditorTool::Rotate);
-
-        app.set_tool(EditorTool::Scale);
-        assert_eq!(app.tool(), EditorTool::Scale);
+    // ====================================================================
+    // EditorPluginRegistry - 插件系统
+    // ====================================================================
+    #[test]
+    fn test_plugin_registry_empty() {
+        let registry = EditorPluginRegistry::new();
+        assert!(registry.is_empty());
+        assert_eq!(registry.len(), 0);
     }
 
     #[test]
-    fn test_editor_state_new_scene() {
+    fn test_plugin_registry_default() {
+        let r: EditorPluginRegistry = Default::default();
+        assert!(r.is_empty());
+    }
+
+    #[test]
+    fn test_plugin_registry_register_multiple() {
+        struct DummyPlugin;
+        impl EditorPlugin for DummyPlugin {
+            fn register(&mut self, _: &mut EditorState) {}
+            fn update(&mut self, _: &mut EditorState, _: f32) {}
+            fn ui(&mut self, _: &mut EditorState, _: &mut UiContext) {}
+        }
+
+        let mut registry = EditorPluginRegistry::new();
+        registry.register(Box::new(DummyPlugin));
+        registry.register(Box::new(DummyPlugin));
+        assert_eq!(registry.len(), 2);
+    }
+
+    #[test]
+    fn test_plugin_registry_update_all() {
+        struct CountPlugin(u32);
+        impl EditorPlugin for CountPlugin {
+            fn register(&mut self, _: &mut EditorState) {}
+            fn update(&mut self, _: &mut EditorState, _: f32) {
+                self.0 += 1;
+            }
+            fn ui(&mut self, _: &mut EditorState, _: &mut UiContext) {}
+        }
+
+        let mut registry = EditorPluginRegistry::new();
+        registry.register(Box::new(CountPlugin(0)));
+        registry.register(Box::new(CountPlugin(0)));
         let mut state = EditorState::new();
-        let initial_count = state.scene.node_count();
-
-        // 添加节点
-        let _node = state.scene.add_2d_node(state.scene.root(), "test");
-        assert!(state.scene.node_count() > initial_count);
-
-        // 新建场景
-        state.new_scene();
-        assert_eq!(state.scene.node_count(), 1); // 只有根节点
-        assert!(state.selection.is_empty());
-        assert!(state.action_stack.is_empty());
+        registry.update_all(&mut state, 0.016);
+        assert_eq!(registry.len(), 2);
     }
 
-    #[test]
-    fn test_editor_state_panel_visibility() {
-        let mut state = EditorState::new();
-
-        assert!(state.is_panel_visible("hierarchy"));
-        assert!(state.is_panel_visible("inspector"));
-
-        state.hide_panel("hierarchy");
-        assert!(!state.is_panel_visible("hierarchy"));
-
-        state.toggle_panel("hierarchy");
-        assert!(state.is_panel_visible("hierarchy"));
-
-        state.reset_layout();
-        assert!(state.is_panel_visible("hierarchy"));
-        assert!(state.is_panel_visible("inspector"));
-    }
-
+    // ====================================================================
+    // HierarchyPanel / InspectorPanel / AssetPanel
+    // ====================================================================
     #[test]
     fn test_hierarchy_panel() {
         let mut panel = HierarchyPanel::new();
@@ -1763,6 +2147,49 @@ mod tests {
         assert_eq!(panel.search_query(), "test");
     }
 
+    #[test]
+    fn test_hierarchy_panel_default() {
+        let panel: HierarchyPanel = Default::default();
+        assert_eq!(panel.search_query(), "");
+    }
+
+    #[test]
+    fn test_inspector_panel_component_expansion() {
+        let mut panel = InspectorPanel::new();
+        assert!(!panel.is_component_expanded("Transform"));
+        panel.toggle_component("Transform");
+        assert!(panel.is_component_expanded("Transform"));
+        panel.toggle_component("Transform");
+        assert!(!panel.is_component_expanded("Transform"));
+    }
+
+    #[test]
+    fn test_inspector_panel_default() {
+        let p: InspectorPanel = Default::default();
+        assert!(!p.is_component_expanded("any"));
+    }
+
+    #[test]
+    fn test_asset_panel_selected_path() {
+        let mut panel = AssetPanel::new();
+        assert!(panel.selected_path().is_none());
+        panel.set_selected_path(Some(PathBuf::from("assets/texture.png")));
+        assert_eq!(panel.selected_path(), Some(&PathBuf::from("assets/texture.png")));
+        panel.set_selected_path(None);
+        assert!(panel.selected_path().is_none());
+    }
+
+    #[test]
+    fn test_asset_panel_search_query() {
+        let mut panel = AssetPanel::new();
+        assert_eq!(panel.search_query(), "");
+        panel.set_search_query("*.png".to_string());
+        assert_eq!(panel.search_query(), "*.png");
+    }
+
+    // ====================================================================
+    // ConsolePanel / LogLevel / LogEntry
+    // ====================================================================
     #[test]
     fn test_console_panel() {
         let mut panel = ConsolePanel::new();
@@ -1783,6 +2210,52 @@ mod tests {
     }
 
     #[test]
+    fn test_console_panel_filter_text() {
+        let mut panel = ConsolePanel::new();
+        panel.add_entry(LogEntry::new(LogLevel::Info, "foo bar".to_string()));
+        panel.add_entry(LogEntry::new(LogLevel::Info, "baz qux".to_string()));
+        panel.set_filter_text("foo".to_string());
+        panel.set_filter_level(LogLevel::Info);
+        assert_eq!(panel.filtered_entries().count(), 1);
+    }
+
+    #[test]
+    fn test_loglevel_ordering() {
+        assert!(LogLevel::Debug < LogLevel::Info);
+        assert!(LogLevel::Info < LogLevel::Warn);
+        assert!(LogLevel::Warn < LogLevel::Error);
+    }
+
+    #[test]
+    fn test_loglevel_default() {
+        let l: LogLevel = Default::default();
+        assert_eq!(l, LogLevel::Info);
+    }
+
+    #[test]
+    fn test_log_entry_new() {
+        let entry = LogEntry::new(LogLevel::Info, "hello".to_string());
+        assert_eq!(entry.level, LogLevel::Info);
+        assert_eq!(entry.message, "hello");
+        assert!(entry.file.is_none());
+    }
+
+    #[test]
+    fn test_log_entry_with_location() {
+        let entry = LogEntry::with_location(
+            LogLevel::Error,
+            "err".to_string(),
+            PathBuf::from("/tmp/test.rs"),
+            42,
+        );
+        assert_eq!(entry.line, Some(42));
+        assert_eq!(entry.file, Some(PathBuf::from("/tmp/test.rs")));
+    }
+
+    // ====================================================================
+    // DebugPanel
+    // ====================================================================
+    #[test]
     fn test_debug_panel() {
         let mut panel = DebugPanel::new();
         assert!(panel.current_fps().is_none());
@@ -1797,28 +2270,130 @@ mod tests {
     }
 
     #[test]
-    fn test_batch_action() {
-        let mut state = EditorState::new();
-        let mut batch = BatchAction::new(vec![
-            Box::new(CreateNodeAction::new(None, "node1".to_string())),
-            Box::new(CreateNodeAction::new(None, "node2".to_string())),
-        ]);
+    fn test_debug_panel_fps_history() {
+        let mut panel = DebugPanel::new();
+        panel.record_frame(60.0, 16.0);
+        panel.record_frame(30.0, 33.0);
+        assert_eq!(panel.fps_history().len(), 2);
+        assert_eq!(panel.frame_time_history().len(), 2);
+    }
 
-        batch.apply(&mut state);
-        assert!(state.scene.node_count() > 1);
-
-        batch.undo(&mut state);
-        // 撤销后节点应该被删除
+    // ====================================================================
+    // EditorApp
+    // ====================================================================
+    #[test]
+    fn test_editor_app_new() {
+        let app = EditorApp::new();
+        assert_eq!(app.mode(), EditorMode::Edit);
+        assert_eq!(app.tool(), EditorTool::Select);
     }
 
     #[test]
-    fn test_key_bindings() {
-        let mut bindings = KeyBindings::new();
+    fn test_editor_app_default() {
+        let app: EditorApp = Default::default();
+        assert_eq!(app.mode(), EditorMode::Edit);
+    }
 
-        bindings.set("save", vec!["Ctrl+S".to_string()]);
-        assert_eq!(bindings.get("save"), Some(&["Ctrl+S".to_string()][..]));
+    #[test]
+    fn test_editor_app_state_read() {
+        let app = EditorApp::new();
+        let guard = app.state();
+        assert!(guard.read().selection.is_empty());
+    }
 
-        bindings.remove("save");
-        assert!(bindings.get("save").is_none());
+    #[test]
+    fn test_editor_app_execute_action() {
+        let mut app = EditorApp::new();
+        let action = Box::new(CreateNodeAction::new(None, "n".to_string()));
+        app.execute_action(action);
+        // 执行后 action_stack 应该有内容
+        let state = app.state();
+        assert!(!state.read().action_stack.is_empty());
+    }
+
+    #[test]
+    fn test_editor_app_undo_redo_returns() {
+        let mut app = EditorApp::new();
+        // 初始状态不能 undo
+        assert!(!app.undo());
+        assert!(!app.redo());
+        // 执行一个操作后可以 undo
+        app.execute_action(Box::new(CreateNodeAction::new(None, "x".to_string())));
+        assert!(app.undo());
+        assert!(app.redo());
+    }
+
+    #[test]
+    fn test_editor_app_new_scene_clears() {
+        let mut app = EditorApp::new();
+        app.execute_action(Box::new(CreateNodeAction::new(None, "x".to_string())));
+        app.new_scene();
+        let guard = app.state();
+        assert!(guard.read().action_stack.is_empty());
+        assert!(guard.read().selection.is_empty());
+    }
+
+    #[test]
+    fn test_editor_app_save_scene() {
+        let app = EditorApp::new();
+        let path = std::env::temp_dir().join("editor_scene_test.json");
+        app.save_scene(&path).unwrap();
+        assert!(path.exists());
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn test_editor_app_save_load_settings() {
+        let mut app = EditorApp::new();
+        let path = std::env::temp_dir().join("editor_settings_test2.json");
+        app.save_settings(&path).unwrap();
+        assert!(path.exists());
+        app.load_settings(&path).unwrap();
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn test_editor_app_load_scene() {
+        let mut app = EditorApp::new();
+        let path = std::env::temp_dir().join("editor_scene_load.json");
+        std::fs::write(&path, "{}").unwrap();
+        app.load_scene(&path).unwrap();
+        let _ = std::fs::remove_file(&path);
+    }
+
+    // ====================================================================
+    // UiContext
+    // ====================================================================
+    #[test]
+    fn test_ui_context_new() {
+        let ctx = UiContext::new(0.016);
+        assert_eq!(ctx.dt, 0.016);
+    }
+
+    // ====================================================================
+    // NodeHandle 基础
+    // ====================================================================
+    #[test]
+    fn test_node_handle_null() {
+        let h = NodeHandle::null();
+        assert!(h.is_null());
+    }
+
+    #[test]
+    fn test_node_handle_new() {
+        let h = NodeHandle::new(5);
+        assert!(!h.is_null());
+        assert_eq!(h.index(), 5);
+    }
+
+    #[test]
+    fn test_scene_get_node_mut() {
+        let mut scene = SceneTree::new();
+        let root = scene.root();
+        scene.add_2d_node(root, "child");
+        if let Some(node) = scene.get_node_mut(root) {
+            node.set_name("new_root_name".to_string());
+        }
+        assert_eq!(scene.get_node(root).unwrap().name(), "new_root_name");
     }
 }

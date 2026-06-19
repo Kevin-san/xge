@@ -417,6 +417,31 @@ mod tests {
     }
 
     #[test]
+    fn test_package_add_file_multiple() {
+        let dir = tempdir().unwrap();
+        let mut pkg = Package::new(dir.path()).unwrap();
+        pkg.add_file("a.txt", b"Hello".to_vec());
+        pkg.add_file("b.txt", b"World".to_vec());
+        pkg.add_file("nested/c.txt", b"Nested".to_vec());
+        assert_eq!(pkg.files.len(), 3);
+    }
+
+    #[test]
+    fn test_package_add_directory() {
+        let dir = tempdir().unwrap();
+        let src_dir = dir.path().join("src");
+        std::fs::create_dir_all(&src_dir).unwrap();
+        std::fs::write(src_dir.join("file1.txt"), b"one").unwrap();
+        std::fs::write(src_dir.join("file2.txt"), b"two").unwrap();
+
+        let out_dir = dir.path().join("out");
+        let mut pkg = Package::new(&out_dir).unwrap();
+        pkg.add_directory("prefix", &src_dir).unwrap();
+        // 至少两个文件被添加
+        assert!(pkg.files.len() >= 2);
+    }
+
+    #[test]
     fn test_package_build_dir() {
         let dir = tempdir().unwrap();
         let mut pkg = Package::new(dir.path()).unwrap();
@@ -424,5 +449,174 @@ mod tests {
         let artifact = pkg.build(PackageFormat::Dir).unwrap();
         assert!(artifact.path.exists());
         assert!(artifact.path.join("test.txt").exists());
+    }
+
+    #[test]
+    fn test_package_build_dir_nested() {
+        let dir = tempdir().unwrap();
+        let mut pkg = Package::new(dir.path()).unwrap();
+        pkg.add_file("nested/deep/file.txt", b"nested".to_vec());
+        let artifact = pkg.build(PackageFormat::Dir).unwrap();
+        let written = artifact.path.join("nested").join("deep").join("file.txt");
+        assert!(written.exists());
+    }
+
+    #[test]
+    fn test_package_build_zip() {
+        let dir = tempdir().unwrap();
+        let mut pkg = Package::new(dir.path()).unwrap();
+        pkg.add_file("hello.txt", b"world".to_vec());
+        let artifact = pkg.build(PackageFormat::Zip).unwrap();
+        assert!(artifact.path.exists());
+        // zip 文件内容非零字节
+        let meta = std::fs::metadata(&artifact.path).unwrap();
+        assert!(meta.len() > 0);
+    }
+
+    #[test]
+    fn test_artifact_fields() {
+        let dir = tempdir().unwrap();
+        let mut pkg = Package::new(dir.path()).unwrap();
+        pkg.add_file("a.txt", b"aaa".to_vec());
+        let artifact = pkg.build(PackageFormat::Dir).unwrap();
+        assert!(artifact.size() > 0);
+        assert_eq!(artifact.path(), dir.path());
+        // 输出为当前平台
+        assert_eq!(artifact.platform(), PlatformTarget::current());
+        assert_eq!(artifact.version(), "1.0.0");
+        assert!(artifact.sign_info().is_none());
+    }
+
+    #[test]
+    fn test_artifact_debug() {
+        let dir = tempdir().unwrap();
+        let pkg = Package::new(dir.path()).unwrap();
+        let a = pkg.build(PackageFormat::Dir).unwrap();
+        let s = format!("{:?}", a);
+        assert!(s.contains("BuildArtifact"));
+    }
+
+    #[test]
+    fn test_artifact_clone() {
+        let dir = tempdir().unwrap();
+        let pkg = Package::new(dir.path()).unwrap();
+        let a = pkg.build(PackageFormat::Dir).unwrap();
+        let b = a.clone();
+        assert_eq!(a.size(), b.size());
+    }
+
+    #[test]
+    fn test_package_add_manifest() {
+        let dir = tempdir().unwrap();
+        let mut pkg = Package::new(dir.path()).unwrap();
+        let manifest = AssetManifest::new();
+        pkg.add_manifest(manifest);
+        let artifact = pkg.build(PackageFormat::Dir).unwrap();
+        // 应当写入 assets.manifest 文件
+        assert!(artifact.path.join("assets.manifest").exists());
+    }
+
+    #[test]
+    fn test_package_format_debug() {
+        let f = PackageFormat::Dir;
+        let s = format!("{:?}", f);
+        assert!(s.contains("Dir"));
+    }
+
+    #[test]
+    fn test_build_pipeline_new() {
+        let tmp = tempdir().unwrap();
+        let assets_dir = tmp.path().join("assets");
+        let output_dir = tmp.path().join("output");
+        std::fs::create_dir_all(&assets_dir).unwrap();
+        std::fs::write(assets_dir.join("a.txt"), b"aaa").unwrap();
+
+        let config = BuildConfig::new()
+            .with_assets_dir(&assets_dir)
+            .with_output_dir(&output_dir)
+            .with_temp_dir(tmp.path().join("temp"));
+
+        let pipeline = BuildPipeline::new(config).unwrap();
+        assert!(!pipeline.config().output_dir().as_os_str().is_empty());
+    }
+
+    #[test]
+    fn test_build_pipeline_config_ref() {
+        let tmp = tempdir().unwrap();
+        let config = BuildConfig::new()
+            .with_assets_dir(tmp.path().join("assets"))
+            .with_output_dir(tmp.path().join("output"))
+            .with_temp_dir(tmp.path().join("temp"));
+        std::fs::create_dir_all(tmp.path().join("assets")).unwrap();
+
+        let pipeline = BuildPipeline::new(config.clone()).unwrap();
+        assert_eq!(pipeline.config().app_name(), config.app_name());
+    }
+
+    #[test]
+    fn test_build_pipeline_build_output() {
+        let tmp = tempdir().unwrap();
+        let assets_dir = tmp.path().join("assets");
+        let output_dir = tmp.path().join("output");
+        std::fs::create_dir_all(&assets_dir).unwrap();
+        std::fs::write(assets_dir.join("a.txt"), b"aaa").unwrap();
+        std::fs::write(assets_dir.join("b.txt"), b"bbb").unwrap();
+
+        let config = BuildConfig::new()
+            .with_assets_dir(&assets_dir)
+            .with_output_dir(&output_dir)
+            .with_temp_dir(tmp.path().join("temp"));
+
+        let pipeline = BuildPipeline::new(config).unwrap();
+        let artifact = pipeline.build().unwrap();
+        assert!(output_dir.exists());
+        assert!(artifact.path.join("a.txt").exists());
+        assert!(artifact.path.join("b.txt").exists());
+    }
+
+    #[test]
+    fn test_build_pipeline_clean() {
+        let tmp = tempdir().unwrap();
+        let assets_dir = tmp.path().join("assets");
+        let output_dir = tmp.path().join("output");
+        let temp_dir = tmp.path().join("temp");
+        std::fs::create_dir_all(&assets_dir).unwrap();
+        std::fs::write(assets_dir.join("a.txt"), b"aaa").unwrap();
+        std::fs::create_dir_all(&output_dir).unwrap();
+        std::fs::write(output_dir.join("placeholder"), b"x").unwrap();
+        std::fs::create_dir_all(&temp_dir).unwrap();
+
+        let config = BuildConfig::new()
+            .with_assets_dir(&assets_dir)
+            .with_output_dir(&output_dir)
+            .with_temp_dir(&temp_dir);
+        let pipeline = BuildPipeline::new(config).unwrap();
+        pipeline.clean().unwrap();
+        assert!(!output_dir.exists());
+        assert!(!temp_dir.exists());
+    }
+
+    #[test]
+    fn test_build_pipeline_platform_target() {
+        let tmp = tempdir().unwrap();
+        let config = BuildConfig::new()
+            .with_assets_dir(tmp.path().join("assets"))
+            .with_output_dir(tmp.path().join("output"))
+            .with_temp_dir(tmp.path().join("temp"));
+        std::fs::create_dir_all(tmp.path().join("assets")).unwrap();
+
+        let pipeline = BuildPipeline::new(config).unwrap();
+        assert_eq!(pipeline.platform_target(), PlatformTarget::current());
+    }
+
+    #[test]
+    fn test_sign_info_debug_and_fields() {
+        let info = SignInfo {
+            signature: vec![1, 2, 3],
+            certificate: vec![4, 5, 6],
+            timestamp: Some("2024".to_string()),
+        };
+        let s = format!("{:?}", info);
+        assert!(s.contains("SignInfo"));
     }
 }

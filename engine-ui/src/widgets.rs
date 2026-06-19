@@ -368,6 +368,7 @@ use crate::style::Style;
 #[cfg(test)]
 mod tests {
     use super::*;
+    use engine_render::Color;
 
     #[test]
     fn test_button_creation() {
@@ -450,5 +451,151 @@ mod tests {
         assert!(checkbox.is_checked());
         checkbox.toggle();
         assert!(!checkbox.is_checked());
+    }
+
+    #[test]
+    fn test_button_set_text() {
+        let mut button = Button::new("Old");
+        button.set_text("New");
+        assert_eq!(button.text(), "New");
+    }
+
+    #[test]
+    fn test_button_set_pressed_state() {
+        let mut button = Button::new("Test");
+        button.set_pressed(true);
+        assert!(button.is_pressed());
+        button.set_pressed(false);
+        assert!(!button.is_pressed());
+    }
+
+    #[test]
+    fn test_button_set_hovered_state() {
+        let mut button = Button::new("Test");
+        button.set_hovered(true);
+        assert!(button.is_hovered());
+        button.set_hovered(false);
+        assert!(!button.is_hovered());
+    }
+
+    #[test]
+    fn test_label_creation() {
+        let label = Label::new("Hello");
+        assert_eq!(label.text(), "Hello");
+        assert_eq!(label.char_count(), 5);
+    }
+
+    #[test]
+    fn test_label_set_text() {
+        let mut label = Label::new("Hello");
+        label.set_text("World");
+        assert_eq!(label.text(), "World");
+    }
+
+    #[test]
+    fn test_panel_default_background() {
+        let panel = Panel::new();
+        assert_eq!(panel.background_color(), Color::WHITE);
+    }
+
+    #[test]
+    fn test_panel_set_border() {
+        let mut panel = Panel::new();
+        panel.set_border_color(Color::BLACK);
+        panel.set_border_width(2.0);
+        assert_eq!(panel.border_color(), Color::BLACK);
+        assert_eq!(panel.border_width(), 2.0);
+    }
+
+    #[test]
+    fn test_panel_set_corner_radius() {
+        let mut panel = Panel::new();
+        panel.set_corner_radius(8.0);
+        assert_eq!(panel.corner_radius(), 8.0);
+    }
+
+    #[test]
+    fn test_checkbox_text() {
+        let mut checkbox = CheckBox::new("Opt1");
+        assert_eq!(checkbox.text(), "Opt1");
+        checkbox.set_text("Opt2");
+        assert_eq!(checkbox.text(), "Opt2");
+    }
+
+    #[test]
+    fn test_checkbox_set_checked() {
+        let mut checkbox = CheckBox::new("X");
+        checkbox.set_checked(true);
+        assert!(checkbox.is_checked());
+        checkbox.set_checked(false);
+        assert!(!checkbox.is_checked());
+    }
+
+    #[test]
+    fn test_text_box_cursor_move() {
+        let mut textbox = TextBox::new("abc");
+        textbox.set_cursor_position(0);
+        textbox.move_cursor_right();
+        assert_eq!(textbox.cursor_position(), 1);
+        textbox.move_cursor_left();
+        assert_eq!(textbox.cursor_position(), 0);
+    }
+
+    #[test]
+    fn test_text_box_cursor_clamp() {
+        let mut textbox = TextBox::new("hi");
+        textbox.set_cursor_position(999);
+        assert_eq!(textbox.cursor_position(), 2);
+        textbox.set_cursor_position(0);
+        assert_eq!(textbox.cursor_position(), 0);
+    }
+
+    #[test]
+    fn test_text_box_delete_forward() {
+        let mut textbox = TextBox::new("abc");
+        textbox.set_cursor_position(0);
+        textbox.delete_char_forward();
+        assert_eq!(textbox.text(), "bc");
+    }
+
+    #[test]
+    fn test_text_box_cursor_jump() {
+        let mut textbox = TextBox::new("abc");
+        textbox.move_cursor_to_start();
+        assert_eq!(textbox.cursor_position(), 0);
+        textbox.move_cursor_to_end();
+        assert_eq!(textbox.cursor_position(), 3);
+    }
+
+    #[test]
+    fn test_text_box_password_display() {
+        let mut textbox = TextBox::new("secret");
+        textbox.set_password(true);
+        assert!(textbox.is_password());
+        assert_eq!(textbox.display_text(), "******");
+        textbox.set_password(false);
+        assert_eq!(textbox.display_text(), "secret");
+    }
+
+    #[test]
+    fn test_text_box_placeholder() {
+        let mut textbox = TextBox::new("");
+        textbox.set_placeholder("Enter text");
+        assert_eq!(textbox.placeholder(), "Enter text");
+    }
+
+    #[test]
+    fn test_text_box_focus_state() {
+        let mut textbox = TextBox::new("");
+        assert!(!textbox.is_focused());
+        textbox.set_focused(true);
+        assert!(textbox.is_focused());
+    }
+
+    #[test]
+    fn test_panel_set_background_color() {
+        let mut panel = Panel::new();
+        panel.set_background_color(Color::RED);
+        assert_eq!(panel.background_color(), Color::RED);
     }
 }

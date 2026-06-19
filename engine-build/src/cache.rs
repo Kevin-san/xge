@@ -106,6 +106,12 @@ mod tests {
     }
 
     #[test]
+    fn test_build_cache_new_default() {
+        let cache = BuildCache::new_default();
+        assert_eq!(cache.cache_dir.as_os_str().len(), 0);
+    }
+
+    #[test]
     fn test_build_cache_hash() {
         let cache = BuildCache::new_default();
         let hash1 = cache.hash("test_key");
@@ -115,12 +121,27 @@ mod tests {
     }
 
     #[test]
-    fn test_build_cache_put_get() {
+    fn test_build_cache_hash_different_keys() {
+        let cache = BuildCache::new_default();
+        let hash1 = cache.hash("key_a");
+        let hash2 = cache.hash("key_b");
+        assert_ne!(hash1, hash2);
+    }
+
+    #[test]
+    fn test_build_cache_put_get_in_memory() {
         let mut cache = BuildCache::new_default();
-        cache.put("test_key", PathBuf::from("/test/path"));
+        cache.put("test_key", PathBuf::from("/some/path"));
         assert!(cache.contains("test_key"));
-        let result = cache.get("test_key");
-        assert!(result.is_some());
+        let got = cache.get("test_key");
+        assert!(got.is_some());
+        assert_eq!(got.unwrap(), PathBuf::from("/some/path"));
+    }
+
+    #[test]
+    fn test_build_cache_get_missing() {
+        let cache = BuildCache::new_default();
+        assert!(cache.get("missing").is_none());
     }
 
     #[test]
@@ -131,5 +152,33 @@ mod tests {
         assert_eq!(cache.size(), 2);
         cache.clean();
         assert_eq!(cache.size(), 0);
+    }
+
+    #[test]
+    fn test_build_cache_size() {
+        let mut cache = BuildCache::new_default();
+        assert_eq!(cache.size(), 0);
+        cache.put("key1", PathBuf::from("/path1"));
+        assert_eq!(cache.size(), 1);
+        cache.put("key2", PathBuf::from("/path2"));
+        assert_eq!(cache.size(), 2);
+    }
+
+    #[test]
+    fn test_build_cache_dir_accessor() {
+        let cache = BuildCache::new_default();
+        assert_eq!(cache.cache_dir(), Path::new(""));
+    }
+
+    #[test]
+    fn test_build_cache_put_file_based() {
+        // 测试真正的文件系统缓存
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("source.txt");
+        std::fs::write(&file_path, b"test content").unwrap();
+
+        let mut cache = BuildCache::new(dir.path().join("cache")).unwrap();
+        cache.put("file_key", &file_path);
+        assert!(cache.contains("file_key"));
     }
 }

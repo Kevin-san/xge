@@ -209,4 +209,91 @@ mod tests {
         assert!(node.physics_sync_enabled());
         assert!(node.position_sync_enabled());
     }
+
+    // ============= Body2DNode 更多测试 =============
+
+    #[test]
+    fn test_body2d_node_body_handle() {
+        let handle = BodyHandle::new(5);
+        let node = Body2DNode::new("body", handle);
+        assert_eq!(node.body().index(), 5);
+    }
+
+    #[test]
+    fn test_body2d_node_set_physics_sync() {
+        let handle = BodyHandle::new(0);
+        let mut node = Body2DNode::new("body", handle);
+        node.set_physics_sync(false);
+        assert!(!node.physics_sync_enabled());
+    }
+
+    #[test]
+    fn test_body2d_node_set_position_sync() {
+        let handle = BodyHandle::new(0);
+        let mut node = Body2DNode::new("body", handle);
+        node.set_position_sync(false);
+        assert!(!node.position_sync_enabled());
+    }
+
+    #[test]
+    fn test_body2d_node_node2d_position() {
+        let handle = BodyHandle::new(0);
+        let mut node = Body2DNode::new("body", handle);
+        node.node2d_mut().set_position(Vec2::new(3.0, 4.0));
+        assert_eq!(node.node2d().position(), Vec2::new(3.0, 4.0));
+    }
+
+    #[test]
+    fn test_body2d_node_sync_to_world() {
+        let handle = BodyHandle::new(0);
+        let mut node = Body2DNode::new("body", handle);
+        node.node2d_mut().set_position(Vec2::new(10.0, 20.0));
+        node.node2d_mut().set_rotation(0.5);
+        let (pos, rot) = node.sync_to_world();
+        assert_eq!(pos, Vec2::new(10.0, 20.0));
+        assert_eq!(rot, 0.5);
+    }
+
+    #[test]
+    fn test_body2d_node_on_update_draw() {
+        let handle = BodyHandle::new(0);
+        let mut node = Body2DNode::new("body", handle);
+        node.on_update(0.016);
+        node.on_draw();
+    }
+
+    #[test]
+    fn test_body2d_node_children_parent() {
+        let handle = BodyHandle::new(0);
+        let mut node = Body2DNode::new("body", handle);
+        node.add_child(NodeHandle::new(1));
+        assert_eq!(node.children().len(), 1);
+        node.set_parent(Some(NodeHandle::new(5)));
+        assert!(node.parent().is_some());
+        node.detach();
+        assert!(node.parent().is_none());
+    }
+
+    #[test]
+    fn test_body2d_node_paused_visible() {
+        let handle = BodyHandle::new(0);
+        let mut node = Body2DNode::new("body", handle);
+        node.set_paused(true);
+        assert!(node.paused());
+        node.set_visible(false);
+        assert!(!node.visible());
+    }
+
+    #[test]
+    fn test_body2d_node_mass_default_one() {
+        let handle = BodyHandle::new(0);
+        let node = Body2DNode::new("body", handle);
+        assert_eq!(node.mass(), 1.0);
+    }
+
+    #[test]
+    fn test_body_handle_index() {
+        let handle = BodyHandle::new(42);
+        assert_eq!(handle.index(), 42);
+    }
 }

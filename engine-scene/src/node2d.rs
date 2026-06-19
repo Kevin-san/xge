@@ -243,4 +243,111 @@ mod tests {
         node.set_visible(false);
         assert!(!node.visible());
     }
+
+    // ============= Node2D / Node 更多变换和层级测试 =============
+
+    #[test]
+    fn test_node2d_default_position_rotation_scale() {
+        let node = Node2D::new("test");
+        assert_eq!(node.position(), Vec2::ZERO);
+        assert_eq!(node.rotation(), 0.0);
+        assert_eq!(node.scale(), Vec2::ONE);
+    }
+
+    #[test]
+    fn test_node2d_set_name() {
+        let mut node = Node2D::new("original");
+        node.set_name("changed".to_string());
+        assert_eq!(node.name(), "changed");
+    }
+
+    #[test]
+    fn test_node2d_children_empty_initially() {
+        let node = Node2D::new("n");
+        assert!(node.children().is_empty());
+    }
+
+    #[test]
+    fn test_node2d_detach_sets_parent_none() {
+        let mut node = Node2D::new("n");
+        node.set_parent(Some(NodeHandle::new(1)));
+        assert!(node.parent().is_some());
+        node.detach();
+        assert!(node.parent().is_none());
+    }
+
+    #[test]
+    fn test_node2d_on_ready_on_update_on_draw_no_panic() {
+        let mut node = Node2D::new("n");
+        node.on_ready();
+        node.on_update(0.016);
+        node.on_draw();
+        node.on_destroy();
+    }
+
+    #[test]
+    fn test_node2d_set_multiple_positions() {
+        let mut node = Node2D::new("n");
+        node.set_position(Vec2::new(1.0, 2.0));
+        assert_eq!(node.position(), Vec2::new(1.0, 2.0));
+        node.set_position(Vec2::new(5.0, -3.0));
+        assert_eq!(node.position(), Vec2::new(5.0, -3.0));
+    }
+
+    #[test]
+    fn test_node2d_rotation_update() {
+        let mut node = Node2D::new("n");
+        node.set_rotation(std::f32::consts::PI);
+        assert!((node.rotation() - std::f32::consts::PI).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_node2d_scale_half() {
+        let mut node = Node2D::new("n");
+        node.set_scale(Vec2::new(0.5, 0.5));
+        assert_eq!(node.scale(), Vec2::new(0.5, 0.5));
+    }
+
+    #[test]
+    fn test_node2d_multiple_children() {
+        let mut node = Node2D::new("p");
+        for i in 0..5 {
+            node.add_child(NodeHandle::new(i));
+        }
+        assert_eq!(node.children().len(), 5);
+        node.remove_child(NodeHandle::new(2));
+        assert_eq!(node.children().len(), 4);
+    }
+
+    #[test]
+    fn test_node2d_remove_nonexistent_child_keeps_same() {
+        let mut node = Node2D::new("p");
+        node.add_child(NodeHandle::new(0));
+        node.remove_child(NodeHandle::new(99));
+        assert_eq!(node.children().len(), 1);
+    }
+
+    #[test]
+    fn test_node2d_toggle_paused() {
+        let mut node = Node2D::new("n");
+        node.set_paused(true);
+        assert!(node.paused());
+        node.set_paused(false);
+        assert!(!node.paused());
+    }
+
+    #[test]
+    fn test_node2d_toggle_visible() {
+        let mut node = Node2D::new("n");
+        node.set_visible(false);
+        assert!(!node.visible());
+        node.set_visible(true);
+        assert!(node.visible());
+    }
+
+    #[test]
+    fn test_node2d_handle_new() {
+        let h = NodeHandle::new(5);
+        assert_eq!(h.index(), 5);
+    }
 }

@@ -229,6 +229,7 @@ impl Mat4Transform3D for Mat4 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use engine_math::Vec3;
 
     #[test]
     fn test_aabb_contains_point() {
@@ -258,5 +259,183 @@ mod tests {
         let plane = Plane::from_normal_and_point(Vec3::Y, Vec3::new(0.0, 5.0, 0.0));
         assert_eq!(plane.distance(Vec3::new(0.0, 10.0, 0.0)), 5.0);
         assert_eq!(plane.distance(Vec3::new(0.0, 0.0, 0.0)), -5.0);
+    }
+
+    #[test]
+    fn test_aabb_new() {
+        let aabb = AABB::new(Vec3::new(-1.0, -2.0, -3.0), Vec3::new(1.0, 2.0, 3.0));
+        assert_eq!(aabb.min, Vec3::new(-1.0, -2.0, -3.0));
+        assert_eq!(aabb.max, Vec3::new(1.0, 2.0, 3.0));
+    }
+
+    #[test]
+    fn test_aabb_from_points() {
+        let points = vec![
+            Vec3::new(1.0, 2.0, 3.0),
+            Vec3::new(-1.0, -2.0, -3.0),
+            Vec3::new(0.0, 0.0, 0.0),
+        ];
+        let aabb = AABB::from_points(&points);
+        assert_eq!(aabb.min, Vec3::new(-1.0, -2.0, -3.0));
+        assert_eq!(aabb.max, Vec3::new(1.0, 2.0, 3.0));
+    }
+
+    #[test]
+    fn test_aabb_from_points_empty() {
+        let aabb = AABB::from_points(&[]);
+        assert_eq!(aabb.min, Vec3::new(f32::INFINITY, f32::INFINITY, f32::INFINITY));
+    }
+
+    #[test]
+    fn test_aabb_center() {
+        let aabb = AABB::new(Vec3::new(-2.0, 0.0, -4.0), Vec3::new(2.0, 4.0, 4.0));
+        assert_eq!(aabb.center(), Vec3::new(0.0, 2.0, 0.0));
+    }
+
+    #[test]
+    fn test_aabb_half_extents() {
+        let aabb = AABB::new(Vec3::new(-1.0, -2.0, -3.0), Vec3::new(1.0, 2.0, 3.0));
+        assert_eq!(aabb.half_extents(), Vec3::new(1.0, 2.0, 3.0));
+    }
+
+    #[test]
+    fn test_aabb_size() {
+        let aabb = AABB::new(Vec3::ZERO, Vec3::new(5.0, 3.0, 2.0));
+        assert_eq!(aabb.size(), Vec3::new(5.0, 3.0, 2.0));
+    }
+
+    #[test]
+    fn test_aabb_contains_point_on_edge() {
+        let aabb = AABB::new(Vec3::ZERO, Vec3::ONE);
+        assert!(aabb.contains_point(Vec3::ZERO));
+        assert!(aabb.contains_point(Vec3::ONE));
+    }
+
+    #[test]
+    fn test_aabb_intersects_touching() {
+        let a = AABB::new(Vec3::ZERO, Vec3::ONE);
+        let b = AABB::new(Vec3::new(1.0, 0.0, 0.0), Vec3::new(2.0, 1.0, 1.0));
+        assert!(a.intersects_aabb(b));
+    }
+
+    #[test]
+    fn test_aabb_intersects_disjoint() {
+        let a = AABB::new(Vec3::ZERO, Vec3::ONE);
+        let b = AABB::new(Vec3::new(2.0, 2.0, 2.0), Vec3::new(3.0, 3.0, 3.0));
+        assert!(!a.intersects_aabb(b));
+    }
+
+    #[test]
+    fn test_aabb_extend_point() {
+        let aabb = AABB::new(Vec3::ZERO, Vec3::ONE);
+        let extended = aabb.extend(Vec3::new(-1.0, 2.0, 0.5));
+        assert_eq!(extended.min, Vec3::new(-1.0, 0.0, 0.0));
+        assert_eq!(extended.max, Vec3::new(1.0, 2.0, 1.0));
+    }
+
+    #[test]
+    fn test_aabb_extend_point_inside() {
+        let aabb = AABB::new(Vec3::ZERO, Vec3::ONE);
+        let extended = aabb.extend(Vec3::new(0.5, 0.5, 0.5));
+        assert_eq!(extended.min, Vec3::ZERO);
+        assert_eq!(extended.max, Vec3::ONE);
+    }
+
+    #[test]
+    fn test_aabb_merge_partial() {
+        let a = AABB::new(Vec3::ZERO, Vec3::ONE);
+        let b = AABB::new(Vec3::new(0.5, 0.5, 0.5), Vec3::new(2.0, 2.0, 2.0));
+        let merged = a.merge(b);
+        assert_eq!(merged.min, Vec3::ZERO);
+        assert_eq!(merged.max, Vec3::new(2.0, 2.0, 2.0));
+    }
+
+    #[test]
+    fn test_aabb_transform_by() {
+        let aabb = AABB::new(Vec3::new(-1.0, -1.0, -1.0), Vec3::new(1.0, 1.0, 1.0));
+        let transform = Mat4::from_translation(Vec3::new(5.0, 0.0, 0.0));
+        let transformed = aabb.transform_by(transform);
+        // After translation by (5,0,0), min should be around (4, -1, -1)
+        assert!(transformed.min.x > 3.0);
+        assert!(transformed.max.x > 5.0);
+    }
+
+    #[test]
+    fn test_sphere_new() {
+        let sphere = Sphere::new(Vec3::new(1.0, 2.0, 3.0), 5.0);
+        assert_eq!(sphere.center, Vec3::new(1.0, 2.0, 3.0));
+        assert_eq!(sphere.radius, 5.0);
+    }
+
+    #[test]
+    fn test_sphere_contains_point_at_center() {
+        let sphere = Sphere::new(Vec3::new(1.0, 1.0, 1.0), 5.0);
+        assert!(sphere.contains_point(Vec3::new(1.0, 1.0, 1.0)));
+    }
+
+    #[test]
+    fn test_sphere_contains_point_at_radius() {
+        let sphere = Sphere::new(Vec3::ZERO, 1.0);
+        // Point at exactly radius distance
+        assert!(sphere.contains_point(Vec3::new(1.0, 0.0, 0.0)));
+    }
+
+    #[test]
+    fn test_sphere_contains_point_outside() {
+        let sphere = Sphere::new(Vec3::ZERO, 1.0);
+        assert!(!sphere.contains_point(Vec3::new(2.0, 0.0, 0.0)));
+    }
+
+    #[test]
+    fn test_sphere_intersects_touching() {
+        let a = Sphere::new(Vec3::ZERO, 1.0);
+        let b = Sphere::new(Vec3::new(2.0, 0.0, 0.0), 1.0);
+        // Dist = 2, sum of radii = 2
+        assert!(a.intersects_sphere(b));
+    }
+
+    #[test]
+    fn test_sphere_intersects_disjoint() {
+        let a = Sphere::new(Vec3::ZERO, 1.0);
+        let b = Sphere::new(Vec3::new(10.0, 0.0, 0.0), 1.0);
+        assert!(!a.intersects_sphere(b));
+    }
+
+    #[test]
+    fn test_sphere_merge_same_center() {
+        let a = Sphere::new(Vec3::ZERO, 2.0);
+        let b = Sphere::new(Vec3::ZERO, 5.0);
+        let merged = a.merge(b);
+        assert_eq!(merged.center, Vec3::ZERO);
+        // radius = (2 + 5 + 0) * 0.5 = 3.5
+        assert_eq!(merged.radius, 3.5);
+    }
+
+    #[test]
+    fn test_plane_new() {
+        let plane = Plane::new(Vec3::Y, 5.0);
+        assert_eq!(plane.normal, Vec3::Y);
+        assert_eq!(plane.d, 5.0);
+    }
+
+    #[test]
+    fn test_plane_normalize() {
+        let plane = Plane::new(Vec3::new(0.0, 5.0, 0.0), 10.0);
+        let normalized = plane.normalize();
+        // Normal should be unit
+        assert!((normalized.normal.length() - 1.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_plane_distance_point_on_plane() {
+        let plane = Plane::from_normal_and_point(Vec3::Y, Vec3::new(0.0, 5.0, 0.0));
+        assert_eq!(plane.distance(Vec3::new(0.0, 5.0, 0.0)), 0.0);
+    }
+
+    #[test]
+    fn test_aabb_unit_const() {
+        let aabb = AABB::UNIT;
+        assert_eq!(aabb.min, Vec3::new(-0.5, -0.5, -0.5));
+        assert_eq!(aabb.max, Vec3::new(0.5, 0.5, 0.5));
     }
 }

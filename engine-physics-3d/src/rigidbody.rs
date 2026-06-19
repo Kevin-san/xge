@@ -828,7 +828,7 @@ mod tests {
 
     #[test]
     fn test_lock_rotations() {
-        let mut body = RigidBody3DBuilder::dynamic()
+        let body = RigidBody3DBuilder::dynamic()
             .restrict_rotations(true, false, true)
             .build();
         assert_eq!(body.locked_rotations(), (false, true, false));
@@ -836,7 +836,7 @@ mod tests {
 
     #[test]
     fn test_gravity_scale() {
-        let mut body = RigidBody3DBuilder::dynamic().gravity_scale(2.0).build();
+        let body = RigidBody3DBuilder::dynamic().gravity_scale(2.0).build();
         assert_eq!(body.gravity_scale(), 2.0);
     }
 }

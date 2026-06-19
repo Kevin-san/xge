@@ -606,6 +606,7 @@ fn compute_aabb(vertices: &[Vertex]) -> AABB {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use engine_math::{Vec2, Vec3};
 
     #[test]
     fn test_mesh_cube() {
@@ -665,5 +666,235 @@ mod tests {
         assert!(!mesh.has_normals());
         mesh.compute_normals();
         assert!(mesh.has_normals());
+    }
+
+    #[test]
+    fn test_mesh_primitive_triangle_count() {
+        let p = Primitive::new(vec![0, 1, 2, 3, 4, 5]);
+        assert_eq!(p.triangle_count(), 2);
+    }
+
+    #[test]
+    fn test_mesh_primitive_empty() {
+        let p = Primitive::new(Vec::new());
+        assert_eq!(p.triangle_count(), 0);
+    }
+
+    #[test]
+    fn test_mesh_new_empty() {
+        let mesh = Mesh3D::new();
+        assert_eq!(mesh.vertex_count(), 0);
+        assert_eq!(mesh.triangle_count(), 0);
+        assert!(!mesh.has_normals());
+        assert!(!mesh.has_uv());
+    }
+
+    #[test]
+    fn test_mesh_default() {
+        let mesh = Mesh3D::default();
+        assert_eq!(mesh.vertex_count(), 0);
+        assert_eq!(mesh.triangle_count(), 0);
+    }
+
+    #[test]
+    fn test_mesh_from_vertices_has_uv() {
+        let vertices = vec![
+            Vertex::new(Vec3::ZERO, Vec3::ZERO, Vec2::new(0.5, 0.5)),
+            Vertex::new(Vec3::X, Vec3::ZERO, Vec2::new(1.0, 0.0)),
+            Vertex::new(Vec3::Y, Vec3::ZERO, Vec2::new(0.0, 1.0)),
+        ];
+        let mesh = Mesh3D::from_vertices(vertices, vec![0, 1, 2]);
+        assert!(mesh.has_uv());
+    }
+
+    #[test]
+    fn test_mesh_cube_vertex_count() {
+        let cube = Mesh3D::cube(1.0);
+        assert_eq!(cube.vertex_count(), 24);
+        assert_eq!(cube.triangle_count(), 12);
+    }
+
+    #[test]
+    fn test_mesh_cube_aabb() {
+        let cube = Mesh3D::cube(2.0);
+        let aabb = cube.aabb();
+        assert_eq!(aabb.min, Vec3::new(-1.0, -1.0, -1.0));
+        assert_eq!(aabb.max, Vec3::new(1.0, 1.0, 1.0));
+    }
+
+    #[test]
+    fn test_mesh_cube_bounding_sphere() {
+        let cube = Mesh3D::cube(2.0);
+        let sphere = cube.bounding_sphere();
+        // Center should be at origin
+        assert!((sphere.center.x).abs() < 1e-5);
+        assert!((sphere.center.y).abs() < 1e-5);
+        assert!((sphere.center.z).abs() < 1e-5);
+        // Radius should be half-extents length (~sqrt(3))
+        assert!(sphere.radius > 1.7);
+        assert!(sphere.radius < 1.8);
+    }
+
+    #[test]
+    fn test_mesh_sphere_resolution() {
+        let sphere_low = Mesh3D::sphere(1.0, 8, 4);
+        let sphere_high = Mesh3D::sphere(1.0, 16, 8);
+        assert!(sphere_low.vertex_count() < sphere_high.vertex_count());
+    }
+
+    #[test]
+    fn test_mesh_sphere_has_normals() {
+        let sphere = Mesh3D::sphere(1.0, 8, 4);
+        assert!(sphere.has_normals());
+    }
+
+    #[test]
+    fn test_mesh_plane_segments() {
+        let plane = Mesh3D::plane(10.0, 10);
+        let expected_verts = (10 + 1) * (10 + 1);
+        assert_eq!(plane.vertex_count(), expected_verts);
+    }
+
+    #[test]
+    fn test_mesh_cylinder_vertices() {
+        let cylinder = Mesh3D::cylinder(1.0, 2.0, 12);
+        assert!(cylinder.vertex_count() > 0);
+        assert!(cylinder.triangle_count() > 0);
+    }
+
+    #[test]
+    fn test_mesh_cone_vertices() {
+        let cone = Mesh3D::cone(1.0, 2.0, 12);
+        assert!(cone.vertex_count() > 0);
+        assert!(cone.triangle_count() > 0);
+    }
+
+    #[test]
+    fn test_mesh_torus_vertices() {
+        let torus = Mesh3D::torus(1.0, 0.3, 16, 8);
+        assert!(torus.vertex_count() > 0);
+        assert!(torus.triangle_count() > 0);
+    }
+
+    #[test]
+    fn test_mesh_transform_translation() {
+        let mut mesh = Mesh3D::cube(1.0);
+        let transform = Mat4::from_translation(Vec3::new(5.0, 0.0, 0.0));
+        mesh.transform(transform);
+        let aabb = mesh.aabb();
+        assert!(aabb.min.x > 3.0);
+        assert!(aabb.max.x > 3.0);
+    }
+
+    #[test]
+    fn test_mesh_recalculate_aabb() {
+        let mut mesh = Mesh3D::cube(1.0);
+        // Manually move vertices and recalculate
+        mesh.recalculate_aabb();
+        let aabb = mesh.aabb();
+        assert!(aabb.min.x >= -0.6 && aabb.min.x <= -0.4);
+        assert!(aabb.max.x >= 0.4 && aabb.max.x <= 0.6);
+    }
+
+    #[test]
+    fn test_mesh_invert_v() {
+        let mut mesh = Mesh3D::cube(1.0);
+        let original_uv = mesh.vertices()[0].texcoord.y;
+        mesh.invert_v();
+        let inverted_uv = mesh.vertices()[0].texcoord.y;
+        assert!((inverted_uv - (1.0 - original_uv)).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_mesh_with_primitives() {
+        let vertices = vec![
+            Vertex::new(Vec3::ZERO, Vec3::Y, Vec2::ZERO),
+            Vertex::new(Vec3::X, Vec3::Y, Vec2::X),
+            Vertex::new(Vec3::Z, Vec3::Y, Vec2::Y),
+            Vertex::new(-Vec3::X, Vec3::Y, -Vec2::X),
+        ];
+        let primitives = vec![
+            Primitive::new(vec![0, 1, 2]),
+            Primitive::new(vec![0, 2, 3]),
+        ];
+        let mesh = Mesh3D::with_primitives(vertices, primitives);
+        assert_eq!(mesh.primitive_count(), 2);
+        assert_eq!(mesh.vertex_count(), 4);
+        assert_eq!(mesh.triangle_count(), 2);
+    }
+
+    #[test]
+    fn test_mesh_builder_triangle() {
+        let mut builder = MeshBuilder3D::new();
+        builder
+            .vertex(Vertex::new(Vec3::ZERO, Vec3::Y, Vec2::ZERO))
+            .vertex(Vertex::new(Vec3::new(1.0, 0.0, 0.0), Vec3::Y, Vec2::X))
+            .vertex(Vertex::new(Vec3::new(0.0, 0.0, 1.0), Vec3::Y, Vec2::Y))
+            .triangle(0, 1, 2);
+        let mesh = builder.build();
+        assert_eq!(mesh.vertex_count(), 3);
+        assert_eq!(mesh.triangle_count(), 1);
+    }
+
+    #[test]
+    fn test_mesh_builder_quad() {
+        let mut builder = MeshBuilder3D::new();
+        builder
+            .vertex(Vertex::new(Vec3::ZERO, Vec3::Y, Vec2::ZERO))
+            .vertex(Vertex::new(Vec3::X, Vec3::Y, Vec2::X))
+            .vertex(Vertex::new(Vec3::new(1.0, 0.0, 1.0), Vec3::Y, Vec2::ONE))
+            .vertex(Vertex::new(Vec3::Z, Vec3::Y, Vec2::Y))
+            .quad(0, 1, 2, 3);
+        let mesh = builder.build();
+        assert_eq!(mesh.vertex_count(), 4);
+        assert_eq!(mesh.triangle_count(), 2);
+    }
+
+    #[test]
+    fn test_mesh_builder_default() {
+        let builder = MeshBuilder3D::default();
+        let mesh = builder.build();
+        assert_eq!(mesh.vertex_count(), 0);
+        assert_eq!(mesh.triangle_count(), 0);
+    }
+
+    #[test]
+    fn test_mesh_cube_different_sizes() {
+        let small = Mesh3D::cube(0.5);
+        let large = Mesh3D::cube(2.0);
+        assert_eq!(small.vertex_count(), large.vertex_count());
+        let small_aabb = small.aabb();
+        let large_aabb = large.aabb();
+        assert!(small_aabb.min.x > large_aabb.min.x);
+        assert!(small_aabb.max.x < large_aabb.max.x);
+    }
+
+    #[test]
+    fn test_primitive_material_default() {
+        let p = Primitive::new(vec![0, 1, 2]);
+        assert_eq!(p.material_index, None);
+        assert_eq!(p.first_vertex, 0);
+        assert_eq!(p.vertex_count, 0);
+    }
+
+    #[test]
+    fn test_mesh_cylinder_resolution() {
+        let low = Mesh3D::cylinder(1.0, 2.0, 8);
+        let high = Mesh3D::cylinder(1.0, 2.0, 32);
+        assert!(low.vertex_count() < high.vertex_count());
+    }
+
+    #[test]
+    fn test_mesh_cone_resolution() {
+        let low = Mesh3D::cone(1.0, 2.0, 8);
+        let high = Mesh3D::cone(1.0, 2.0, 32);
+        assert!(low.vertex_count() < high.vertex_count());
+    }
+
+    #[test]
+    fn test_mesh_torus_resolution() {
+        let low = Mesh3D::torus(1.0, 0.3, 8, 4);
+        let high = Mesh3D::torus(1.0, 0.3, 32, 16);
+        assert!(low.vertex_count() < high.vertex_count());
     }
 }

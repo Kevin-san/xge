@@ -20,18 +20,17 @@ impl Prefab {
     }
 
     /// 递归收集节点
-    fn collect_nodes(scene: &SceneTree, handle: NodeHandle, _nodes: &mut Vec<Box<dyn Node>>) {
+    fn collect_nodes(scene: &SceneTree, handle: NodeHandle, nodes: &mut Vec<Box<dyn Node>>) {
         if let Some(node) = scene.get_node(handle) {
-            // 注意：这里克隆了节点，实际使用时可能需要更复杂的序列化
-            // 由于 Node trait 不支持 Clone，这里我们只是记录句柄
-            let _ = handle;
-            let _ = node.name();
+            // 记录节点名称并创建Node2D副本
+            let name = node.name().to_string();
+            nodes.push(Box::new(crate::Node2D::new(name)) as Box<dyn Node>);
         }
 
         // 获取子节点并递归遍历
         if let Some(entry) = scene.get_node(handle) {
             for &child in entry.children() {
-                Self::collect_nodes(scene, child, _nodes);
+                Self::collect_nodes(scene, child, nodes);
             }
         }
     }
@@ -115,5 +114,57 @@ mod tests {
 
         // cleanup
         let _ = std::fs::remove_file(&path);
+    }
+
+    // ============= Prefab 更多测试 =============
+
+    #[test]
+    fn test_prefab_instantiate_root_valid() {
+        let scene = SceneTree::new();
+        let prefab = Prefab::from_scene(&scene, scene.root());
+        let (root, _nodes) = prefab.instantiate();
+        assert!(!root.is_null());
+    }
+
+    #[test]
+    fn test_prefab_save_json() {
+        let scene = SceneTree::new();
+        let prefab = Prefab::from_scene(&scene, scene.root());
+        let temp_dir = std::env::temp_dir();
+        let path = temp_dir.join("test_prefab_save.json");
+        let result = prefab.save_json(&path);
+        assert!(result.is_ok());
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn test_prefab_load_json() {
+        let scene = SceneTree::new();
+        let prefab = Prefab::from_scene(&scene, scene.root());
+        let temp_dir = std::env::temp_dir();
+        let path = temp_dir.join("test_prefab_load.json");
+        prefab.save_json(&path).unwrap();
+        let loaded = Prefab::load_json(&path);
+        assert!(loaded.is_ok());
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn test_prefab_instantiate_multiple() {
+        let scene = SceneTree::new();
+        let prefab = Prefab::from_scene(&scene, scene.root());
+        let (r1, _) = prefab.instantiate();
+        let (r2, _) = prefab.instantiate();
+        assert!(!r1.is_null());
+        assert!(!r2.is_null());
+    }
+
+    #[test]
+    fn test_prefab_instantiate_returns_nodes() {
+        let scene = SceneTree::new();
+        let prefab = Prefab::from_scene(&scene, scene.root());
+        let (_root, nodes) = prefab.instantiate();
+        // 至少验证返回的节点列表不为空
+        assert!(!nodes.is_empty());
     }
 }

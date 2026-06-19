@@ -169,4 +169,107 @@ mod tests {
         assert_eq!(props.align, Alignment::Center);
         assert_eq!(props.stretch, Stretch::None);
     }
+
+    #[test]
+    fn test_padding_zero() {
+        let p = Padding::zero();
+        assert_eq!(p.left, 0.0);
+        assert_eq!(p.right, 0.0);
+        assert_eq!(p.top, 0.0);
+        assert_eq!(p.bottom, 0.0);
+    }
+
+    #[test]
+    fn test_padding_new() {
+        let p = Padding::new(1.0, 2.0, 3.0, 4.0);
+        assert_eq!(p.left, 1.0);
+        assert_eq!(p.right, 2.0);
+        assert_eq!(p.top, 3.0);
+        assert_eq!(p.bottom, 4.0);
+    }
+
+    #[test]
+    fn test_margin_uniform() {
+        let m = Margin::uniform(8.0);
+        assert_eq!(m.left, 8.0);
+        assert_eq!(m.right, 8.0);
+        assert_eq!(m.top, 8.0);
+        assert_eq!(m.bottom, 8.0);
+    }
+
+    #[test]
+    fn test_margin_zero() {
+        let m = Margin::zero();
+        assert_eq!(m.left, 0.0);
+        assert_eq!(m.right, 0.0);
+        assert_eq!(m.top, 0.0);
+        assert_eq!(m.bottom, 0.0);
+    }
+
+    #[test]
+    fn test_layout_type_variants() {
+        let _n = LayoutType::None;
+        let _h = LayoutType::Horizontal;
+        let _v = LayoutType::Vertical;
+    }
+
+    #[test]
+    fn test_layout_direction_variants() {
+        let _h = LayoutDirection::Horizontal;
+        let _v = LayoutDirection::Vertical;
+    }
+
+    #[test]
+    fn test_alignment_variants() {
+        let _s = Alignment::Start;
+        let _c = Alignment::Center;
+        let _e = Alignment::End;
+    }
+
+    #[test]
+    fn test_stretch_variants() {
+        let _n = Stretch::None;
+        let _h = Stretch::Horizontal;
+        let _v = Stretch::Vertical;
+        let _b = Stretch::Both;
+    }
+
+    #[test]
+    fn test_layout_properties_spacing_field() {
+        let mut props = LayoutProperties::new();
+        props.spacing = 12.0;
+        assert_eq!(props.spacing, 12.0);
+    }
+
+    #[test]
+    fn test_layout_properties_align_field() {
+        let mut props = LayoutProperties::new();
+        props.align = Alignment::Start;
+        assert_eq!(props.align, Alignment::Start);
+        props.align = Alignment::End;
+        assert_eq!(props.align, Alignment::End);
+    }
+
+    #[test]
+    fn test_layout_properties_stretch_field() {
+        let mut props = LayoutProperties::new();
+        props.stretch = Stretch::Both;
+        assert_eq!(props.stretch, Stretch::Both);
+    }
+
+    #[test]
+    fn test_layout_properties_padding_mut() {
+        let mut props = LayoutProperties::new();
+        props.padding = Padding::uniform(5.0);
+        assert_eq!(props.padding.left, 5.0);
+        assert_eq!(props.padding.top, 5.0);
+    }
+
+    #[test]
+    fn test_layout_properties_margin_mut() {
+        let mut props = LayoutProperties::new();
+        props.margin = Margin::new(1.0, 2.0, 3.0, 4.0);
+        assert_eq!(props.margin.left, 1.0);
+        assert_eq!(props.margin.bottom, 4.0);
+    }
 }

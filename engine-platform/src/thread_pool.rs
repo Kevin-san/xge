@@ -104,7 +104,7 @@ mod tests {
         let pool = ThreadPool::new_with_threads(2);
         let counter = Arc::new(AtomicUsize::new(0));
 
-        for i in 0..10 {
+        for _i in 0..10 {
             let c = counter.clone();
             pool.spawn(move || {
                 c.fetch_add(1, Ordering::SeqCst);

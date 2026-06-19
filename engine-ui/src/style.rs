@@ -144,6 +144,7 @@ impl Default for ButtonStyle {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use engine_render::Color;
 
     #[test]
     fn test_style_creation() {
@@ -177,5 +178,101 @@ mod tests {
     fn test_button_style_default() {
         let button_style = ButtonStyle::default();
         assert_eq!(button_style.text_style.color, Color::WHITE);
+    }
+
+    #[test]
+    fn test_style_with_shadow() {
+        let style = Style::new().with_shadow(Color::GRAY, (2.0, 3.0), 4.0);
+        assert_eq!(style.shadow_color, Color::GRAY);
+        assert_eq!(style.shadow_offset, (2.0, 3.0));
+        assert_eq!(style.shadow_blur, 4.0);
+    }
+
+    #[test]
+    fn test_style_with_opacity_clamped_zero() {
+        let style = Style::new().with_opacity(-5.0);
+        assert!(style.opacity >= 0.0);
+    }
+
+    #[test]
+    fn test_style_with_opacity_clamped_one() {
+        let style = Style::new().with_opacity(5.0);
+        assert!(style.opacity <= 1.0);
+    }
+
+    #[test]
+    fn test_style_with_opacity_mid() {
+        let style = Style::new().with_opacity(0.5);
+        assert_eq!(style.opacity, 0.5);
+    }
+
+    #[test]
+    fn test_text_style_with_color() {
+        let text_style = TextStyle::new().with_color(Color::BLUE);
+        assert_eq!(text_style.color, Color::BLUE);
+    }
+
+    #[test]
+    fn test_text_style_with_font_size() {
+        let text_style = TextStyle::new().with_font_size(24.0);
+        assert_eq!(text_style.font_size, 24.0);
+    }
+
+    #[test]
+    fn test_text_style_with_font_family() {
+        let text_style = TextStyle::new().with_font_family("Verdana");
+        assert_eq!(text_style.font_family, "Verdana");
+    }
+
+    #[test]
+    fn test_text_style_bold() {
+        let text_style = TextStyle::new().bold();
+        assert!(text_style.bold);
+        assert!(!text_style.italic);
+    }
+
+    #[test]
+    fn test_text_style_italic() {
+        let text_style = TextStyle::new().italic();
+        assert!(text_style.italic);
+    }
+
+    #[test]
+    fn test_button_style_states_exist() {
+        let bs = ButtonStyle::new();
+        assert_ne!(bs.normal.background_color, Color::TRANSPARENT);
+        assert_ne!(bs.hover.background_color, Color::TRANSPARENT);
+        assert_ne!(bs.pressed.background_color, Color::TRANSPARENT);
+        assert_ne!(bs.disabled.background_color, Color::TRANSPARENT);
+    }
+
+    #[test]
+    fn test_style_border_color() {
+        let style = Style::new().with_border(Color::RED, 3.0);
+        assert_eq!(style.border_color, Color::RED);
+        assert_eq!(style.border_width, 3.0);
+    }
+
+    #[test]
+    fn test_style_default_is_new() {
+        let s1 = Style::new();
+        let s2 = Style::default();
+        assert_eq!(s1.background_color, s2.background_color);
+        assert_eq!(s1.opacity, s2.opacity);
+    }
+
+    #[test]
+    fn test_text_style_chain_builder() {
+        let ts = TextStyle::new()
+            .with_color(Color::GREEN)
+            .with_font_size(20.0)
+            .with_font_family("Times")
+            .bold()
+            .italic();
+        assert_eq!(ts.color, Color::GREEN);
+        assert_eq!(ts.font_size, 20.0);
+        assert_eq!(ts.font_family, "Times");
+        assert!(ts.bold);
+        assert!(ts.italic);
     }
 }

@@ -350,7 +350,6 @@ mod tests {
     #[test]
     fn test_bundle_multiple_entities() {
         let mut world = World::new();
-
         let e1 = world.spawn_bundle((Position { x: 1.0, y: 2.0 }, Velocity { x: 0.1, y: 0.2 }));
         let e2 = world.spawn_bundle((Position { x: 3.0, y: 4.0 }, Velocity { x: 0.3, y: 0.4 }));
 
@@ -361,5 +360,28 @@ mod tests {
 
         assert_eq!(pos1.x, 1.0);
         assert_eq!(pos2.x, 3.0);
+    }
+
+    #[test]
+    fn test_bundle_insert_single_component() {
+        let mut world = World::new();
+        let e = world.spawn_bundle(Position { x: 5.0, y: 5.0 });
+        assert!(world.contains_component::<Position>(e));
+    }
+
+    #[test]
+    fn test_bundle_multiple_tuple_components() {
+        let mut world = World::new();
+        let e = world.spawn_bundle((Position { x: 1.0, y: 2.0 }, Velocity { x: 0.1, y: 0.2 }));
+        assert!(world.contains_component::<Position>(e));
+        assert!(world.contains_component::<Velocity>(e));
+    }
+
+    #[test]
+    fn test_bundle_spawn_batch_iter() {
+        let mut world = World::new();
+        let bundles = (0..5).map(|i| Position { x: i as f32, y: i as f32 });
+        world.spawn_batch(bundles);
+        assert_eq!(world.entity_count(), 5);
     }
 }

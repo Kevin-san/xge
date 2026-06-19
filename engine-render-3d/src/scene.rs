@@ -340,6 +340,7 @@ impl Default for Scene3D {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use engine_math::Mat4;
 
     #[test]
     fn test_node_creation() {
@@ -389,5 +390,164 @@ mod tests {
         scene.cull(&frustum);
         // Should have processed nodes
         assert!(scene.stats().total_nodes > 0);
+    }
+
+    #[test]
+    fn test_scene_new() {
+        let scene = Scene3D::new();
+        assert_eq!(scene.nodes().len(), 0);
+    }
+
+    #[test]
+    fn test_scene_default() {
+        let scene = Scene3D::default();
+        assert_eq!(scene.nodes().len(), 0);
+    }
+
+    #[test]
+    fn test_scene_add_node_handle() {
+        let mut scene = Scene3D::new();
+        let handle = scene.add_node(Node3D::new());
+        assert!(scene.node(handle).is_some());
+    }
+
+    #[test]
+    fn test_scene_add_multiple_nodes() {
+        let mut scene = Scene3D::new();
+        let _h1 = scene.add_root_node(Node3D::new());
+        let _h2 = scene.add_root_node(Node3D::new());
+        let _h3 = scene.add_node(Node3D::new());
+        assert_eq!(scene.nodes().len(), 3);
+    }
+
+    #[test]
+    fn test_scene_root_nodes_access() {
+        let mut scene = Scene3D::new();
+        let h1 = scene.add_root_node(Node3D::new());
+        let h2 = scene.add_root_node(Node3D::new());
+        let roots = scene.root_nodes();
+        assert_eq!(roots.len(), 2);
+        assert_eq!(roots[0].index(), h1.index());
+        assert_eq!(roots[1].index(), h2.index());
+    }
+
+    #[test]
+    fn test_scene_camera_node() {
+        let mut scene = Scene3D::new();
+        let cam_handle = scene.add_root_node(Node3D::new());
+        scene.set_main_camera(cam_handle);
+        assert!(scene.main_camera().is_some());
+    }
+
+    #[test]
+    fn test_scene_remove_node() {
+        let mut scene = Scene3D::new();
+        let h1 = scene.add_root_node(Node3D::new());
+        scene.remove_node(h1);
+        // node should still exist in Vec since remove_node only removes from parent/roots
+    }
+
+    #[test]
+    fn test_scene_node_with_mesh() {
+        let mut scene = Scene3D::new();
+        let node = Node3D::with_mesh(Handle::<Mesh3D>::new(0, 0));
+        let handle = scene.add_root_node(node);
+        assert!(scene.node(handle).unwrap().mesh().is_some());
+    }
+
+    #[test]
+    fn test_scene_node_with_name() {
+        let mut scene = Scene3D::new();
+        let node = Node3D::with_name("test_node".to_string());
+        let handle = scene.add_node(node);
+        assert_eq!(scene.node(handle).unwrap().name(), "test_node");
+    }
+
+    #[test]
+    fn test_scene_add_child_to_parent() {
+        let mut scene = Scene3D::new();
+        let parent_handle = scene.add_root_node(Node3D::new());
+        let child_handle = scene.add_node(Node3D::new());
+
+        if let Some(child) = scene.node_mut(child_handle.clone()) {
+            child.parent = Some(parent_handle.clone());
+        }
+        if let Some(parent) = scene.node_mut(parent_handle.clone()) {
+            parent.add_child(child_handle.clone());
+        }
+
+        assert_eq!(scene.node(parent_handle).unwrap().children().len(), 1);
+    }
+
+    #[test]
+    fn test_scene_update_world_transforms() {
+        let mut scene = Scene3D::new();
+        let _h = scene.add_root_node(Node3D::new());
+        scene.update_world_transforms();
+        // Should complete without panicking
+    }
+
+    #[test]
+    fn test_scene_culling_stats() {
+        let mut scene = Scene3D::new();
+        for _ in 0..5 {
+            scene.add_root_node(Node3D::new());
+        }
+
+        let frustum = Frustum::from_view_projection(Mat4::IDENTITY);
+        scene.cull(&frustum);
+
+        let stats = scene.stats();
+        assert_eq!(stats.total_nodes, 5);
+    }
+
+    #[test]
+    fn test_scene_visible_entities_after_cull() {
+        let mut scene = Scene3D::new();
+        scene.add_root_node(Node3D::new());
+
+        let frustum = Frustum::from_view_projection(Mat4::IDENTITY);
+        scene.cull(&frustum);
+
+        let _entities = scene.visible_entities();
+        // Just verify we can access visible entities without panicking
+    }
+
+    #[test]
+    fn test_scene_node_set_visible() {
+        let mut scene = Scene3D::new();
+        let handle = scene.add_root_node(Node3D::new());
+        if let Some(node) = scene.node_mut(handle) {
+            node.set_visible(false);
+            assert!(!node.visible());
+            node.set_visible(true);
+            assert!(node.visible());
+        }
+    }
+
+    #[test]
+    fn test_scene_node_set_material() {
+        let mut scene = Scene3D::new();
+        let handle = scene.add_root_node(Node3D::new());
+        if let Some(node) = scene.node_mut(handle) {
+            node.set_material(5);
+            assert_eq!(node.material(), Some(5));
+        }
+    }
+
+    #[test]
+    fn test_scene_node_remove_child() {
+        let mut scene = Scene3D::new();
+        let parent_handle = scene.add_root_node(Node3D::new());
+        let child_handle = scene.add_node(Node3D::new());
+
+        if let Some(parent) = scene.node_mut(parent_handle.clone()) {
+            parent.add_child(child_handle.clone());
+            assert_eq!(parent.children().len(), 1);
+        }
+        if let Some(parent) = scene.node_mut(parent_handle.clone()) {
+            parent.remove_child(child_handle.clone());
+            assert_eq!(parent.children().len(), 0);
+        }
     }
 }

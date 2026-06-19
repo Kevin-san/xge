@@ -306,4 +306,49 @@ mod tests {
         assert_eq!(cropped.width(), 2);
         assert_eq!(cropped.height(), 2);
     }
+
+    #[test]
+    fn test_image_from_pixels() {
+        let img = Image::from_pixels(10, 10, vec![255u8; 400]);
+        assert_eq!(img.width(), 10);
+        assert_eq!(img.height(), 10);
+        assert_eq!(img.channels(), 4);
+    }
+
+    #[test]
+    fn test_image_pixels_len() {
+        let data = vec![0u8; 16]; // 2x2 RGBA
+        let img = Image::from_rgba(2, 2, data);
+        assert_eq!(img.pixels().len(), 16);
+    }
+
+    #[test]
+    fn test_image_clone() {
+        let img = Image::from_rgba(2, 2, vec![255u8; 16]);
+        let cloned = img.clone();
+        assert_eq!(cloned.width(), 2);
+        assert_eq!(cloned.height(), 2);
+    }
+
+    #[test]
+    fn test_image_size() {
+        let img = Image::from_rgba(32, 64, vec![255u8; 32 * 64 * 4]);
+        assert_eq!(img.size(), (32, 64));
+    }
+
+    #[test]
+    fn test_image_rotate_180() {
+        let mut img = Image::from_rgba(2, 1, vec![255, 0, 0, 255, 0, 255, 0, 255]);
+        let original_width = img.width();
+        img.rotate_180();
+        assert_eq!(img.width(), original_width);
+    }
+
+    #[test]
+    fn test_image_rotate_270() {
+        let mut img = Image::from_rgba(2, 1, vec![255, 0, 0, 255, 0, 255, 0, 255]);
+        img.rotate_270();
+        assert_eq!(img.width(), 1);
+        assert_eq!(img.height(), 2);
+    }
 }

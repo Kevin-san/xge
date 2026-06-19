@@ -288,4 +288,48 @@ mod tests {
 
         assert_eq!(count, 1, "应该只有 1 个存活的实体");
     }
+
+    #[test]
+    fn test_query_multiple_components() {
+        let mut world = World::new();
+        let e1 = world.spawn();
+        world.insert(e1, Position { x: 1.0, y: 2.0 });
+        world.insert(e1, Velocity { x: 0.5, y: 0.5 });
+        let e2 = world.spawn();
+        world.insert(e2, Position { x: 3.0, y: 4.0 });
+        let query = Query::<Position, NoneFilter>::new(&world);
+        assert_eq!(query.iter().count(), 2);
+    }
+
+    #[test]
+    fn test_query_component_values_read() {
+        let mut world = World::new();
+        let e1 = world.spawn();
+        world.insert(e1, Position { x: 100.0, y: 200.0 });
+        let query = Query::<Position, NoneFilter>::new(&world);
+        for item in query.iter() {
+            assert_eq!(item.component.x, 100.0);
+            assert_eq!(item.component.y, 200.0);
+        }
+    }
+
+    #[test]
+    fn test_query_no_components() {
+        let mut world = World::new();
+        world.spawn();
+        world.spawn();
+        let query = Query::<Position, NoneFilter>::new(&world);
+        assert_eq!(query.iter().count(), 0);
+    }
+
+    #[test]
+    fn test_query_10_entities() {
+        let mut world = World::new();
+        for i in 0..10 {
+            let e = world.spawn();
+            world.insert(e, Position { x: i as f32, y: i as f32 });
+        }
+        let query = Query::<Position, NoneFilter>::new(&world);
+        assert_eq!(query.iter().count(), 10);
+    }
 }

@@ -133,4 +133,49 @@ mod tests {
         let result = SceneLoader::from_json("invalid json");
         assert!(result.is_err());
     }
+
+    // ============= SceneLoader 更多测试 =============
+
+    #[test]
+    fn test_scene_loader_to_json_has_version_field() {
+        let scene = SceneTree::new();
+        let json = SceneLoader::to_json(&scene).unwrap();
+        assert!(json.contains("\"version\""));
+        assert!(json.contains("\"nodes\""));
+    }
+
+    #[test]
+    fn test_scene_loader_from_json_roundtrip() {
+        let scene = SceneTree::new();
+        let json = SceneLoader::to_json(&scene).unwrap();
+        let loaded = SceneLoader::from_json(&json).unwrap();
+        assert!(loaded.node_count() > 0);
+    }
+
+    #[test]
+    fn test_scene_loader_save_file() {
+        let scene = SceneTree::new();
+        let temp_dir = std::env::temp_dir();
+        let path = temp_dir.join("test_scene_save.json");
+        assert!(SceneLoader::save_json(&scene, &path).is_ok());
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn test_scene_loader_load_file() {
+        let scene = SceneTree::new();
+        let temp_dir = std::env::temp_dir();
+        let path = temp_dir.join("test_scene_load.json");
+        SceneLoader::save_json(&scene, &path).unwrap();
+        let loaded = SceneLoader::load_json(&path);
+        assert!(loaded.is_ok());
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn test_scene_loader_invalid_json_variety() {
+        assert!(SceneLoader::from_json("").is_err());
+        assert!(SceneLoader::from_json("null").is_err());
+        assert!(SceneLoader::from_json("{invalid").is_err());
+    }
 }

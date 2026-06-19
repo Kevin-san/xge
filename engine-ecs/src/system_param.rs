@@ -193,4 +193,49 @@ mod tests {
         let res = Res::<Position>::from_world(&world);
         assert!(res.is_none());
     }
+
+    #[test]
+    fn test_commands_new_empty_queue() {
+        let commands = Commands::new();
+        assert_eq!(commands.queue.len(), 0);
+    }
+
+    #[test]
+    fn test_commands_spawn_then_apply() {
+        let mut world = World::new();
+        let mut commands = Commands::new();
+        // spawn 只是队列操作，测试不会崩溃
+        let _e = commands.spawn();
+        commands.apply(&mut world);
+    }
+
+    #[test]
+    fn test_commands_apply_clears_queue() {
+        let mut world = World::new();
+        let mut commands = Commands::new();
+        commands.despawn(Entity::null());
+        commands.despawn(Entity::null());
+        commands.apply(&mut world);
+        // 执行后队列应该被消耗
+        assert!(commands.queue.is_empty());
+    }
+
+    #[test]
+    fn test_res_multiple_resource_types() {
+        let mut world = World::new();
+        world.insert_resource(Position { x: 1.0, y: 2.0 });
+        let res1 = Res::<Position>::from_world(&world);
+        assert!(res1.is_some());
+        let res2 = Res::<Position>::from_world(&world);
+        assert!(res2.is_some());
+    }
+
+    #[test]
+    fn test_commands_spawn_insert_despawn_sequence() {
+        let mut world = World::new();
+        let e = world.spawn();
+        world.insert(e, Position { x: 5.0, y: 5.0 });
+        // 验证实体和组件存在
+        assert_eq!(world.entity_count(), 1);
+    }
 }

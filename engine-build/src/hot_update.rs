@@ -449,6 +449,33 @@ mod tests {
     }
 
     #[test]
+    fn test_hot_update_diff_unchanged_no_changes() {
+        let old = create_test_manifest("1.0.0", vec![("a.png".into(), "h".into(), 10)]);
+        let new = create_test_manifest("1.0.0", vec![("a.png".into(), "h".into(), 10)]);
+        let patch = HotUpdate::diff(&old, &new);
+        assert!(patch.file_changes.is_empty());
+        assert_eq!(patch.size_bytes(), 0);
+    }
+
+    #[test]
+    fn test_hot_update_patch_new() {
+        let m = create_test_manifest("1.1.0", vec![]);
+        let patch = HotUpdatePatch::new(
+            "1.1.0".to_string(),
+            m.clone(),
+            vec![FileChange::Added {
+                path: PathBuf::from("a.png"),
+                size: 100,
+                hash: "h".to_string(),
+            }],
+        );
+        assert_eq!(patch.version(), "1.1.0");
+        assert_eq!(patch.new_manifest().version, m.version);
+        assert_eq!(patch.changes().len(), 1);
+        assert_eq!(patch.size_bytes(), 100);
+    }
+
+    #[test]
     fn test_hot_update_patch_serialization() {
         let manifest = create_test_manifest("1.1.0", vec![("a.png".into(), "hash".into(), 100)]);
         let patch = HotUpdatePatch::new(
@@ -466,6 +493,43 @@ mod tests {
     }
 
     #[test]
+    fn test_hot_update_patch_save_load() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("patch.json");
+        let patch = HotUpdatePatch::new(
+            "1.1.0".to_string(),
+            create_test_manifest("1.1.0", vec![]),
+            vec![],
+        );
+        patch.save(&path).unwrap();
+        assert!(path.exists());
+        let loaded = HotUpdatePatch::load(&path).unwrap();
+        assert_eq!(loaded.version, "1.1.0");
+    }
+
+    #[test]
+    fn test_hot_update_patch_debug() {
+        let patch = HotUpdatePatch::new(
+            "1.1.0".to_string(),
+            create_test_manifest("1.1.0", vec![]),
+            vec![],
+        );
+        let s = format!("{:?}", patch);
+        assert!(s.contains("HotUpdatePatch"));
+    }
+
+    #[test]
+    fn test_hot_update_patch_clone() {
+        let patch = HotUpdatePatch::new(
+            "1.1.0".to_string(),
+            create_test_manifest("1.1.0", vec![]),
+            vec![],
+        );
+        let cloned = patch.clone();
+        assert_eq!(patch.version, cloned.version);
+    }
+
+    #[test]
     fn test_file_change_path() {
         let change = FileChange::Added {
             path: PathBuf::from("test.png"),
@@ -477,6 +541,39 @@ mod tests {
         assert!(change.is_added());
         assert!(!change.is_modified());
         assert!(!change.is_removed());
+    }
+
+    #[test]
+    fn test_file_change_modified_fields() {
+        let change = FileChange::Modified {
+            path: PathBuf::from("a.txt"),
+            diff: b"some diff".to_vec(),
+            size: 200,
+        };
+        assert!(change.is_modified());
+        assert_eq!(change.size(), 200);
+        assert_eq!(change.path(), Path::new("a.txt"));
+    }
+
+    #[test]
+    fn test_file_change_removed_fields() {
+        let change = FileChange::Removed {
+            path: PathBuf::from("gone.bin"),
+        };
+        assert!(change.is_removed());
+        assert_eq!(change.size(), 0);
+        assert_eq!(change.path(), Path::new("gone.bin"));
+    }
+
+    #[test]
+    fn test_file_change_debug() {
+        let change = FileChange::Added {
+            path: PathBuf::from("x"),
+            size: 1,
+            hash: "h".to_string(),
+        };
+        let s = format!("{:?}", change);
+        assert!(s.contains("Added"));
     }
 
     #[test]
@@ -494,6 +591,36 @@ mod tests {
         );
         // Apply without signature verification (no key provided)
         HotUpdate::apply(dir.path(), &patch, None).unwrap();
+        assert!(dir.path().join("assets.manifest").exists());
+    }
+
+    #[test]
+    fn test_hot_update_apply_multiple_changes() {
+        let dir = tempdir().unwrap();
+        // 先存在一个文件
+        fs::write(dir.path().join("existing.txt"), b"old content").unwrap();
+        let new_manifest = create_test_manifest("1.2.0", vec![]);
+        let patch = HotUpdatePatch::new(
+            "1.2.0".to_string(),
+            new_manifest,
+            vec![
+                FileChange::Added {
+                    path: PathBuf::from("added.txt"),
+                    size: 0,
+                    hash: "".to_string(),
+                },
+                FileChange::Modified {
+                    path: PathBuf::from("existing.txt"),
+                    diff: b"new content".to_vec(),
+                    size: 11,
+                },
+                FileChange::Removed {
+                    path: PathBuf::from("to_remove.txt"),
+                },
+            ],
+        );
+        HotUpdate::apply(dir.path(), &patch, None).unwrap();
+        assert!(dir.path().join("added.txt").exists());
         assert!(dir.path().join("assets.manifest").exists());
     }
 
@@ -570,5 +697,44 @@ mod tests {
         let (_, wrong_key) = generate_signing_keypair();
         let dir3 = tempdir().unwrap();
         assert!(HotUpdate::apply(dir3.path(), &patch, Some(&wrong_key)).is_err());
+    }
+
+    #[test]
+    fn test_patch_version_accessor() {
+        let patch = HotUpdatePatch::new(
+            "3.14".to_string(),
+            create_test_manifest("3.14", vec![]),
+            vec![],
+        );
+        assert_eq!(patch.version(), "3.14");
+    }
+
+    #[test]
+    fn test_generate_signing_keypair_produces_mismatching_keys() {
+        let (k1, v1) = generate_signing_keypair();
+        let (_k2, v2) = generate_signing_keypair();
+        let mut p = HotUpdatePatch::new(
+            "1".to_string(),
+            create_test_manifest("1", vec![]),
+            vec![],
+        );
+        p.sign(&k1).unwrap();
+        assert!(p.verify(&v1).is_ok());
+        assert!(p.verify(&v2).is_err());
+    }
+
+    #[test]
+    fn test_hot_update_patch_is_signed_after_signing() {
+        let (k, _v) = generate_signing_keypair();
+        let mut p = HotUpdatePatch::new(
+            "1".to_string(),
+            create_test_manifest("1", vec![]),
+            vec![],
+        );
+        assert!(!p.is_signed());
+        p.sign(&k).unwrap();
+        assert!(p.is_signed());
+        // 签名是 base64 字符串，长度应合理
+        assert!(p.signature().unwrap().len() > 10);
     }
 }

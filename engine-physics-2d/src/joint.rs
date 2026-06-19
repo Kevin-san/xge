@@ -606,4 +606,160 @@ mod tests {
         joint.base_mut().set_enabled(false);
         assert!(!joint.base().is_enabled());
     }
+
+    // ============= Joint (Distance/Revolute/Spring/Weld) 更多构造测试 =============
+
+    #[test]
+    fn test_distance_joint_set_length() {
+        let mut joint = DistanceJoint::new(0, 1, Vec2::ZERO, Vec2::new(5.0, 0.0));
+        assert_eq!(joint.length(), 5.0);
+        joint.set_length(8.0);
+        assert_eq!(joint.length(), 8.0);
+    }
+
+    #[test]
+    fn test_distance_joint_min_max_length() {
+        let mut joint = DistanceJoint::new(0, 1, Vec2::ZERO, Vec2::new(10.0, 0.0));
+        joint.set_min_length(2.0);
+        joint.set_max_length(15.0);
+        assert_eq!(joint.min_length(), 2.0);
+        assert_eq!(joint.max_length(), 15.0);
+    }
+
+    #[test]
+    fn test_distance_joint_stiffness_damping() {
+        let mut joint = DistanceJoint::new(0, 1, Vec2::ZERO, Vec2::new(10.0, 0.0));
+        joint.set_stiffness(0.5);
+        joint.set_damping(0.3);
+        assert!((joint.stiffness() - 0.5).abs() < 0.001);
+        assert!((joint.damping() - 0.3).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_distance_joint_base_references() {
+        let joint = DistanceJoint::new(0, 1, Vec2::ZERO, Vec2::new(10.0, 0.0));
+        assert_eq!(joint.base().body_a(), 0);
+        assert_eq!(joint.base().body_b(), 1);
+    }
+
+    #[test]
+    fn test_revolute_joint_angle_initial() {
+        let joint = RevoluteJoint::new(0, 1, Vec2::new(5.0, 5.0));
+        assert_eq!(joint.angle(), 0.0);
+    }
+
+    #[test]
+    fn test_revolute_joint_set_angle() {
+        let mut joint = RevoluteJoint::new(0, 1, Vec2::ZERO);
+        joint.set_angle(1.5);
+        assert_eq!(joint.angle(), 1.5);
+    }
+
+    #[test]
+    fn test_revolute_joint_angle_limits() {
+        let mut joint = RevoluteJoint::new(0, 1, Vec2::ZERO);
+        joint.set_limits(Some(-1.0), Some(1.0));
+        assert_eq!(joint.min_angle, Some(-1.0));
+        assert_eq!(joint.max_angle, Some(1.0));
+    }
+
+    #[test]
+    fn test_revolute_joint_motor() {
+        let mut joint = RevoluteJoint::new(0, 1, Vec2::ZERO);
+        assert!(!joint.motor_enabled);
+        joint.enable_motor(true);
+        joint.set_motor_speed(2.0);
+        joint.set_motor_max_torque(100.0);
+        assert!(joint.motor_enabled);
+        assert_eq!(joint.motor_speed, 2.0);
+        assert_eq!(joint.motor_max_torque, 100.0);
+    }
+
+    #[test]
+    fn test_revolute_joint_spring() {
+        let mut joint = RevoluteJoint::new(0, 1, Vec2::ZERO);
+        joint.set_spring(10.0, 0.5);
+        assert_eq!(joint.spring_stiffness, 10.0);
+        assert_eq!(joint.spring_damping, 0.5);
+    }
+
+    #[test]
+    fn test_prismatic_joint_axis_normalized() {
+        let joint = PrismaticJoint::new(0, 1, Vec2::ZERO, Vec2::new(10.0, 0.0));
+        assert_eq!(joint.axis(), Vec2::new(1.0, 0.0));
+    }
+
+    #[test]
+    fn test_prismatic_joint_set_axis() {
+        let mut joint = PrismaticJoint::new(0, 1, Vec2::ZERO, Vec2::new(1.0, 0.0));
+        joint.set_axis(Vec2::new(0.0, 5.0));
+        assert_eq!(joint.axis(), Vec2::new(0.0, 1.0));
+    }
+
+    #[test]
+    fn test_prismatic_joint_limits() {
+        let mut joint = PrismaticJoint::new(0, 1, Vec2::ZERO, Vec2::new(1.0, 0.0));
+        joint.set_limits(Some(-5.0), Some(5.0));
+        assert_eq!(joint.min_distance, Some(-5.0));
+        assert_eq!(joint.max_distance, Some(5.0));
+    }
+
+    #[test]
+    fn test_weld_joint_new() {
+        let joint = WeldJoint::new(0, 1, Vec2::ZERO, Vec2::new(1.0, 1.0));
+        assert_eq!(joint.stiffness(), 1.0);
+    }
+
+    #[test]
+    fn test_weld_joint_stiffness_clamp() {
+        let mut joint = WeldJoint::new(0, 1, Vec2::ZERO, Vec2::ZERO);
+        joint.set_stiffness(-1.0); // 应该 clamp 到 0
+        joint.set_damping(2.0); // 应该 clamp 到 1
+        assert!(joint.stiffness() >= 0.0);
+        assert!(joint.damping() <= 1.0);
+    }
+
+    #[test]
+    fn test_spring_joint_new() {
+        let joint = SpringJoint::new(0, 1, Vec2::ZERO, Vec2::new(3.0, 4.0));
+        assert_eq!(joint.rest_length(), 5.0);
+    }
+
+    #[test]
+    fn test_spring_joint_set_rest_length() {
+        let mut joint = SpringJoint::new(0, 1, Vec2::ZERO, Vec2::new(10.0, 0.0));
+        joint.set_rest_length(5.0);
+        assert_eq!(joint.rest_length(), 5.0);
+    }
+
+    #[test]
+    fn test_spring_joint_stiffness_damping() {
+        let mut joint = SpringJoint::new(0, 1, Vec2::ZERO, Vec2::new(1.0, 0.0));
+        joint.set_stiffness(50.0);
+        joint.set_damping(2.0);
+        assert_eq!(joint.stiffness(), 50.0);
+        assert_eq!(joint.damping(), 2.0);
+    }
+
+    #[test]
+    fn test_motor_joint_offset_and_velocity() {
+        let mut joint = MotorJoint::new(0, 1);
+        joint.set_offset(Vec2::new(2.0, 3.0));
+        joint.set_motor_velocity(Vec2::new(1.0, 2.0));
+        joint.set_motor_max_force(500.0);
+        assert_eq!(joint.offset(), Vec2::new(2.0, 3.0));
+        assert_eq!(joint.motor_velocity(), Vec2::new(1.0, 2.0));
+        assert_eq!(joint.motor_max_force(), 500.0);
+    }
+
+    #[test]
+    fn test_joint_base_set_anchor_and_collide() {
+        let mut joint = DistanceJoint::new(0, 1, Vec2::ZERO, Vec2::ZERO);
+        joint.base_mut().set_anchor_a(Vec2::new(1.0, 2.0));
+        joint.base_mut().set_anchor_b(Vec2::new(3.0, 4.0));
+        joint.base_mut().set_collide_connected(true);
+        assert_eq!(joint.base().anchor_a(), Vec2::new(1.0, 2.0));
+        assert_eq!(joint.base().anchor_b(), Vec2::new(3.0, 4.0));
+        assert!(joint.base().collide_connected());
+    }
 }

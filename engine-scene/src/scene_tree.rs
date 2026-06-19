@@ -319,4 +319,75 @@ mod tests {
         }
         tree.update(1.0); // 不应该崩溃
     }
+
+    // ============= SceneTree 更多测试 =============
+
+    #[test]
+    fn test_scene_tree_default() {
+        let tree = SceneTree::default();
+        assert_eq!(tree.node_count(), 1);
+    }
+
+    #[test]
+    fn test_scene_tree_add_multiple_children() {
+        let mut tree = SceneTree::new();
+        let _c1 = tree.add_2d_node(tree.root(), "child1");
+        let _c2 = tree.add_2d_node(tree.root(), "child2");
+        let _c3 = tree.add_2d_node(tree.root(), "child3");
+        assert_eq!(tree.node_count(), 4);
+    }
+
+    #[test]
+    fn test_scene_tree_nested_hierarchy() {
+        let mut tree = SceneTree::new();
+        let c1 = tree.add_2d_node(tree.root(), "c1");
+        let c2 = tree.add_2d_node(c1, "c2");
+        let c3 = tree.add_2d_node(c2, "c3");
+        assert_eq!(tree.node_count(), 4);
+        assert_eq!(tree.find_by_name("c3"), Some(c3));
+    }
+
+    #[test]
+    fn test_scene_tree_update_returns_ok() {
+        let mut tree = SceneTree::new();
+        let _child = tree.add_2d_node(tree.root(), "child");
+        tree.update(1.0 / 60.0);
+    }
+
+    #[test]
+    fn test_scene_tree_draw_returns_ok() {
+        let mut tree = SceneTree::new();
+        let _child = tree.add_2d_node(tree.root(), "child");
+        tree.draw();
+    }
+
+    #[test]
+    fn test_scene_tree_get_node_returns_some_for_valid() {
+        let mut tree = SceneTree::new();
+        let child = tree.add_2d_node(tree.root(), "child");
+        assert!(tree.get_node(child).is_some());
+    }
+
+    #[test]
+    fn test_scene_tree_find_all_by_name() {
+        let mut tree = SceneTree::new();
+        let _a = tree.add_2d_node(tree.root(), "dup");
+        let _b = tree.add_2d_node(tree.root(), "dup");
+        let _c = tree.add_2d_node(tree.root(), "unique");
+        let dup_list = tree.find_all_by_name("dup");
+        assert_eq!(dup_list.len(), 2);
+    }
+
+    #[test]
+    fn test_scene_tree_get_root_node() {
+        let tree = SceneTree::new();
+        let root = tree.get_root_node();
+        assert_eq!(root.name(), "root");
+    }
+
+    #[test]
+    fn test_scene_tree_root_index() {
+        let tree = SceneTree::new();
+        assert_eq!(tree.root().index(), 0);
+    }
 }

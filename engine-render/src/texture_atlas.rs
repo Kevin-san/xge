@@ -443,6 +443,19 @@ mod tests {
         Image::from_rgba(w, h, vec![255u8; (w * h * 4) as usize])
     }
 
+    fn create_test_image_with_color(w: u32, h: u32, r: u8, g: u8, b: u8, a: u8) -> Image {
+        let size = (w * h * 4) as usize;
+        let mut data = Vec::with_capacity(size);
+        for chunk in (0..size).step_by(4) {
+            data.push(r);
+            data.push(g);
+            data.push(b);
+            data.push(a);
+            let _ = chunk;
+        }
+        Image::from_rgba(w, h, data)
+    }
+
     #[test]
     fn test_pack_algorithm_skyline() {
         let mut builder = TextureAtlasBuilder::new(256)
@@ -453,8 +466,7 @@ mod tests {
         builder.add(create_test_image(64, 32));
         builder.add(create_test_image(32, 64));
 
-        // Should not panic
-        assert!(builder.images.len() == 3);
+        assert_eq!(builder.images.len(), 3);
     }
 
     #[test]
@@ -466,7 +478,25 @@ mod tests {
         builder.add(create_test_image(64, 64));
         builder.add(create_test_image(32, 32));
 
-        assert!(builder.images.len() == 2);
+        assert_eq!(builder.images.len(), 2);
+    }
+
+    #[test]
+    fn test_atlas_builder_new_size() {
+        let builder = TextureAtlasBuilder::new(512);
+        assert!(builder.images.is_empty());
+    }
+
+    #[test]
+    fn test_atlas_builder_with_force_square() {
+        let builder = TextureAtlasBuilder::new(256).with_force_square(true);
+        let _ = builder;
+    }
+
+    #[test]
+    fn test_atlas_builder_with_padding() {
+        let builder = TextureAtlasBuilder::new(256).with_padding(4);
+        assert_eq!(builder.padding, 4);
     }
 
     #[test]
@@ -486,6 +516,22 @@ mod tests {
     }
 
     #[test]
+    fn test_texture_atlas_get_uv_with_offset() {
+        let atlas = TextureAtlas {
+            texture: Handle::null(),
+            width: 256,
+            height: 256,
+            rects: vec![Rect::new(128.0, 64.0, 32.0, 32.0)],
+        };
+
+        let (uv0, uv1) = atlas.get_uv(0).unwrap();
+        assert!((uv0.x - 128.0 / 256.0).abs() < 0.001);
+        assert!((uv0.y - 64.0 / 256.0).abs() < 0.001);
+        assert!((uv1.x - 160.0 / 256.0).abs() < 0.001);
+        assert!((uv1.y - 96.0 / 256.0).abs() < 0.001);
+    }
+
+    #[test]
     fn test_texture_atlas_len() {
         let atlas = TextureAtlas {
             texture: Handle::null(),
@@ -499,6 +545,34 @@ mod tests {
 
         assert_eq!(atlas.len(), 2);
         assert!(!atlas.is_empty());
+    }
+
+    #[test]
+    fn test_texture_atlas_is_empty_true() {
+        let atlas = TextureAtlas {
+            texture: Handle::null(),
+            width: 256,
+            height: 256,
+            rects: vec![],
+        };
+        assert!(atlas.is_empty());
+        assert_eq!(atlas.len(), 0);
+    }
+
+    #[test]
+    fn test_texture_atlas_get() {
+        let atlas = TextureAtlas {
+            texture: Handle::null(),
+            width: 256,
+            height: 256,
+            rects: vec![
+                Rect::new(0.0, 0.0, 32.0, 32.0),
+                Rect::new(32.0, 32.0, 64.0, 64.0),
+            ],
+        };
+        assert_eq!(atlas.get(0), Some(Rect::new(0.0, 0.0, 32.0, 32.0)));
+        assert_eq!(atlas.get(1), Some(Rect::new(32.0, 32.0, 64.0, 64.0)));
+        assert!(atlas.get(999).is_none());
     }
 
     #[test]
@@ -518,6 +592,9 @@ mod tests {
         assert_eq!(next_power_of_two(3), 4);
         assert_eq!(next_power_of_two(64), 64);
         assert_eq!(next_power_of_two(65), 128);
+        assert_eq!(next_power_of_two(256), 256);
+        assert_eq!(next_power_of_two(257), 512);
+        assert_eq!(next_power_of_two(1000), 1024);
     }
 
     #[test]
@@ -528,5 +605,13 @@ mod tests {
             atlas_size: (256, 256),
         };
         assert!(!result.contains_collisions());
+        assert_eq!(result.atlas_size(), (256, 256));
+        assert!(result.rects().is_empty());
+    }
+
+    #[test]
+    fn test_pack_algorithm_default() {
+        let algo: PackAlgorithm = Default::default();
+        assert_eq!(algo, PackAlgorithm::Guillotine);
     }
 }

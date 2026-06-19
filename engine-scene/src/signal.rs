@@ -179,4 +179,83 @@ mod tests {
             assert!(std::ptr::eq(signal1_ptr, signal2 as *const Signal));
         }
     }
+
+    // ============= Signal / SignalBus 更多测试 =============
+
+    #[test]
+    fn test_signal_new_with_name() {
+        let signal = Signal::new("test_signal");
+        // 验证信号创建后可触发（无 panic）
+        let _ = signal;
+    }
+
+    #[test]
+    fn test_signal_connect_disconnect() {
+        let mut signal = Signal::new("sig");
+        let id = signal.connect(Box::new(|_| {}));
+        signal.disconnect(id);
+    }
+
+    #[test]
+    fn test_signal_disconnect_nonexistent_id() {
+        let mut signal = Signal::new("sig");
+        signal.disconnect(999);
+    }
+
+    #[test]
+    fn test_signal_emit_multiple_handlers() {
+        use std::cell::Cell;
+        let count = Rc::new(Cell::new(0));
+        let mut signal = Signal::new("sig");
+
+        let c1 = count.clone();
+        signal.connect(Box::new(move |_| c1.set(c1.get() + 1)));
+        let c2 = count.clone();
+        signal.connect(Box::new(move |_| c2.set(c2.get() + 1)));
+
+        signal.emit(&[]);
+        signal.emit(&[]);
+
+        assert_eq!(count.get(), 4);
+    }
+
+    #[test]
+    fn test_signal_bus_new() {
+        let _bus = SignalBus::new();
+    }
+
+    #[test]
+    fn test_signal_bus_emit() {
+        use std::cell::Cell;
+        let count = Rc::new(Cell::new(0));
+
+        let mut bus = SignalBus::new();
+        let c = count.clone();
+        bus.get_or_create("my_signal").connect(Box::new(move |_| c.set(c.get() + 1)));
+        bus.emit("my_signal", &[]);
+        bus.emit("my_signal", &[]);
+
+        assert_eq!(count.get(), 2);
+    }
+
+    #[test]
+    fn test_signal_bus_emit_nonexistent_no_panic() {
+        let mut bus = SignalBus::new();
+        bus.emit("nonexistent", &[]);
+    }
+
+    #[test]
+    fn test_signal_connect_then_disconnect() {
+        use std::cell::Cell;
+        let count = Rc::new(Cell::new(0));
+        let mut signal = Signal::new("sig");
+
+        let c = count.clone();
+        let id = signal.connect(Box::new(move |_| c.set(c.get() + 1)));
+        signal.emit(&[]);
+        signal.disconnect(id);
+        signal.emit(&[]);
+
+        assert_eq!(count.get(), 1);
+    }
 }

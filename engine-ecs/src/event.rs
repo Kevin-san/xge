@@ -219,4 +219,53 @@ mod tests {
         assert!(events.is_empty());
         assert_eq!(events.len(), 0);
     }
+
+    #[test]
+    fn test_events_len_zero_on_new() {
+        let events = Events::<TestEvent>::new();
+        assert_eq!(events.len(), 0);
+        assert!(events.is_empty());
+    }
+
+    #[test]
+    fn test_events_multiple_sends() {
+        let mut events = Events::<TestEvent>::new();
+        for i in 0..10 {
+            events.send(TestEvent { value: i });
+        }
+        assert_eq!(events.len(), 10);
+    }
+
+    #[test]
+    fn test_events_event_count_through_update() {
+        let mut events = Events::<TestEvent>::new();
+        events.send(TestEvent { value: 1 });
+        events.send(TestEvent { value: 2 });
+        let before = events.event_count();
+        events.update();
+        events.send(TestEvent { value: 3 });
+        assert_eq!(events.event_count(), before + 1);
+    }
+
+    #[test]
+    fn test_events_send_multiple_values() {
+        let mut events = Events::<TestEvent>::new();
+        events.send(TestEvent { value: 42 });
+        events.send(TestEvent { value: 100 });
+        assert_eq!(events.event_count(), 2);
+    }
+
+    #[test]
+    fn test_events_clear_empty_no_panic() {
+        let mut events = Events::<TestEvent>::new();
+        events.clear();
+        assert!(events.is_empty());
+    }
+
+    #[test]
+    fn test_events_update_on_empty() {
+        let mut events = Events::<TestEvent>::new();
+        events.update();
+        assert!(events.is_empty());
+    }
 }

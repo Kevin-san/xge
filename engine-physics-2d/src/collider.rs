@@ -534,4 +534,163 @@ mod tests {
         assert_eq!(aabb.w, 10.0);
         assert_eq!(aabb.h, 10.0);
     }
+
+    // ============= Collider2D 形状构造和存取测试 =============
+
+    #[test]
+    fn test_aabb_shape_default() {
+        let shape = ColliderShape::aabb(10.0, 20.0);
+        let aabb = shape.compute_aabb(Vec2::ZERO, 0.0);
+        assert_eq!(aabb.w, 10.0);
+        assert_eq!(aabb.h, 20.0);
+    }
+
+    #[test]
+    fn test_rectangle_shape_via_aabb_compute() {
+        let shape = ColliderShape::rectangle(10.0, 20.0);
+        let aabb = shape.compute_aabb(Vec2::ZERO, 0.0);
+        assert_eq!(aabb.w, 10.0);
+        assert_eq!(aabb.h, 20.0);
+    }
+
+    #[test]
+    fn test_polygon_shape_construction() {
+        let vertices = vec![
+            Vec2::new(0.0, 0.0),
+            Vec2::new(1.0, 0.0),
+            Vec2::new(0.5, 1.0),
+        ];
+        let shape = ColliderShape::convex_hull(vertices);
+        let collider = Collider2D::new(shape);
+        assert!(!collider.is_sensor());
+        assert_eq!(collider.collision_group(), 0xFFFFFFFF);
+    }
+
+    #[test]
+    fn test_collider_sensor_toggle() {
+        let mut collider = Collider2DBuilder::circle(1.0).as_sensor().build();
+        assert!(collider.is_sensor());
+        collider.set_sensor(false);
+        assert!(!collider.is_sensor());
+    }
+
+    #[test]
+    fn test_collider_restitution_default_and_update() {
+        let mut collider = Collider2DBuilder::circle(1.0).build();
+        assert_eq!(collider.restitution(), 0.3);
+        collider.set_restitution(0.8);
+        assert_eq!(collider.restitution(), 0.8);
+    }
+
+    #[test]
+    fn test_collider_friction_update() {
+        let mut collider = Collider2DBuilder::circle(1.0).build();
+        collider.set_friction(0.2);
+        assert_eq!(collider.friction(), 0.2);
+    }
+
+    #[test]
+    fn test_collider_static_friction_update() {
+        let mut collider = Collider2DBuilder::circle(1.0).build();
+        collider.set_static_friction(0.9);
+        assert_eq!(collider.static_friction(), 0.9);
+    }
+
+    #[test]
+    fn test_collider_collision_group_and_mask() {
+        let mut collider = Collider2DBuilder::circle(1.0)
+            .with_group(0x0001)
+            .with_mask(0x0002)
+            .build();
+        assert_eq!(collider.collision_group(), 0x0001);
+        assert_eq!(collider.collision_mask(), 0x0002);
+        collider.set_collision_group(0xFFFF);
+        assert_eq!(collider.collision_group(), 0xFFFF);
+    }
+
+    #[test]
+    fn test_collider_enabled_toggle() {
+        let mut collider = Collider2DBuilder::circle(1.0).build();
+        assert!(collider.is_enabled());
+        collider.set_enabled(false);
+        assert!(!collider.is_enabled());
+    }
+
+    #[test]
+    fn test_collider_world_position_no_offset() {
+        let collider = Collider2DBuilder::circle(1.0).build();
+        let wp = collider.world_position(Vec2::new(10.0, 20.0), 0.0);
+        assert_eq!(wp, Vec2::new(10.0, 20.0));
+    }
+
+    #[test]
+    fn test_collider_local_position_offset() {
+        let mut collider = Collider2DBuilder::circle(1.0).build();
+        collider.set_local_position(Vec2::new(2.0, 3.0));
+        assert_eq!(collider.local_position(), Vec2::new(2.0, 3.0));
+    }
+
+    #[test]
+    fn test_collider_world_position_with_local_offset() {
+        let collider = Collider2DBuilder::circle(1.0)
+            .with_position(Vec2::new(1.0, 0.0))
+            .build();
+        let wp = collider.world_position(Vec2::new(10.0, 20.0), 0.0);
+        assert_eq!(wp.x, 11.0);
+        assert_eq!(wp.y, 20.0);
+    }
+
+    #[test]
+    fn test_collider_world_rotation_no_rotation() {
+        let collider = Collider2DBuilder::circle(1.0).build();
+        assert_eq!(collider.world_rotation(0.0), 0.0);
+    }
+
+    #[test]
+    fn test_collider_world_rotation_with_local_rotation() {
+        let mut collider = Collider2DBuilder::circle(1.0).build();
+        collider.set_local_rotation(std::f32::consts::FRAC_PI_4);
+        assert_eq!(collider.local_rotation(), std::f32::consts::FRAC_PI_4);
+        let wr = collider.world_rotation(std::f32::consts::FRAC_PI_4);
+        assert_eq!(wr, std::f32::consts::PI / 2.0);
+    }
+
+    #[test]
+    fn test_collider_density_default_one() {
+        let collider = Collider2DBuilder::circle(1.0).build();
+        assert_eq!(collider.density(), 1.0);
+    }
+
+    #[test]
+    fn test_collider_set_density() {
+        let mut collider = Collider2DBuilder::circle(1.0).build();
+        collider.set_density(7.8);
+        assert_eq!(collider.density(), 7.8);
+    }
+
+    #[test]
+    fn test_shape_compute_mass_circle() {
+        let shape = ColliderShape::circle(2.0);
+        // area = pi * r^2 = pi * 4
+        // mass = area * density = 4 * pi * 1 = 4pi
+        let mass = shape.compute_mass(1.0);
+        assert!((mass - std::f32::consts::PI * 4.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_shape_compute_inertia_circle() {
+        let shape = ColliderShape::circle(1.0);
+        let mass = shape.compute_mass(1.0);
+        let inertia = shape.compute_inertia(mass);
+        // 对于圆盘：I = 0.5 * m * r^2
+        let expected = 0.5 * mass * 1.0 * 1.0;
+        assert!((inertia - expected).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_collider_shape_mass_inertia() {
+        let collider = Collider2DBuilder::circle(2.0).with_density(1.0).build();
+        assert!(collider.mass() > 0.0);
+        assert!(collider.inertia() > 0.0);
+    }
 }

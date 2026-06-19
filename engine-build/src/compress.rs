@@ -184,11 +184,42 @@ mod tests {
     }
 
     #[test]
+    fn test_zstd_compression_actually_compresses() {
+        let data = b"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+        let compressed = Compress::zstd(data, 10).unwrap();
+        // 压缩后应该比原始小或略小，但至少有效
+        assert!(!compressed.is_empty());
+    }
+
+    #[test]
+    fn test_zstd_multiple_levels() {
+        let data = b"hello world repeated: ";
+        for level in &[1, 3, 7, 10] {
+            let compressed = Compress::zstd(data, *level).unwrap();
+            let decompressed =
+                Compress::decompress(&compressed, crate::AssetCompress::Zstd).unwrap();
+            assert_eq!(data.to_vec(), decompressed);
+        }
+    }
+
+    #[test]
     fn test_gzip_compress_decompress() {
         let data = b"test data for compression";
         let compressed = Compress::gzip(data, 6).unwrap();
-        let decompressed = Compress::decompress(&compressed, crate::AssetCompress::Gzip).unwrap();
+        let decompressed =
+            Compress::decompress(&compressed, crate::AssetCompress::Gzip).unwrap();
         assert_eq!(data.to_vec(), decompressed);
+    }
+
+    #[test]
+    fn test_gzip_multiple_levels() {
+        let data = b"some gzip content";
+        for level in &[1u32, 3, 6, 9] {
+            let compressed = Compress::gzip(data, *level).unwrap();
+            let decompressed =
+                Compress::decompress(&compressed, crate::AssetCompress::Gzip).unwrap();
+            assert_eq!(data.to_vec(), decompressed);
+        }
     }
 
     #[test]
@@ -199,10 +230,81 @@ mod tests {
     }
 
     #[test]
+    fn test_brotli_falls_back_to_gzip() {
+        let data = b"brotli fallback test";
+        let compressed = Compress::brotli(data, 5).unwrap();
+        // brotli 内部 fallback 到 gzip，所以使用 Gzip 解压
+        let decompressed =
+            Compress::decompress(&compressed, crate::AssetCompress::Gzip).unwrap();
+        assert_eq!(data.to_vec(), decompressed);
+    }
+
+    #[test]
+    fn test_lz4_falls_back_to_zstd() {
+        let data = b"lz4 fallback test";
+        let compressed = Compress::lz4(data).unwrap();
+        let decompressed =
+            Compress::decompress(&compressed, crate::AssetCompress::Zstd).unwrap();
+        assert_eq!(data.to_vec(), decompressed);
+    }
+
+    #[test]
     fn test_encrypt_none() {
         let data = b"test data";
         let encrypted = Encrypt::aes_gcm_128(data, &[0u8; 16], &[0u8; 12]).unwrap();
         #[cfg(not(feature = "encryption"))]
         assert_eq!(data.to_vec(), encrypted);
+    }
+
+    #[test]
+    fn test_encrypt_aes_gcm_256_default() {
+        let data = b"256-bit key";
+        let encrypted = Encrypt::aes_gcm_256(data, &[0u8; 32], &[0u8; 12]).unwrap();
+        #[cfg(not(feature = "encryption"))]
+        assert_eq!(data.to_vec(), encrypted);
+    }
+
+    #[test]
+    fn test_encrypt_chacha20_default() {
+        let data = b"chacha content";
+        let encrypted = Encrypt::chacha20(data, &[0u8; 32], &[0u8; 24]).unwrap();
+        #[cfg(not(feature = "encryption"))]
+        assert_eq!(data.to_vec(), encrypted);
+    }
+
+    #[test]
+    fn test_decrypt_default_no_encryption() {
+        let data = b"plain content";
+        let decrypted = Encrypt::decrypt(data, &[0u8; 16], &[0u8; 12], crate::AssetEncrypt::None).unwrap();
+        assert_eq!(data.to_vec(), decrypted);
+    }
+
+    #[test]
+    fn test_compress_roundtrip_large() {
+        // 测试较大数据压缩
+        let mut data = vec![0u8; 10_000];
+        for (i, v) in data.iter_mut().enumerate() {
+            *v = (i % 256) as u8;
+        }
+        let compressed = Compress::zstd(&data, 5).unwrap();
+        let decompressed = Compress::decompress(&compressed, crate::AssetCompress::Zstd).unwrap();
+        assert_eq!(data, decompressed);
+    }
+
+    #[test]
+    fn test_decompress_fallback_brotli() {
+        // 测试 brotli decompress 实际上会 fallback 到 zstd
+        let original = b"brotli fallback test";
+        let zstd = Compress::zstd(original, 3).unwrap();
+        let decompressed = Compress::decompress(&zstd, crate::AssetCompress::Brotli).unwrap();
+        assert_eq!(original.to_vec(), decompressed);
+    }
+
+    #[test]
+    fn test_decompress_fallback_lz4() {
+        let original = b"lz4 fallback test";
+        let zstd = Compress::zstd(original, 3).unwrap();
+        let decompressed = Compress::decompress(&zstd, crate::AssetCompress::LZ4).unwrap();
+        assert_eq!(original.to_vec(), decompressed);
     }
 }

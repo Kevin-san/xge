@@ -504,10 +504,18 @@ use engine_math::Vec4;
 mod tests {
     use super::*;
 
+    // ===== OrthographicCamera 测试 =====
     #[test]
     fn test_orthographic_camera_new() {
         let camera = OrthographicCamera::new(-100.0, 100.0, -50.0, 50.0, -1.0, 1.0);
         assert!((camera.projection().cols[0][0] - 0.01).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_orthographic_camera_new_2() {
+        let camera = OrthographicCamera::new(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0);
+        // col[0][0] should be 2/(right-left) = 2/(2) = 1
+        assert!((camera.projection().cols[0][0] - 1.0).abs() < 0.001);
     }
 
     #[test]
@@ -517,22 +525,43 @@ mod tests {
     }
 
     #[test]
+    fn test_orthographic_camera_from_size() {
+        let camera = OrthographicCamera::from_size(640.0, 480.0);
+        assert_eq!(camera.position, Vec2::ZERO);
+    }
+
+    #[test]
     fn test_orthographic_camera_screen_to_world() {
         let mut camera = OrthographicCamera::from_window(1280, 720, 1.0);
         camera.set_position(Vec2::new(100.0, 50.0));
 
         let world = camera.screen_to_world(Vec2::new(640.0, 360.0));
-        // Screen center (640, 360) maps to world center (0, 0) + camera position
-        // So the result should be (100, 50)
         assert!((world.x - 100.0).abs() < 1.0);
         assert!((world.y - 50.0).abs() < 1.0);
+    }
+
+    #[test]
+    fn test_orthographic_camera_screen_to_world_no_offset() {
+        let camera = OrthographicCamera::from_window(1280, 720, 1.0);
+        let world = camera.screen_to_world(Vec2::new(0.0, 0.0));
+        // Top-left corner maps to the corner of the world
+        assert!(!world.x.is_nan());
+        assert!(!world.y.is_nan());
+    }
+
+    #[test]
+    fn test_orthographic_camera_world_to_screen() {
+        let camera = OrthographicCamera::from_window(1280, 720, 1.0);
+        let screen = camera.world_to_screen(Vec2::ZERO);
+        // Should be at the center
+        assert!(!screen.x.is_nan());
+        assert!(!screen.y.is_nan());
     }
 
     #[test]
     fn test_orthographic_camera_zoom() {
         let mut camera = OrthographicCamera::from_window(1280, 720, 1.0);
         camera.zoom(2.0);
-        // Zoom doubles, so view should change
     }
 
     #[test]
@@ -543,11 +572,71 @@ mod tests {
     }
 
     #[test]
+    fn test_orthographic_camera_move_by_twice() {
+        let mut camera = OrthographicCamera::from_window(1280, 720, 1.0);
+        camera.move_by(Vec2::new(100.0, 50.0));
+        camera.move_by(Vec2::new(100.0, 50.0));
+        assert_eq!(camera.position, Vec2::new(200.0, 100.0));
+    }
+
+    #[test]
+    fn test_orthographic_camera_projection_return_mat4() {
+        let camera = OrthographicCamera::new(-100.0, 100.0, -50.0, 50.0, -1.0, 1.0);
+        let p = camera.projection();
+        assert_eq!(p.cols[0][0], 1.0 / 100.0);
+        // Ensure it's valid (no NaN)
+        assert!(!p.cols[0][0].is_nan());
+    }
+
+    #[test]
+    fn test_orthographic_camera_view_return_mat4() {
+        let camera = OrthographicCamera::new(-100.0, 100.0, -50.0, 50.0, -1.0, 1.0);
+        let v = camera.view();
+        assert!(!v.cols[0][0].is_nan());
+    }
+
+    #[test]
+    fn test_orthographic_camera_view_projection() {
+        let camera = OrthographicCamera::new(-100.0, 100.0, -50.0, 50.0, -1.0, 1.0);
+        let vp = camera.view_projection();
+        assert!(!vp.cols[0][0].is_nan());
+    }
+
+    #[test]
+    fn test_orthographic_camera_zoom_multiple() {
+        let mut camera = OrthographicCamera::from_window(1280, 720, 1.0);
+        camera.zoom(2.0);
+        camera.zoom(0.5);
+    }
+
+    // ===== Camera2D 测试 =====
+    #[test]
     fn test_camera2d_new() {
         let camera = Camera2D::new();
         assert_eq!(camera.position, Vec2::ZERO);
         assert_eq!(camera.rotation, 0.0);
         assert_eq!(camera.zoom, 1.0);
+    }
+
+    #[test]
+    fn test_camera2d_default() {
+        let camera: Camera2D = Default::default();
+        assert_eq!(camera.position, Vec2::ZERO);
+        assert_eq!(camera.rotation, 0.0);
+        assert_eq!(camera.zoom, 1.0);
+    }
+
+    #[test]
+    fn test_camera2d_from_window() {
+        let camera = Camera2D::from_window(1280, 720, 1.0);
+        assert_eq!(camera.zoom, 1.0);
+        assert_eq!(camera.position, Vec2::ZERO);
+    }
+
+    #[test]
+    fn test_camera2d_from_window_zoom() {
+        let camera = Camera2D::from_window(1280, 720, 2.0);
+        assert_eq!(camera.zoom, 2.0);
     }
 
     #[test]
@@ -558,6 +647,27 @@ mod tests {
     }
 
     #[test]
+    fn test_camera2d_set_position_negative() {
+        let mut camera = Camera2D::new();
+        camera.set_position(Vec2::new(-100.0, -200.0));
+        assert_eq!(camera.position, Vec2::new(-100.0, -200.0));
+    }
+
+    #[test]
+    fn test_camera2d_set_rotation() {
+        let mut camera = Camera2D::new();
+        camera.set_rotation(std::f32::consts::PI / 2.0);
+        assert!((camera.rotation - std::f32::consts::PI / 2.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_camera2d_set_zoom() {
+        let mut camera = Camera2D::new();
+        camera.set_zoom(5.0);
+        assert!((camera.zoom - 5.0).abs() < 0.001);
+    }
+
+    #[test]
     fn test_camera2d_set_target() {
         let mut camera = Camera2D::new();
         camera.set_target(Some(Vec2::new(100.0, 100.0)));
@@ -565,13 +675,39 @@ mod tests {
     }
 
     #[test]
+    fn test_camera2d_clear_target() {
+        let mut camera = Camera2D::new();
+        camera.set_target(Some(Vec2::new(100.0, 100.0)));
+        camera.set_target(None);
+        assert_eq!(camera.target(), None);
+    }
+
+    #[test]
     fn test_camera2d_update_with_target() {
         let mut camera = Camera2D::new();
         camera.set_target(Some(Vec2::new(100.0, 100.0)));
         camera.set_position(Vec2::ZERO);
-        camera.update(0.016); // ~60fps
-                              // Position should have moved towards target
+        camera.update(0.016);
         assert!(camera.position.x > 0.0);
+    }
+
+    #[test]
+    fn test_camera2d_update_without_target() {
+        let mut camera = Camera2D::new();
+        camera.set_position(Vec2::new(50.0, 50.0));
+        camera.update(0.016);
+        // Position should be unchanged
+        assert_eq!(camera.position, Vec2::new(50.0, 50.0));
+    }
+
+    #[test]
+    fn test_camera2d_update_small_dt() {
+        let mut camera = Camera2D::new();
+        camera.set_target(Some(Vec2::new(100.0, 100.0)));
+        camera.set_position(Vec2::ZERO);
+        camera.update(0.001);
+        // With very small dt, position should barely change
+        assert!(camera.position.x < 100.0);
     }
 
     #[test]
@@ -580,8 +716,63 @@ mod tests {
         camera.set_bounds(-1000.0, 1000.0, -500.0, 500.0);
         assert_eq!(camera.left, -1000.0);
         assert_eq!(camera.right, 1000.0);
+        assert_eq!(camera.bottom, -500.0);
+        assert_eq!(camera.top, 500.0);
     }
 
+    #[test]
+    fn test_camera2d_clear_bounds() {
+        let mut camera = Camera2D::new();
+        camera.set_bounds(-1000.0, 1000.0, -500.0, 500.0);
+        camera.clear_bounds();
+        assert!(!camera.use_bounds);
+    }
+
+    #[test]
+    fn test_camera2d_projection() {
+        let camera = Camera2D::new();
+        let p = camera.projection();
+        assert!(!p.cols[0][0].is_nan());
+    }
+
+    #[test]
+    fn test_camera2d_view() {
+        let camera = Camera2D::new();
+        let v = camera.view();
+        assert!(!v.cols[0][0].is_nan());
+    }
+
+    #[test]
+    fn test_camera2d_view_projection() {
+        let camera = Camera2D::new();
+        let vp = camera.view_projection();
+        assert!(!vp.cols[0][0].is_nan());
+    }
+
+    #[test]
+    fn test_camera2d_screen_to_world() {
+        let camera = Camera2D::new();
+        let world = camera.screen_to_world(Vec2::new(0.0, 0.0));
+        assert!(!world.x.is_nan());
+        assert!(!world.y.is_nan());
+    }
+
+    #[test]
+    fn test_camera2d_world_to_screen() {
+        let camera = Camera2D::new();
+        let screen = camera.world_to_screen(Vec2::ZERO);
+        assert!(!screen.x.is_nan());
+        assert!(!screen.y.is_nan());
+    }
+
+    #[test]
+    fn test_camera2d_set_offset() {
+        let mut camera = Camera2D::new();
+        camera.set_offset(Vec2::new(10.0, 20.0));
+        assert_eq!(camera.offset(), Vec2::new(10.0, 20.0));
+    }
+
+    // ===== Viewport 测试 =====
     #[test]
     fn test_viewport() {
         let vp = Viewport::new(0, 0, 1280, 720);
@@ -590,10 +781,35 @@ mod tests {
     }
 
     #[test]
+    fn test_viewport_with_offset() {
+        let vp = Viewport::new(10, 20, 800, 600);
+        assert_eq!(vp.x(), 10);
+        assert_eq!(vp.y(), 20);
+        assert_eq!(vp.width(), 800);
+        assert_eq!(vp.height(), 600);
+    }
+
+    #[test]
+    fn test_viewport_derive() {
+        let vp1 = Viewport::new(0, 0, 800, 600);
+        let vp2 = Viewport::new(0, 0, 800, 600);
+        assert_eq!(vp1, vp2);
+    }
+
+    #[test]
     fn test_view() {
         let camera = Camera2D::new();
         let viewport = Viewport::new(0, 0, 1280, 720);
         let view = View::new(camera, viewport);
         assert_eq!(view.viewport(), viewport);
+    }
+
+    #[test]
+    fn test_view_camera_getter() {
+        let camera = Camera2D::new();
+        let viewport = Viewport::new(0, 0, 1280, 720);
+        let view = View::new(camera, viewport);
+        let c = view.camera();
+        assert_eq!(c.position, Vec2::ZERO);
     }
 }

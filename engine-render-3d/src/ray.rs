@@ -231,6 +231,7 @@ pub struct HitResult {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use engine_math::Vec3;
 
     #[test]
     fn test_ray_at() {
@@ -275,5 +276,112 @@ mod tests {
         let v2 = Vec3::new(10.0, 11.0, 10.0);
         let hit = ray.hit_triangle(v0, v1, v2);
         assert!(hit.is_none());
+    }
+
+    #[test]
+    fn test_ray_new_normalization() {
+        let ray = Ray3::new(Vec3::ZERO, Vec3::new(5.0, 0.0, 0.0));
+        // Direction should be normalized
+        let len = ray.direction.length();
+        assert!((len - 1.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_ray_at_multiple() {
+        let ray = Ray3::new(Vec3::ZERO, Vec3::new(1.0, 0.0, 0.0));
+        assert_eq!(ray.at(2.0), Vec3::new(2.0, 0.0, 0.0));
+        assert_eq!(ray.at(-1.0), Vec3::new(-1.0, 0.0, 0.0));
+        assert_eq!(ray.at(0.0), Vec3::ZERO);
+    }
+
+    #[test]
+    fn test_ray_hit_sphere_distance() {
+        let ray = Ray3::new(Vec3::new(-5.0, 0.0, 0.0), Vec3::X);
+        let sphere = Sphere::new(Vec3::ZERO, 2.0);
+        let hit = ray.hit_sphere(sphere);
+        assert!(hit.is_some());
+        // Should hit at t = 3.0 (start -5, radius 2, so distance = 5-2 = 3)
+        assert!((hit.unwrap() - 3.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_ray_miss_sphere() {
+        let ray = Ray3::new(Vec3::new(-5.0, 10.0, 0.0), Vec3::X);
+        let sphere = Sphere::new(Vec3::ZERO, 2.0);
+        let hit = ray.hit_sphere(sphere);
+        assert!(hit.is_none());
+    }
+
+    #[test]
+    fn test_ray_hit_aabb_simple() {
+        let ray = Ray3::new(Vec3::new(-5.0, 0.0, 0.0), Vec3::X);
+        let aabb = AABB::new(Vec3::new(-1.0, -1.0, -1.0), Vec3::new(1.0, 1.0, 1.0));
+        let hit = ray.hit_aabb(aabb);
+        assert!(hit.is_some());
+        // Should hit at t = 4.0
+        assert!((hit.unwrap() - 4.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_ray_hit_aabb_parallel_axis() {
+        let ray = Ray3::new(Vec3::new(0.0, 0.0, -5.0), Vec3::Z);
+        let aabb = AABB::new(Vec3::new(-1.0, -1.0, -1.0), Vec3::new(1.0, 1.0, 1.0));
+        let hit = ray.hit_aabb(aabb);
+        assert!(hit.is_some());
+    }
+
+    #[test]
+    fn test_ray_hit_triangle_exact_distance() {
+        let ray = Ray3::new(Vec3::new(0.0, 0.0, -10.0), Vec3::Z);
+        let v0 = Vec3::new(-1.0, -1.0, 0.0);
+        let v1 = Vec3::new(1.0, -1.0, 0.0);
+        let v2 = Vec3::new(0.0, 1.0, 0.0);
+        let hit = ray.hit_triangle(v0, v1, v2);
+        assert!(hit.is_some());
+        // Ray at -10, hits triangle at z=0, so distance = 10
+        assert!((hit.unwrap() - 10.0).abs() < 1e-3);
+    }
+
+    #[test]
+    fn test_ray_hit_plane() {
+        let ray = Ray3::new(Vec3::new(0.0, 0.0, -5.0), Vec3::Z);
+        let plane = Plane::new(Vec3::Z, 0.0);
+        let hit = ray.hit_plane(plane);
+        assert!(hit.is_some());
+        assert!((hit.unwrap() - 5.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_ray_hit_plane_parallel() {
+        let ray = Ray3::new(Vec3::new(0.0, 0.0, 0.0), Vec3::X);
+        let plane = Plane::new(Vec3::Z, 0.0);
+        // Ray parallel to plane, should return None
+        let hit = ray.hit_plane(plane);
+        assert!(hit.is_none());
+    }
+
+    #[test]
+    fn test_ray_origin_in_sphere() {
+        let ray = Ray3::new(Vec3::ZERO, Vec3::X);
+        let sphere = Sphere::new(Vec3::ZERO, 10.0);
+        let hit = ray.hit_sphere(sphere);
+        // Ray starts inside sphere, should still find an exit hit
+        assert!(hit.is_some());
+    }
+
+    #[test]
+    fn test_ray_hit_result_structure() {
+        // Just test that HitResult fields exist
+        let origin = Vec3::ZERO;
+        let direction = Vec3::X;
+        let point = origin + direction * 5.0;
+        let normal = -direction;
+        let _ = HitResult {
+            t: 5.0,
+            point,
+            normal,
+            uv: Some((0.5, 0.5)),
+            primitive_index: 0,
+        };
     }
 }

@@ -309,4 +309,213 @@ mod tests {
         assert_eq!(cg.tint(), 0.3);
         assert_eq!(cg.brightness(), 0.1);
     }
+
+    #[test]
+    fn test_color_grading_new() {
+        let cg = ColorGrading::new();
+        assert_eq!(cg.exposure, 0.0);
+        assert_eq!(cg.contrast, 1.0);
+        assert_eq!(cg.saturation, 1.0);
+        assert_eq!(cg.temperature, 0.0);
+        assert_eq!(cg.gamma, 1.0);
+        assert_eq!(cg.tint, 0.0);
+        assert_eq!(cg.brightness, 0.0);
+    }
+
+    #[test]
+    fn test_color_grading_with_exposure() {
+        let cg = ColorGrading::with_exposure(2.0);
+        assert_eq!(cg.exposure, 2.0);
+        assert_eq!(cg.contrast, 1.0);
+        assert_eq!(cg.gamma, 1.0);
+    }
+
+    #[test]
+    fn test_color_grading_zero_exposure() {
+        let cg = ColorGrading::with_exposure(0.0);
+        let color = Vec3::new(0.5, 0.5, 0.5);
+        let result = cg.apply(color);
+        // 2^0 = 1, so color is unchanged for exposure alone
+        assert!((result.x - 0.5).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_color_grading_high_contrast() {
+        let cg = ColorGrading {
+            contrast: 3.0,
+            ..ColorGrading::default()
+        };
+        let color = Vec3::new(0.75, 0.75, 0.75);
+        let result = cg.apply(color);
+        // High contrast should push bright values even higher
+        assert!(result.x > color.x);
+    }
+
+    #[test]
+    fn test_color_grading_low_contrast() {
+        let cg = ColorGrading {
+            contrast: 0.5,
+            ..ColorGrading::default()
+        };
+        let color = Vec3::new(0.75, 0.75, 0.75);
+        let result = cg.apply(color);
+        // Low contrast should bring values closer to 0.5
+        assert!(result.x < color.x);
+        assert!(result.x > 0.5);
+    }
+
+    #[test]
+    fn test_color_grading_high_saturation() {
+        let cg = ColorGrading {
+            saturation: 2.0,
+            ..ColorGrading::default()
+        };
+        let color = Vec3::new(1.0, 0.5, 0.0);
+        let result = cg.apply(color);
+        // High saturation pushes red even higher
+        assert!(result.x > color.x);
+    }
+
+    #[test]
+    fn test_color_grading_gamma_high() {
+        let cg = ColorGrading {
+            gamma: 3.0,
+            ..ColorGrading::default()
+        };
+        let color = Vec3::new(0.5, 0.5, 0.5);
+        let result = cg.apply(color);
+        // High gamma makes dark values brighter
+        assert!(result.x > color.x);
+    }
+
+    #[test]
+    fn test_color_grading_gamma_low() {
+        let cg = ColorGrading {
+            gamma: 0.5,
+            ..ColorGrading::default()
+        };
+        let color = Vec3::new(0.5, 0.5, 0.5);
+        let result = cg.apply(color);
+        // Low gamma makes dark values darker
+        assert!(result.x < color.x);
+        assert!(result.x > 0.0);
+    }
+
+    #[test]
+    fn test_color_grading_brightness_positive() {
+        let cg = ColorGrading {
+            brightness: 0.5,
+            ..ColorGrading::default()
+        };
+        let color = Vec3::new(0.0, 0.0, 0.0);
+        let result = cg.apply(color);
+        assert!(result.x > 0.0);
+    }
+
+    #[test]
+    fn test_color_grading_brightness_negative() {
+        let cg = ColorGrading {
+            brightness: -0.25,
+            ..ColorGrading::default()
+        };
+        let color = Vec3::new(0.5, 0.5, 0.5);
+        let result = cg.apply(color);
+        assert!(result.x < 0.5);
+    }
+
+    #[test]
+    fn test_color_grading_tint_positive() {
+        let cg = ColorGrading {
+            tint: 1.0,
+            ..ColorGrading::default()
+        };
+        let color = Vec3::new(0.5, 0.5, 0.5);
+        let result = cg.apply(color);
+        // Positive tint -> red and blue up, green down
+        assert!(result.x > color.x);
+        assert!(result.y < color.y);
+        assert!(result.z > color.z);
+    }
+
+    #[test]
+    fn test_color_grading_tint_negative() {
+        let cg = ColorGrading {
+            tint: -1.0,
+            ..ColorGrading::default()
+        };
+        let color = Vec3::new(0.5, 0.5, 0.5);
+        let result = cg.apply(color);
+        // Negative tint -> red and blue down, green up
+        assert!(result.x < color.x);
+        assert!(result.y > color.y);
+        assert!(result.z < color.z);
+    }
+
+    #[test]
+    fn test_color_grading_white_input_default() {
+        let cg = ColorGrading::default();
+        let color = Vec3::new(1.0, 1.0, 1.0);
+        let result = cg.apply(color);
+        // White should remain close to white
+        assert!((result.x - 1.0).abs() < 0.1);
+    }
+
+    #[test]
+    fn test_color_grading_black_input_default() {
+        let cg = ColorGrading::default();
+        let color = Vec3::new(0.0, 0.0, 0.0);
+        let result = cg.apply(color);
+        // Black should remain close to black
+        assert!((result.x - 0.0).abs() < 0.1);
+    }
+
+    #[test]
+    fn test_color_grading_clone() {
+        let cg1 = ColorGrading {
+            exposure: 1.0,
+            contrast: 1.5,
+            ..ColorGrading::default()
+        };
+        let cg2 = cg1.clone();
+        assert_eq!(cg1.exposure, cg2.exposure);
+        assert_eq!(cg1.contrast, cg2.contrast);
+        assert_eq!(cg1.gamma, cg2.gamma);
+    }
+
+    #[test]
+    fn test_color_grading_debug_fmt() {
+        let cg = ColorGrading::default();
+        let _ = format!("{:?}", cg);
+    }
+
+    #[test]
+    fn test_color_grading_combined_settings() {
+        let cg = ColorGrading {
+            exposure: 0.5,
+            contrast: 1.2,
+            saturation: 0.9,
+            temperature: 0.25,
+            gamma: 1.1,
+            tint: 0.1,
+            brightness: 0.05,
+        };
+        let color = Vec3::new(0.5, 0.5, 0.5);
+        let result = cg.apply(color);
+        // Just verify it produces valid values
+        assert!(result.x >= 0.0);
+        assert!(result.y >= 0.0);
+        assert!(result.z >= 0.0);
+    }
+
+    #[test]
+    fn test_color_grading_temperature_zero() {
+        let cg = ColorGrading {
+            temperature: 0.0,
+            ..ColorGrading::default()
+        };
+        let color = Vec3::new(0.5, 0.5, 0.5);
+        let result = cg.apply(color);
+        // Zero temperature should not shift R and B relative to each other
+        assert!((result.x - 0.5).abs() < 0.1);
+    }
 }

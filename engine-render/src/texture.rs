@@ -380,10 +380,20 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_texture_format_bytes_per_pixel() {
+    fn test_texture_format_rgba8() {
+        assert_eq!(TextureFormat::RGBA8.to_gl_internal_format(), glow::RGBA8);
+        assert_eq!(TextureFormat::RGBA8.to_gl_format(), glow::RGBA);
+        assert_eq!(TextureFormat::RGBA8.to_gl_type(), glow::UNSIGNED_BYTE);
+        assert_eq!(TextureFormat::RGBA8.bytes_per_pixel(), 4);
+    }
+
+    #[test]
+    fn test_texture_format_bytes_per_pixel_variants() {
         assert_eq!(TextureFormat::RGBA8.bytes_per_pixel(), 4);
         assert_eq!(TextureFormat::R8.bytes_per_pixel(), 1);
         assert_eq!(TextureFormat::RGBA16F.bytes_per_pixel(), 8);
+        assert_eq!(TextureFormat::BGRA8.bytes_per_pixel(), 4);
+        assert_eq!(TextureFormat::Unknown.bytes_per_pixel(), 4);
     }
 
     #[test]
@@ -398,10 +408,24 @@ mod tests {
     }
 
     #[test]
+    fn test_filter_mode_default() {
+        let f: FilterMode = Default::default();
+        assert_eq!(f, FilterMode::Default);
+        assert_eq!(f.to_gl(false), glow::LINEAR);
+    }
+
+    #[test]
     fn test_wrap_mode_to_gl() {
         assert_eq!(WrapMode::Clamp.to_gl(), glow::CLAMP_TO_EDGE);
         assert_eq!(WrapMode::Repeat.to_gl(), glow::REPEAT);
         assert_eq!(WrapMode::MirrorRepeat.to_gl(), glow::MIRRORED_REPEAT);
+    }
+
+    #[test]
+    fn test_wrap_mode_default() {
+        let w: WrapMode = Default::default();
+        assert_eq!(w, WrapMode::Default);
+        assert_eq!(w.to_gl(), glow::REPEAT);
     }
 
     #[test]
@@ -413,18 +437,59 @@ mod tests {
     }
 
     #[test]
-    fn test_sampler_builder() {
+    fn test_texture_size() {
+        let tex = Texture2D::empty(128, 256, TextureFormat::RGBA8);
+        assert_eq!(tex.size(), (128, 256));
+    }
+
+    #[test]
+    fn test_texture_update_no_panic() {
+        let mut tex = Texture2D::empty(64, 64, TextureFormat::RGBA8);
+        tex.update(0, 0, 64, 64, &[0u8; 64 * 64 * 4]);
+    }
+
+    #[test]
+    fn test_sampler_default() {
+        let s = Sampler::default();
+        assert_eq!(s.mag_filter, FilterMode::Linear);
+        assert_eq!(s.min_filter, FilterMode::Linear);
+        assert_eq!(s.wrap_s, WrapMode::Repeat);
+        assert_eq!(s.wrap_t, WrapMode::Repeat);
+        assert!((s.anisotropy - 1.0).abs() < 0.001);
+        assert!(!s.mipmap);
+    }
+
+    #[test]
+    fn test_sampler_builder_with_filter() {
         let sampler = SamplerBuilder::new()
             .with_filter(FilterMode::Nearest, FilterMode::Nearest)
-            .with_wrap(WrapMode::Clamp, WrapMode::Clamp)
-            .with_anisotropy(4.0)
             .build();
-
         assert_eq!(sampler.mag_filter, FilterMode::Nearest);
         assert_eq!(sampler.min_filter, FilterMode::Nearest);
+    }
+
+    #[test]
+    fn test_sampler_builder_with_wrap() {
+        let sampler = SamplerBuilder::new()
+            .with_wrap(WrapMode::Clamp, WrapMode::Clamp)
+            .build();
         assert_eq!(sampler.wrap_s, WrapMode::Clamp);
         assert_eq!(sampler.wrap_t, WrapMode::Clamp);
-        assert_eq!(sampler.anisotropy, 4.0);
+    }
+
+    #[test]
+    fn test_sampler_builder_with_anisotropy() {
+        let sampler = SamplerBuilder::new().with_anisotropy(4.0).build();
+        assert!((sampler.anisotropy - 4.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_sampler_builder_with_mipmap() {
+        let sampler = SamplerBuilder::new()
+            .with_mipmap_filter(FilterMode::Linear)
+            .build();
+        assert_eq!(sampler.min_filter, FilterMode::Linear);
+        assert!(sampler.mipmap);
     }
 
     #[test]
@@ -439,5 +504,54 @@ mod tests {
         let retrieved = retrieved.unwrap();
         let tex_read = retrieved.read();
         assert_eq!(tex_read.width(), 100);
+    }
+
+    #[test]
+    fn test_texture_manager_iter() {
+        let manager = TextureManager::new();
+        manager.add(Texture2D::empty(100, 100, TextureFormat::RGBA8));
+        manager.add(Texture2D::empty(200, 200, TextureFormat::RGBA8));
+
+        let mut count = 0;
+        for _ in manager.iter() {
+            count += 1;
+        }
+        assert_eq!(count, 2);
+    }
+
+    #[test]
+    fn test_texture_format_rgba16f() {
+        assert_eq!(TextureFormat::RGBA16F.bytes_per_pixel(), 8);
+        assert_eq!(TextureFormat::RGBA16F.to_gl_type(), glow::HALF_FLOAT);
+    }
+
+    #[test]
+    fn test_texture_format_r8() {
+        assert_eq!(TextureFormat::R8.bytes_per_pixel(), 1);
+        assert_eq!(TextureFormat::R8.to_gl_format(), glow::RED);
+    }
+
+    #[test]
+    fn test_texture_format_bgra8() {
+        assert_eq!(TextureFormat::BGRA8.bytes_per_pixel(), 4);
+        assert_eq!(TextureFormat::BGRA8.to_gl_format(), glow::RGBA);
+    }
+
+    #[test]
+    fn test_texture_generate_mipmaps() {
+        let mut tex = Texture2D::empty(100, 100, TextureFormat::RGBA8);
+        tex.generate_mipmaps();
+    }
+
+    #[test]
+    fn test_texture_set_filter() {
+        let mut tex = Texture2D::empty(50, 50, TextureFormat::RGBA8);
+        tex.set_filter(FilterMode::Linear);
+    }
+
+    #[test]
+    fn test_texture_set_wrap() {
+        let mut tex = Texture2D::empty(50, 50, TextureFormat::RGBA8);
+        tex.set_wrap(WrapMode::Clamp);
     }
 }

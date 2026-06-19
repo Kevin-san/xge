@@ -102,4 +102,18 @@ mod tests {
         schedule.add_system(TestSystem);
         // Schedule 创建成功
     }
+
+    #[test]
+    fn test_system_schedule_new_empty() {
+        let mut schedule: Schedule = Schedule::new();
+        schedule.run(&mut World::new());
+    }
+
+    #[test]
+    fn test_system_schedule_add_multiple() {
+        let mut schedule: Schedule = Schedule::new();
+        schedule.add_system(TestSystem);
+        schedule.add_system(TestSystem);
+        schedule.run(&mut World::new());
+    }
 }

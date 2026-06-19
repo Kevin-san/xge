@@ -152,4 +152,155 @@ mod tests {
         assert!(result.y >= 0.0 && result.y <= 1.0);
         assert!(result.z >= 0.0 && result.z <= 1.0);
     }
+
+    #[test]
+    fn test_tonemapper_default() {
+        let tm = Tonemapper::default();
+        assert_eq!(tm, Tonemapper::None);
+    }
+
+    #[test]
+    fn test_tonemapper_clone_copy() {
+        let tm1 = Tonemapper::Aces;
+        let tm2 = tm1;
+        let tm3 = tm1;
+        assert_eq!(tm2, Tonemapper::Aces);
+        assert_eq!(tm3, Tonemapper::Aces);
+    }
+
+    #[test]
+    fn test_tonemapper_debug_fmt() {
+        let _ = format!("{:?}", Tonemapper::Aces);
+        let _ = format!("{:?}", Tonemapper::Reinhard);
+        let _ = format!("{:?}", Tonemapper::Filmic);
+        let _ = format!("{:?}", Tonemapper::None);
+    }
+
+    #[test]
+    fn test_tonemapper_reinhard_very_high() {
+        let tm = Tonemapper::Reinhard;
+        let color = Vec3::new(1000.0, 1000.0, 1000.0);
+        let result = tm.apply(color);
+        // Should be very close to 1.0
+        assert!(result.x < 1.0 && result.x > 0.99);
+        assert!(result.y < 1.0 && result.y > 0.99);
+        assert!(result.z < 1.0 && result.z > 0.99);
+    }
+
+    #[test]
+    fn test_tonemapper_aces_all_modes_exist() {
+        // Simply verify all variants can be instantiated and applied
+        let modes = [
+            Tonemapper::Aces,
+            Tonemapper::Reinhard,
+            Tonemapper::Filmic,
+            Tonemapper::None,
+        ];
+        let color = Vec3::new(0.5, 0.5, 0.5);
+        for m in modes.iter() {
+            let result = m.apply(color);
+            assert!(result.x >= 0.0 && result.x <= 1.0);
+            assert!(result.y >= 0.0 && result.y <= 1.0);
+            assert!(result.z >= 0.0 && result.z <= 1.0);
+        }
+    }
+
+    #[test]
+    fn test_tonemapper_reinhard_returns_0() {
+        let tm = Tonemapper::Reinhard;
+        let color = Vec3::new(0.0, 0.0, 0.0);
+        let result = tm.apply(color);
+        assert_eq!(result, Vec3::new(0.0, 0.0, 0.0));
+    }
+
+    #[test]
+    fn test_tonemapper_filmic_zero() {
+        let tm = Tonemapper::Filmic;
+        let color = Vec3::new(0.0, 0.0, 0.0);
+        let result = tm.apply(color);
+        // Very close to zero (floating point precision)
+        assert!(result.x.abs() < 1e-6);
+        assert!(result.y.abs() < 1e-6);
+        assert!(result.z.abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_tonemapper_none_identity() {
+        let tm = Tonemapper::None;
+        let colors = [
+            Vec3::new(0.0, 0.0, 0.0),
+            Vec3::new(0.5, 0.5, 0.5),
+            Vec3::new(1.0, 1.0, 1.0),
+            Vec3::new(2.0, 3.0, 4.0),
+        ];
+        for c in colors.iter() {
+            let result = tm.apply(*c);
+            assert_eq!(result, *c);
+        }
+    }
+
+    #[test]
+    fn test_tonemapper_filmic_high() {
+        let tm = Tonemapper::Filmic;
+        let color = Vec3::new(10.0, 20.0, 50.0);
+        let result = tm.apply(color);
+        assert!(result.x >= 0.0 && result.x <= 1.0);
+        assert!(result.y >= 0.0 && result.y <= 1.0);
+        assert!(result.z >= 0.0 && result.z <= 1.0);
+    }
+
+    #[test]
+    fn test_tonemapper_reinhard_unit() {
+        let tm = Tonemapper::Reinhard;
+        let color = Vec3::new(1.0, 1.0, 1.0);
+        let result = tm.apply(color);
+        // 1/(1+1) = 0.5
+        assert!((result.x - 0.5).abs() < 0.001);
+        assert!((result.y - 0.5).abs() < 0.001);
+        assert!((result.z - 0.5).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_tonemapper_partial_eq() {
+        assert_eq!(Tonemapper::Aces, Tonemapper::Aces);
+        assert_eq!(Tonemapper::Reinhard, Tonemapper::Reinhard);
+        assert_eq!(Tonemapper::Filmic, Tonemapper::Filmic);
+        assert_eq!(Tonemapper::None, Tonemapper::None);
+        assert_ne!(Tonemapper::Aces, Tonemapper::Reinhard);
+        assert_ne!(Tonemapper::Filmic, Tonemapper::None);
+    }
+
+    #[test]
+    fn test_tonemapper_all_positive_inputs() {
+        let color = Vec3::new(0.1, 0.2, 0.3);
+        let modes = [
+            Tonemapper::Aces,
+            Tonemapper::Reinhard,
+            Tonemapper::Filmic,
+        ];
+        for m in modes.iter() {
+            let result = m.apply(color);
+            // All tonemap operators should preserve non-negative results
+            assert!(result.x >= -1e-6);
+            assert!(result.y >= -1e-6);
+            assert!(result.z >= -1e-6);
+        }
+    }
+
+    #[test]
+    fn test_tonemapper_mixed_channels() {
+        let color = Vec3::new(0.0, 1.0, 3.0);
+        let result = Tonemapper::Aces.apply(color);
+        // Each channel is processed independently, so z should be highest
+        assert!(result.z >= result.y);
+        assert!(result.y >= result.x);
+    }
+
+    #[test]
+    fn test_tonemapper_very_small_values() {
+        let color = Vec3::new(0.001, 0.001, 0.001);
+        let result = Tonemapper::Reinhard.apply(color);
+        // Very small values stay small
+        assert!(result.x < 0.01 && result.x >= 0.0);
+    }
 }

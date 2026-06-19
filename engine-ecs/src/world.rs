@@ -668,4 +668,151 @@ mod tests {
         // 注意：由于类型擦除限制，无法在运行时移除组件
         // 这是已知的架构限制
     }
+
+    #[test]
+    fn test_world_spawn_multiple_entities() {
+        let mut world = World::new();
+        let e1 = world.spawn();
+        let e2 = world.spawn();
+        let e3 = world.spawn();
+        assert_eq!(world.entity_count(), 3);
+        assert!(world.contains(e1));
+        assert!(world.contains(e2));
+        assert!(world.contains(e3));
+    }
+
+    #[test]
+    fn test_world_is_alive_after_spawn() {
+        let mut world = World::new();
+        let entity = world.spawn();
+        assert!(world.is_alive(entity));
+        world.despawn(entity);
+        assert!(!world.is_alive(entity));
+    }
+
+    #[test]
+    fn test_world_is_empty_new() {
+        let world = World::new();
+        assert!(world.is_empty());
+    }
+
+    #[test]
+    fn test_world_not_empty_after_spawn() {
+        let mut world = World::new();
+        world.spawn();
+        assert!(!world.is_empty());
+    }
+
+    #[test]
+    fn test_world_clear_all() {
+        let mut world = World::new();
+        let e1 = world.spawn();
+        world.insert(e1, Position { x: 1.0, y: 1.0 });
+        world.insert_resource(Position { x: 0.0, y: 0.0 });
+        world.clear();
+        assert!(world.is_empty());
+    }
+
+    #[test]
+    fn test_world_entities_iter_collects_all() {
+        let mut world = World::new();
+        world.spawn();
+        world.spawn();
+        world.spawn();
+        let entities: Vec<Entity> = world.entities_iter().collect();
+        assert_eq!(entities.len(), 3);
+    }
+
+    #[test]
+    fn test_world_contains_component_after_insert() {
+        let mut world = World::new();
+        let e = world.spawn();
+        world.insert(e, Position { x: 1.0, y: 2.0 });
+        assert!(world.contains_component::<Position>(e));
+    }
+
+    #[test]
+    fn test_world_get_component_mut_modify() {
+        let mut world = World::new();
+        let e = world.spawn();
+        world.insert(e, Position { x: 1.0, y: 2.0 });
+        if let Some(pos) = world.get_component_mut::<Position>(e) {
+            pos.x = 100.0;
+        }
+        assert_eq!(world.get_component::<Position>(e).unwrap().x, 100.0);
+    }
+
+    #[test]
+    fn test_world_resource_mut_modify() {
+        let mut world = World::new();
+        world.insert_resource(Position { x: 0.0, y: 0.0 });
+        {
+            let pos = world.resource_mut::<Position>();
+            pos.x = 42.0;
+        }
+        assert_eq!(world.resource::<Position>().x, 42.0);
+    }
+
+    #[test]
+    fn test_world_remove_resource() {
+        let mut world = World::new();
+        world.insert_resource(Position { x: 0.0, y: 0.0 });
+        assert!(world.contains_resource::<Position>());
+        world.remove_resource::<Position>();
+        assert!(!world.contains_resource::<Position>());
+    }
+
+    #[test]
+    fn test_world_get_resource_option() {
+        let mut world = World::new();
+        assert!(world.get_resource::<Position>().is_none());
+        world.insert_resource(Position { x: 1.0, y: 2.0 });
+        assert!(world.get_resource::<Position>().is_some());
+    }
+
+    #[test]
+    fn test_world_spawn_bundle_insert() {
+        let mut world = World::new();
+        let e = world.spawn_bundle((Position { x: 1.0, y: 2.0 }, Velocity { x: 0.0, y: 0.0 }));
+        assert!(world.get_component::<Position>(e).is_some());
+        assert!(world.get_component::<Velocity>(e).is_some());
+    }
+
+    #[test]
+    fn test_world_spawn_batch_multiple() {
+        let mut world = World::new();
+        let before = world.entity_count();
+        let bundles = (0..5).map(|_| Position { x: 0.0, y: 0.0 });
+        world.spawn_batch(bundles);
+        assert_eq!(world.entity_count(), before + 5);
+    }
+
+    #[test]
+    fn test_world_entity_ref_is_alive() {
+        let mut world = World::new();
+        let e = world.spawn();
+        let entity_ref = world.entity(e);
+        assert!(entity_ref.is_alive());
+    }
+
+    #[test]
+    fn test_world_insert_same_component_replaces() {
+        let mut world = World::new();
+        let e = world.spawn();
+        world.insert(e, Position { x: 1.0, y: 1.0 });
+        world.insert(e, Position { x: 99.0, y: 99.0 });
+        let pos = world.get_component::<Position>(e).unwrap();
+        assert_eq!(pos.x, 99.0);
+        assert_eq!(pos.y, 99.0);
+    }
+
+    #[test]
+    fn test_world_insert_multiple_components() {
+        let mut world = World::new();
+        let e = world.spawn();
+        world.insert(e, Position { x: 1.0, y: 2.0 });
+        world.insert(e, Velocity { x: 3.0, y: 4.0 });
+        assert!(world.contains_component::<Position>(e));
+        assert!(world.contains_component::<Velocity>(e));
+    }
 }

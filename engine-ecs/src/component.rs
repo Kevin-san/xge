@@ -140,4 +140,33 @@ mod tests {
         assert!(storage.get::<Position>().is_some());
         assert!(storage.get::<Velocity>().is_some());
     }
+
+    #[test]
+    fn test_component_storage_new_empty() {
+        let storage = ComponentStorage::new();
+        assert!(storage.get::<Position>().is_none());
+    }
+
+    #[test]
+    fn test_component_storage_overwrite_value() {
+        let mut storage = ComponentStorage::new();
+        storage.insert(Position { x: 1.0, y: 2.0 });
+        storage.insert(Position { x: 9.0, y: 9.0 });
+        let pos = storage.get::<Position>().unwrap();
+        assert_eq!(pos.x, 9.0);
+        assert_eq!(pos.y, 9.0);
+    }
+
+    #[test]
+    fn test_component_storage_get_mut() {
+        let mut storage = ComponentStorage::new();
+        storage.insert(Position { x: 1.0, y: 2.0 });
+        if let Some(p) = storage.get_mut::<Position>() {
+            p.x = 99.0;
+            p.y = 88.0;
+        }
+        let pos = storage.get::<Position>().unwrap();
+        assert_eq!(pos.x, 99.0);
+        assert_eq!(pos.y, 88.0);
+    }
 }

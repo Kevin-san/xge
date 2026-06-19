@@ -170,4 +170,87 @@ mod tests {
         let flags = PbrMaterialFlags::USE_IBL;
         assert!(!flags.has_any_texture());
     }
+
+    #[test]
+    fn test_flags_all_bits() {
+        let all = PbrMaterialFlags::all();
+        assert!(all.contains(PbrMaterialFlags::HAS_ALBEDO_MAP));
+        assert!(all.contains(PbrMaterialFlags::HAS_NORMAL_MAP));
+        assert!(all.contains(PbrMaterialFlags::HAS_METALLIC_MAP));
+        assert!(all.contains(PbrMaterialFlags::HAS_ROUGHNESS_MAP));
+        assert!(all.contains(PbrMaterialFlags::HAS_AO_MAP));
+        assert!(all.contains(PbrMaterialFlags::HAS_EMISSIVE_MAP));
+        assert!(all.contains(PbrMaterialFlags::HAS_HEIGHT_MAP));
+        assert!(all.contains(PbrMaterialFlags::USE_IBL));
+        assert!(all.contains(PbrMaterialFlags::USE_CLEAR_COAT));
+        assert!(all.contains(PbrMaterialFlags::USE_ANISOTROPY));
+        assert!(all.contains(PbrMaterialFlags::USE_SHEEN));
+        assert!(all.contains(PbrMaterialFlags::USE_SUBSURFACE));
+        assert!(all.contains(PbrMaterialFlags::USE_PARALLAX));
+    }
+
+    #[test]
+    fn test_flags_bitor_chaining() {
+        let flags = PbrMaterialFlags::HAS_ALBEDO_MAP | PbrMaterialFlags::HAS_NORMAL_MAP | PbrMaterialFlags::HAS_AO_MAP;
+        assert!(flags.contains(PbrMaterialFlags::HAS_ALBEDO_MAP));
+        assert!(flags.contains(PbrMaterialFlags::HAS_NORMAL_MAP));
+        assert!(flags.contains(PbrMaterialFlags::HAS_AO_MAP));
+        assert!(!flags.contains(PbrMaterialFlags::USE_CLEAR_COAT));
+    }
+
+    #[test]
+    fn test_flags_bitand() {
+        let flags = PbrMaterialFlags::HAS_ALBEDO_MAP | PbrMaterialFlags::HAS_NORMAL_MAP;
+        let masked = flags & PbrMaterialFlags::HAS_ALBEDO_MAP;
+        assert!(masked.contains(PbrMaterialFlags::HAS_ALBEDO_MAP));
+        assert!(!masked.contains(PbrMaterialFlags::HAS_NORMAL_MAP));
+    }
+
+    #[test]
+    fn test_flags_bitor_assign() {
+        let mut flags = PbrMaterialFlags::empty();
+        flags |= PbrMaterialFlags::HAS_ALBEDO_MAP;
+        flags |= PbrMaterialFlags::HAS_NORMAL_MAP;
+        assert!(flags.contains(PbrMaterialFlags::HAS_ALBEDO_MAP));
+        assert!(flags.contains(PbrMaterialFlags::HAS_NORMAL_MAP));
+    }
+
+    #[test]
+    fn test_flags_remove_multiple() {
+        let mut flags = PbrMaterialFlags::HAS_ALBEDO_MAP | PbrMaterialFlags::HAS_NORMAL_MAP | PbrMaterialFlags::USE_IBL;
+        flags.remove(PbrMaterialFlags::HAS_ALBEDO_MAP);
+        assert!(!flags.contains(PbrMaterialFlags::HAS_ALBEDO_MAP));
+        assert!(flags.contains(PbrMaterialFlags::HAS_NORMAL_MAP));
+        assert!(flags.contains(PbrMaterialFlags::USE_IBL));
+    }
+
+    #[test]
+    fn test_flags_bits_values() {
+        let f = PbrMaterialFlags::HAS_ALBEDO_MAP;
+        assert_eq!(f.bits(), 1);
+        let f2 = PbrMaterialFlags::HAS_NORMAL_MAP;
+        assert_eq!(f2.bits(), 2);
+    }
+
+    #[test]
+    fn test_flags_from_bits_zero() {
+        let flags = PbrMaterialFlags::from_bits(0);
+        assert_eq!(flags.bits(), 0);
+    }
+
+    #[test]
+    fn test_flags_from_bits_mixed() {
+        let flags = PbrMaterialFlags::from_bits(1 | 2 | 4);
+        assert!(flags.contains(PbrMaterialFlags::HAS_ALBEDO_MAP));
+        assert!(flags.contains(PbrMaterialFlags::HAS_NORMAL_MAP));
+        assert!(flags.contains(PbrMaterialFlags::HAS_METALLIC_MAP));
+    }
+
+    #[test]
+    fn test_flags_empty_has_nothing() {
+        let flags = PbrMaterialFlags::empty();
+        assert!(!flags.contains(PbrMaterialFlags::HAS_ALBEDO_MAP));
+        assert!(!flags.contains(PbrMaterialFlags::USE_IBL));
+        assert!(!flags.has_any_texture());
+    }
 }

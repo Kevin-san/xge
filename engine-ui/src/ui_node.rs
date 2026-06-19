@@ -453,4 +453,162 @@ mod tests {
         assert_eq!(child1_node.rect().x, 0.0);
         assert_eq!(child2_node.rect().x, 60.0);
     }
+
+    #[test]
+    fn test_ui_node_anchor_and_pivot() {
+        let mut node = UiNode::new(UiNodeType::Panel);
+        node.set_anchor(Vec2::new(0.0, 1.0));
+        node.set_pivot(Vec2::new(0.5, 0.5));
+        assert_eq!(node.anchor(), Vec2::new(0.0, 1.0));
+        assert_eq!(node.pivot(), Vec2::new(0.5, 0.5));
+    }
+
+    #[test]
+    fn test_ui_node_visible_toggle() {
+        let mut node = UiNode::new(UiNodeType::Panel);
+        assert!(node.visible());
+        node.set_visible(false);
+        assert!(!node.visible());
+        node.set_visible(true);
+        assert!(node.visible());
+    }
+
+    #[test]
+    fn test_ui_node_enabled_toggle() {
+        let mut node = UiNode::new(UiNodeType::Button);
+        assert!(node.enabled());
+        node.set_enabled(false);
+        assert!(!node.enabled());
+    }
+
+    #[test]
+    fn test_ui_node_layout_set_and_get() {
+        let mut node = UiNode::new(UiNodeType::Panel);
+        node.set_layout(LayoutType::Vertical);
+        assert_eq!(node.layout(), LayoutType::Vertical);
+        node.set_layout(LayoutType::Horizontal);
+        assert_eq!(node.layout(), LayoutType::Horizontal);
+    }
+
+    #[test]
+    fn test_ui_node_layout_direction() {
+        let mut node = UiNode::new(UiNodeType::Panel);
+        node.set_layout_dir(LayoutDirection::Vertical);
+        assert_eq!(node.layout_dir(), LayoutDirection::Vertical);
+        node.set_layout_dir(LayoutDirection::Horizontal);
+        assert_eq!(node.layout_dir(), LayoutDirection::Horizontal);
+    }
+
+    #[test]
+    fn test_ui_node_rect_mut() {
+        let mut node = UiNode::new(UiNodeType::Panel);
+        let rect = node.rect_mut();
+        rect.x = 10.0;
+        rect.y = 20.0;
+        assert_eq!(node.rect().x, 10.0);
+        assert_eq!(node.rect().y, 20.0);
+    }
+
+    #[test]
+    fn test_ui_node_has_child() {
+        let mut node = UiNode::new(UiNodeType::Panel);
+        let child = Entity::new(1, 0);
+        let other = Entity::new(2, 0);
+        node.add_child(child);
+        assert!(node.has_child(child));
+        assert!(!node.has_child(other));
+    }
+
+    #[test]
+    fn test_ui_node_remove_child() {
+        let mut node = UiNode::new(UiNodeType::Panel);
+        let child1 = Entity::new(1, 0);
+        let child2 = Entity::new(2, 0);
+        node.add_child(child1);
+        node.add_child(child2);
+        assert_eq!(node.children().len(), 2);
+        assert!(node.remove_child(child1));
+        assert_eq!(node.children().len(), 1);
+        assert!(!node.remove_child(child1));
+    }
+
+    #[test]
+    fn test_ui_node_parent_initial_none() {
+        let node = UiNode::new(UiNodeType::Panel);
+        assert!(node.parent().is_none());
+    }
+
+    #[test]
+    fn test_ui_root_canvas_size_update() {
+        let mut world = World::new();
+        let root_entity = world.spawn();
+        world.insert(root_entity, UiNode::new(UiNodeType::Root));
+        world.insert(
+            root_entity,
+            UiRoot::new(root_entity, Vec2::new(640.0, 480.0)),
+        );
+        if let Some(root) = world.get_component_mut::<UiRoot>(root_entity) {
+            root.set_canvas_size(Vec2::new(1280.0, 720.0));
+        }
+        let root = world.get_component::<UiRoot>(root_entity).unwrap();
+        assert_eq!(root.canvas_size(), Vec2::new(1280.0, 720.0));
+    }
+
+    #[test]
+    fn test_ui_root_root_entity() {
+        let mut world = World::new();
+        let root_entity = world.spawn();
+        world.insert(root_entity, UiNode::new(UiNodeType::Root));
+        world.insert(
+            root_entity,
+            UiRoot::new(root_entity, Vec2::new(800.0, 600.0)),
+        );
+        let root = world.get_component::<UiRoot>(root_entity).unwrap();
+        assert_eq!(root.root_entity(), root_entity);
+    }
+
+    #[test]
+    fn test_ui_node_type_variants() {
+        let _root = UiNode::new(UiNodeType::Root);
+        let _panel = UiNode::new(UiNodeType::Panel);
+        let _button = UiNode::new(UiNodeType::Button);
+        let _label = UiNode::new(UiNodeType::Label);
+        let _textbox = UiNode::new(UiNodeType::TextBox);
+        let _checkbox = UiNode::new(UiNodeType::CheckBox);
+    }
+
+    #[test]
+    fn test_ui_node_world_position_no_parent() {
+        let mut world = World::new();
+        let entity = world.spawn();
+        let mut node = UiNode::new(UiNodeType::Panel);
+        node.set_rect(Rect::new(20.0, 30.0, 100.0, 100.0));
+        world.insert(entity, node);
+        let node_ref = world.get_component::<UiNode>(entity).unwrap();
+        let pos = node_ref.world_position(&world);
+        assert_eq!(pos.x, 20.0);
+        assert_eq!(pos.y, 30.0);
+    }
+
+    #[test]
+    fn test_ui_node_update_layout_internal() {
+        let mut world = World::new();
+        let parent = world.spawn();
+        let child = world.spawn();
+        let mut parent_node = UiNode::new(UiNodeType::Panel);
+        parent_node.set_layout(LayoutType::Horizontal);
+        parent_node.add_child(child);
+        let mut child_node = UiNode::new(UiNodeType::Button);
+        child_node.rect_mut().w = 50.0;
+        child_node.rect_mut().h = 30.0;
+        world.insert(parent, parent_node);
+        world.insert(child, child_node);
+        let parent_node = UiNode::new(UiNodeType::Panel);
+        let _ = parent_node;
+        let mut p2 = UiNode::new(UiNodeType::Panel);
+        p2.set_layout(LayoutType::Horizontal);
+        p2.update_layout_internal(&mut world);
+        let child_ref = world.get_component::<UiNode>(child).unwrap();
+        assert_eq!(child_ref.rect().x, 0.0);
+    }
 }

@@ -416,4 +416,64 @@ mod tests {
         // 旋转矩形有 4 条边
         assert_eq!(renderer.lines().len(), 4);
     }
+
+    // ============= PhysicsDebugRenderer 更多测试 =============
+
+    #[test]
+    fn test_draw_circle_has_16_segments() {
+        let mut renderer = PhysicsDebugRenderer::new();
+        renderer.draw_circle(Vec2::ZERO, 5.0, [1.0, 0.0, 0.0, 1.0]);
+        // 默认 16 段
+        assert_eq!(renderer.lines().len(), 16);
+        assert_eq!(renderer.circles().len(), 1);
+    }
+
+    #[test]
+    fn test_draw_multiple_shapes() {
+        let mut renderer = PhysicsDebugRenderer::new();
+        renderer.draw_circle(Vec2::ZERO, 1.0, [1.0, 0.0, 0.0, 1.0]);
+        renderer.draw_rect(
+            engine_math::Rect::new(0.0, 0.0, 5.0, 5.0),
+            [0.0, 1.0, 0.0, 1.0],
+        );
+        assert_eq!(renderer.circles().len(), 1);
+        assert_eq!(renderer.rects().len(), 1);
+        // 圆 16 段 + 矩形 4 段
+        assert_eq!(renderer.lines().len(), 20);
+    }
+
+    #[test]
+    fn test_clear_empties_all() {
+        let mut renderer = PhysicsDebugRenderer::new();
+        renderer.draw_circle(Vec2::ZERO, 1.0, [1.0, 0.0, 0.0, 1.0]);
+        renderer.draw_rect(
+            engine_math::Rect::new(0.0, 0.0, 1.0, 1.0),
+            [0.0, 1.0, 0.0, 1.0],
+        );
+        renderer.clear();
+        assert!(renderer.lines().is_empty());
+        assert!(renderer.circles().is_empty());
+        assert!(renderer.rects().is_empty());
+    }
+
+    #[test]
+    fn test_set_default_color() {
+        let mut renderer = PhysicsDebugRenderer::new();
+        renderer.set_default_color([0.5, 0.5, 0.0, 1.0]);
+        renderer.draw_circle(Vec2::ZERO, 1.0, [0.5, 0.5, 0.0, 1.0]);
+        assert_eq!(renderer.circles().first().unwrap().color[0], 0.5);
+    }
+
+    #[test]
+    fn test_draw_body_with_circle_shape() {
+        use crate::RigidBody2DBuilder;
+        let mut renderer = PhysicsDebugRenderer::new();
+        let body = RigidBody2DBuilder::dynamic()
+            .with_position(Vec2::new(3.0, 3.0))
+            .build();
+        let collider = Collider2D::new(ColliderShape::circle(2.0));
+        renderer.draw_body(&body, &collider);
+        assert_eq!(renderer.circles().len(), 1);
+        assert_eq!(renderer.circles().first().unwrap().center, Vec2::new(3.0, 3.0));
+    }
 }

@@ -737,4 +737,135 @@ mod tests {
         assert!((transformed.x - 2.0).abs() < 0.001);
         assert!((transformed.y - 1.0).abs() < 0.001);
     }
+
+    // ============= RayCast2D/ShapeCast2D/PointQuery 更多测试 =============
+
+    #[test]
+    fn test_ray_cast_2d_new() {
+        let ray = RayCast2D::new(Vec2::new(0.0, 0.0), Vec2::new(1.0, 0.0), 100.0);
+        assert_eq!(ray.origin, Vec2::new(0.0, 0.0));
+        assert_eq!(ray.max_distance, 100.0);
+        // 方向应该归一化
+        assert!((ray.direction.length() - 1.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_ray_cast_2d_normalizes_direction() {
+        let ray = RayCast2D::new(Vec2::ZERO, Vec2::new(10.0, 0.0), 5.0);
+        assert!((ray.direction.x - 1.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_ray_cast_with_collision_group_mask() {
+        let ray = RayCast2D::new(Vec2::ZERO, Vec2::new(1.0, 0.0), 10.0)
+            .with_collision_group(0x0001)
+            .with_collision_mask(0x0002);
+        assert_eq!(ray.collision_group, 0x0001);
+        assert_eq!(ray.collision_mask, 0x0002);
+    }
+
+    #[test]
+    fn test_ray_cast_point_at_distance() {
+        let ray = RayCast2D::new(Vec2::ZERO, Vec2::new(1.0, 0.0), 100.0);
+        let p = ray.point_at(5.0);
+        assert_eq!(p.x, 5.0);
+        assert_eq!(p.y, 0.0);
+    }
+
+    #[test]
+    fn test_ray_cast_endpoint_is_end() {
+        let ray = RayCast2D::new(Vec2::ZERO, Vec2::new(1.0, 0.0), 10.0);
+        let ep = ray.endpoint();
+        assert_eq!(ep.x, 10.0);
+        assert_eq!(ep.y, 0.0);
+    }
+
+    #[test]
+    fn test_shape_cast_new() {
+        let sc = ShapeCast2D::new(
+            ColliderShape::circle(1.0),
+            Transform2DExt::new(Vec2::ZERO, 0.0),
+            Vec2::new(1.0, 0.0),
+            10.0,
+        );
+        assert_eq!(sc.max_distance, 10.0);
+        assert_eq!(sc.translation, Vec2::new(1.0, 0.0));
+    }
+
+    #[test]
+    fn test_shape_cast_with_group_mask() {
+        let sc = ShapeCast2D::new(
+            ColliderShape::circle(1.0),
+            Transform2DExt::new(Vec2::ZERO, 0.0),
+            Vec2::new(1.0, 0.0),
+            10.0,
+        )
+        .with_collision_group(0x00FF)
+        .with_collision_mask(0xFF00);
+        assert_eq!(sc.collision_group, 0x00FF);
+        assert_eq!(sc.collision_mask, 0xFF00);
+    }
+
+    #[test]
+    fn test_point_query_new_default() {
+        let pq = PointQuery::new(Vec2::new(5.0, 5.0));
+        assert_eq!(pq.position, Vec2::new(5.0, 5.0));
+        assert_ne!(pq.collision_group, 0);
+        assert_ne!(pq.collision_mask, 0);
+    }
+
+    #[test]
+    fn test_point_query_with_group_mask() {
+        let pq = PointQuery::new(Vec2::ZERO)
+            .with_collision_group(0x1234)
+            .with_collision_mask(0x5678);
+        assert_eq!(pq.collision_group, 0x1234);
+        assert_eq!(pq.collision_mask, 0x5678);
+    }
+
+    #[test]
+    fn test_point_in_aabb_shape() {
+        let shape = ColliderShape::aabb(4.0, 4.0);
+        let transform = Transform2DExt::new(Vec2::ZERO, 0.0);
+        assert!(point_in_shape(Vec2::new(1.0, 1.0), &shape, transform));
+        assert!(!point_in_shape(Vec2::new(3.0, 0.0), &shape, transform));
+    }
+
+    #[test]
+    fn test_point_in_rotated_rectangle() {
+        let shape = ColliderShape::rectangle(4.0, 2.0);
+        let transform = Transform2DExt::new(Vec2::ZERO, 0.0);
+        assert!(point_in_shape(Vec2::ZERO, &shape, transform));
+    }
+
+    #[test]
+    fn test_point_in_polygon_triangle() {
+        let vertices = vec![
+            Vec2::new(0.0, 0.0),
+            Vec2::new(4.0, 0.0),
+            Vec2::new(2.0, 4.0),
+        ];
+        let shape = ColliderShape::convex_hull(vertices);
+        let transform = Transform2DExt::new(Vec2::ZERO, 0.0);
+        assert!(point_in_shape(Vec2::new(2.0, 1.0), &shape, transform));
+        assert!(!point_in_shape(Vec2::new(10.0, 10.0), &shape, transform));
+    }
+
+    #[test]
+    fn test_inverse_transform_point_zero_rotation() {
+        let transform: Transform2D = Transform2DExt::new(Vec2::new(3.0, 4.0), 0.0);
+        let local = Vec2::new(1.0, 2.0);
+        let world = Transform2DExt::transform_point(&transform, local + Vec2::new(3.0, 4.0));
+        // 局部点变换后应该回到 (4, 6) 附近
+        assert!(world.x > 0.0);
+        assert!(world.y > 0.0);
+    }
+
+    #[test]
+    fn test_aabb_query_new() {
+        use engine_math::Rect;
+        let aq = AabbQuery::new(Rect::new(0.0, 0.0, 10.0, 20.0));
+        assert_eq!(aq.bounds.w, 10.0);
+        assert_eq!(aq.bounds.h, 20.0);
+    }
 }

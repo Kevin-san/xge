@@ -134,4 +134,25 @@ mod tests {
         let unknown_type = TypeId::of::<u32>();
         assert!(trackers.has_changed(unknown_type, 1));
     }
+
+    #[test]
+    fn test_tick_new_default() {
+        let tick = Tick::new();
+        assert_eq!(tick.get(), 0);
+    }
+
+    #[test]
+    fn test_tick_multiple_increments() {
+        let mut tick = Tick::new();
+        for i in 0..10 {
+            tick.tick();
+            assert_eq!(tick.get(), i as u32 + 1);
+        }
+    }
+
+    #[test]
+    fn test_change_trackers_new_empty() {
+        let trackers = ChangeTrackers::new();
+        assert_eq!(trackers.get(TypeId::of::<i32>()), None);
+    }
 }

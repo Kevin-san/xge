@@ -584,4 +584,102 @@ mod tests {
             assert!((c.g - 0.0).abs() < 1e-6);
         }
     }
+
+    // ============= Tween 更多测试 =============
+
+    #[test]
+    fn test_ease_linear_value() {
+        let tween = Tween::new(TweenValue::Float(0.0), TweenValue::Float(1.0), 1.0, Ease::Linear);
+        if let TweenValue::Float(v) = tween.value() {
+            assert_eq!(v, 0.0);
+        } else {
+            panic!("Expected Float");
+        }
+    }
+
+    #[test]
+    fn test_tween_update_progress() {
+        let mut tween = Tween::new(TweenValue::Float(0.0), TweenValue::Float(100.0), 1.0, Ease::Linear);
+        tween.update(0.5);
+        if let TweenValue::Float(v) = tween.value() {
+            assert!((45.0..=55.0).contains(&v));
+        }
+    }
+
+    #[test]
+    fn test_tween_is_finished_after_duration() {
+        let mut tween = Tween::new(TweenValue::Float(0.0), TweenValue::Float(1.0), 1.0, Ease::Linear);
+        tween.update(1.0);
+        assert!(tween.is_finished());
+    }
+
+    #[test]
+    fn test_tween_with_repeat() {
+        let tween = Tween::new(TweenValue::Float(0.0), TweenValue::Float(1.0), 1.0, Ease::Linear)
+            .with_repeat(3);
+        assert!(!tween.is_finished());
+    }
+
+    #[test]
+    fn test_tween_with_yoyo() {
+        let tween = Tween::new(TweenValue::Float(0.0), TweenValue::Float(100.0), 1.0, Ease::Linear)
+            .with_yoyo(true);
+        assert!(!tween.is_finished());
+    }
+
+    #[test]
+    fn test_tween_manager_add_update_clear() {
+        let mut manager = TweenManager::new();
+        manager.add(Tween::new(TweenValue::Float(0.0), TweenValue::Float(1.0), 1.0, Ease::Linear));
+        manager.add(Tween::new(TweenValue::Float(0.0), TweenValue::Float(1.0), 2.0, Ease::Linear));
+        manager.update(0.5);
+        manager.clear();
+    }
+
+    #[test]
+    fn test_tween_vec2_new() {
+        let tween = Tween::new(
+            TweenValue::Vec2(Vec2::ZERO),
+            TweenValue::Vec2(Vec2::new(100.0, 200.0)),
+            1.0,
+            Ease::Linear,
+        );
+        if let TweenValue::Vec2(v) = tween.value() {
+            assert_eq!(v.x, 0.0);
+            assert_eq!(v.y, 0.0);
+        }
+    }
+
+    #[test]
+    fn test_tween_progress_zero_at_start() {
+        let tween = Tween::new(TweenValue::Float(0.0), TweenValue::Float(1.0), 1.0, Ease::Linear);
+        assert_eq!(tween.progress(), 0.0);
+    }
+
+    #[test]
+    fn test_tween_reset() {
+        let mut tween = Tween::new(TweenValue::Float(0.0), TweenValue::Float(1.0), 1.0, Ease::Linear);
+        tween.update(0.8);
+        tween.reset();
+        assert_eq!(tween.progress(), 0.0);
+    }
+
+    #[test]
+    fn test_tween_with_delay() {
+        let mut tween = Tween::new(TweenValue::Float(0.0), TweenValue::Float(1.0), 1.0, Ease::Linear)
+            .with_delay(0.5);
+        tween.update(0.1);
+        assert!(!tween.is_finished());
+    }
+
+    #[test]
+    fn test_tween_color_new() {
+        let tween = Tween::new(
+            TweenValue::Color(Color::BLACK),
+            TweenValue::Color(Color::WHITE),
+            1.0,
+            Ease::Linear,
+        );
+        assert!(!tween.is_finished());
+    }
 }

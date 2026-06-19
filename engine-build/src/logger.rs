@@ -289,12 +289,77 @@ mod tests {
     fn test_build_stage_name() {
         assert_eq!(BuildStage::Init.name(), "Initialize");
         assert_eq!(BuildStage::Compile.name(), "Compile");
+        assert_eq!(BuildStage::ProcessAssets.name(), "Process Assets");
+        assert_eq!(BuildStage::Package.name(), "Package");
+        assert_eq!(BuildStage::Sign.name(), "Sign");
+        assert_eq!(BuildStage::Done.name(), "Done");
+    }
+
+    #[test]
+    fn test_build_stage_index() {
+        assert_eq!(BuildStage::Init.index(), 0);
+        assert_eq!(BuildStage::Compile.index(), 1);
+        assert_eq!(BuildStage::ProcessAssets.index(), 2);
+        assert_eq!(BuildStage::Package.index(), 3);
+        assert_eq!(BuildStage::Sign.index(), 4);
+        assert_eq!(BuildStage::Done.index(), 5);
+    }
+
+    #[test]
+    fn test_build_stage_total() {
+        assert_eq!(BuildStage::total(), 6);
+    }
+
+    #[test]
+    fn test_build_stage_debug() {
+        let s = format!("{:?}", BuildStage::Compile);
+        assert!(s.contains("Compile"));
     }
 
     #[test]
     fn test_build_logger_new() {
         let logger = BuildLogger::new(true);
         assert!(logger.verbose);
+        let logger2 = BuildLogger::new(false);
+        assert!(!logger2.verbose);
+    }
+
+    #[test]
+    fn test_build_logger_info() {
+        let logger = BuildLogger::new(true);
+        logger.info("test info message");
+    }
+
+    #[test]
+    fn test_build_logger_warn() {
+        let logger = BuildLogger::new(true);
+        logger.warn("test warn message");
+    }
+
+    #[test]
+    fn test_build_logger_error() {
+        let logger = BuildLogger::new(true);
+        logger.error("test error message");
+    }
+
+    #[test]
+    fn test_build_logger_progress() {
+        let logger = BuildLogger::new(true);
+        logger.progress(50, "halfway");
+    }
+
+    #[test]
+    fn test_build_logger_verbose_mode() {
+        let logger = BuildLogger::new(true);
+        logger.verbose("verbose message");
+    }
+
+    #[test]
+    fn test_build_logger_elapsed() {
+        let logger = BuildLogger::new(true);
+        let elapsed = logger.elapsed();
+        // 应该是非常短的时间
+        assert!(elapsed.as_secs() < 10);
     }
 
     #[test]
@@ -309,29 +374,96 @@ mod tests {
         let mut progress = BuildProgress::new();
         progress.set_stage(BuildStage::Compile);
         assert_eq!(progress.stage(), BuildStage::Compile);
+        // Compile stage 为 index 1，总 stages 为 6，约 16%
+        assert!(progress.percent() > 0);
+    }
+
+    #[test]
+    fn test_build_progress_set_percent() {
+        let mut progress = BuildProgress::new();
+        progress.set_percent(50);
+        assert_eq!(progress.percent(), 50);
+    }
+
+    #[test]
+    fn test_build_progress_set_percent_clamped_at_100() {
+        let mut progress = BuildProgress::new();
+        progress.set_percent(200);
+        assert_eq!(progress.percent(), 100);
+    }
+
+    #[test]
+    fn test_build_progress_set_message() {
+        let mut progress = BuildProgress::new();
+        progress.set_message("compiling modules");
+        assert_eq!(progress.message(), "compiling modules");
+    }
+
+    #[test]
+    fn test_build_progress_default() {
+        let progress: BuildProgress = Default::default();
+        assert_eq!(progress.stage(), BuildStage::Init);
     }
 
     #[test]
     fn test_build_report_new() {
         let report = BuildReport::new();
-        assert!(report.stages.is_empty());
         assert_eq!(report.warnings(), 0);
         assert_eq!(report.errors(), 0);
+        assert_eq!(report.total_duration().as_secs(), 0);
+        assert_eq!(report.total_size(), 0);
     }
 
     #[test]
     fn test_build_report_add_stage() {
         let mut report = BuildReport::new();
-        report.add_stage("Init", Duration::from_secs(1), 100);
-        assert_eq!(report.stages.len(), 1);
+        report.add_stage("Init", Duration::from_millis(500), 1024);
+        report.add_stage("Compile", Duration::from_millis(1500), 0);
+        assert_eq!(report.total_duration().as_millis(), 2000);
+        assert_eq!(report.total_size(), 1024);
+    }
+
+    #[test]
+    fn test_build_report_add_warnings() {
+        let mut report = BuildReport::new();
+        report.add_warning();
+        report.add_warning();
+        assert_eq!(report.warnings(), 2);
+    }
+
+    #[test]
+    fn test_build_report_add_errors() {
+        let mut report = BuildReport::new();
+        report.add_error();
+        report.add_error();
+        report.add_error();
+        assert_eq!(report.errors(), 3);
     }
 
     #[test]
     fn test_build_report_to_html() {
         let mut report = BuildReport::new();
         report.add_stage("Init", Duration::from_secs(1), 100);
+        report.add_warning();
         let html = report.to_html();
         assert!(html.contains("Build Report"));
         assert!(html.contains("Init"));
+        assert!(html.contains("Warnings"));
+    }
+
+    #[test]
+    fn test_build_report_default() {
+        let report: BuildReport = Default::default();
+        assert_eq!(report.warnings(), 0);
+    }
+
+    #[test]
+    fn test_build_report_save_html() {
+        let dir = std::env::temp_dir();
+        let path = dir.join("test_report.html");
+        let report = BuildReport::new();
+        report.save_html(&path).unwrap();
+        assert!(path.exists());
+        let _ = std::fs::remove_file(&path);
     }
 }

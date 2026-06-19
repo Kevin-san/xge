@@ -436,11 +436,56 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_color_new() {
+        let c = Color::new(1.0, 0.5, 0.25, 1.0);
+        assert!((c.r - 1.0).abs() < 0.001);
+        assert!((c.g - 0.5).abs() < 0.001);
+        assert!((c.b - 0.25).abs() < 0.001);
+        assert!((c.a - 1.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_color_from_rgb() {
+        let c = Color::from_rgb(0.5, 0.5, 0.5);
+        assert!((c.r - 0.5).abs() < 0.001);
+        assert!((c.g - 0.5).abs() < 0.001);
+        assert!((c.b - 0.5).abs() < 0.001);
+        assert!((c.a - 1.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_color_from_rgba() {
+        let c = Color::from_rgba(0.1, 0.2, 0.3, 0.5);
+        assert!((c.r - 0.1).abs() < 0.001);
+        assert!((c.g - 0.2).abs() < 0.001);
+        assert!((c.b - 0.3).abs() < 0.001);
+        assert!((c.a - 0.5).abs() < 0.001);
+    }
+
+    #[test]
     fn test_from_hex_rgb() {
         let c = Color::from_hex("#FF0000").unwrap();
         assert!((c.r - 1.0).abs() < 0.01);
         assert!((c.g - 0.0).abs() < 0.01);
         assert!((c.b - 0.0).abs() < 0.01);
+        assert!((c.a - 1.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_from_hex_green() {
+        let c = Color::from_hex("#00FF00").unwrap();
+        assert!((c.r - 0.0).abs() < 0.01);
+        assert!((c.g - 1.0).abs() < 0.01);
+        assert!((c.b - 0.0).abs() < 0.01);
+        assert!((c.a - 1.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_from_hex_blue() {
+        let c = Color::from_hex("#0000FF").unwrap();
+        assert!((c.r - 0.0).abs() < 0.01);
+        assert!((c.g - 0.0).abs() < 0.01);
+        assert!((c.b - 1.0).abs() < 0.01);
         assert!((c.a - 1.0).abs() < 0.01);
     }
 
@@ -460,9 +505,45 @@ mod tests {
     }
 
     #[test]
+    fn test_from_hex_short_format() {
+        let c = Color::from_hex("#F00").unwrap();
+        assert!((c.r - 1.0).abs() < 0.01);
+        assert!((c.g - 0.0).abs() < 0.01);
+        assert!((c.b - 0.0).abs() < 0.01);
+        assert!((c.a - 1.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_from_hex_short_with_alpha() {
+        let c = Color::from_hex("#F008").unwrap();
+        assert!((c.r - 1.0).abs() < 0.01);
+        assert!((c.g - 0.0).abs() < 0.01);
+        assert!((c.b - 0.0).abs() < 0.01);
+        // alpha should be 0x88 / 255.0
+        assert!(c.a > 0.4 && c.a < 0.6);
+    }
+
+    #[test]
+    fn test_from_hex_invalid_length() {
+        // 5 characters not supported
+        assert!(Color::from_hex("#12345").is_err());
+        assert!(Color::from_hex("#12").is_err());
+        assert!(Color::from_hex("").is_err());
+    }
+
+    #[test]
     fn test_to_hex() {
         let c = Color::from_hex("#FF0000").unwrap();
         assert_eq!(c.to_hex(), "#FF0000FF");
+    }
+
+    #[test]
+    fn test_to_hex_2() {
+        let c = Color::from_hex("#00FF0080").unwrap();
+        let hex = c.to_hex();
+        // Should start with #
+        assert!(hex.starts_with('#'));
+        assert_eq!(hex.len(), 9);
     }
 
     #[test]
@@ -474,7 +555,33 @@ mod tests {
     }
 
     #[test]
-    fn test_lerp() {
+    fn test_hex_roundtrip_black() {
+        let original = Color::from_hex("#00000000").unwrap();
+        let hex = original.to_hex();
+        let parsed = Color::from_hex(&hex).unwrap();
+        assert_eq!(original, parsed);
+    }
+
+    #[test]
+    fn test_hex_roundtrip_white() {
+        let original = Color::from_hex("#FFFFFFFF").unwrap();
+        let hex = original.to_hex();
+        let parsed = Color::from_hex(&hex).unwrap();
+        assert_eq!(original, parsed);
+    }
+
+    #[test]
+    fn test_lerp_identity_red_to_blue() {
+        let red = Color::RED;
+        let blue = Color::BLUE;
+        let r = Color::lerp(red, blue, 0.0);
+        assert!((r.r - 1.0).abs() < 0.01);
+        assert!((r.g - 0.0).abs() < 0.01);
+        assert!((r.b - 0.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_lerp_half_red_to_blue() {
         let red = Color::RED;
         let blue = Color::BLUE;
         let purple = Color::lerp(red, blue, 0.5);
@@ -484,19 +591,89 @@ mod tests {
     }
 
     #[test]
-    fn test_color_constants() {
+    fn test_lerp_full_red_to_blue() {
+        let red = Color::RED;
+        let blue = Color::BLUE;
+        let b = Color::lerp(red, blue, 1.0);
+        assert!((b.r - 0.0).abs() < 0.01);
+        assert!((b.b - 1.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_lerp_white_black_to_gray() {
+        let white = Color::WHITE;
+        let black = Color::BLACK;
+        let gray = Color::lerp(white, black, 0.5);
+        assert!((gray.r - 0.5).abs() < 0.01);
+        assert!((gray.g - 0.5).abs() < 0.01);
+        assert!((gray.b - 0.5).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_color_constants_red() {
         assert_eq!(Color::RED, Color::from_hex("#FF0000").unwrap());
+    }
+
+    #[test]
+    fn test_color_constants_green() {
         assert_eq!(Color::GREEN, Color::from_hex("#00FF00").unwrap());
+    }
+
+    #[test]
+    fn test_color_constants_blue() {
         assert_eq!(Color::BLUE, Color::from_hex("#0000FF").unwrap());
+    }
+
+    #[test]
+    fn test_color_constants_white() {
         assert_eq!(Color::WHITE, Color::from_hex("#FFFFFF").unwrap());
+    }
+
+    #[test]
+    fn test_color_constants_black() {
         assert_eq!(Color::BLACK, Color::from_hex("#000000").unwrap());
     }
 
     #[test]
-    fn test_from_u8() {
-        let c = Color::from_u8(255, 0, 0, 255);
-        assert!((c.r - 1.0).abs() < 0.01);
+    fn test_color_constants_transparent() {
+        assert_eq!(Color::TRANSPARENT, Color::new(0.0, 0.0, 0.0, 0.0));
+    }
+
+    #[test]
+    fn test_color_constants_yellow() {
+        assert_eq!(Color::YELLOW, Color::new(1.0, 1.0, 0.0, 1.0));
+    }
+
+    #[test]
+    fn test_color_constants_cyan() {
+        assert_eq!(Color::CYAN, Color::new(0.0, 1.0, 1.0, 1.0));
+    }
+
+    #[test]
+    fn test_from_u8_min() {
+        let c = Color::from_u8(0, 0, 0, 0);
+        assert!((c.r - 0.0).abs() < 0.01);
         assert!((c.g - 0.0).abs() < 0.01);
+        assert!((c.b - 0.0).abs() < 0.01);
+        assert!((c.a - 0.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_from_u8_max() {
+        let c = Color::from_u8(255, 255, 255, 255);
+        assert!((c.r - 1.0).abs() < 0.01);
+        assert!((c.g - 1.0).abs() < 0.01);
+        assert!((c.b - 1.0).abs() < 0.01);
+        assert!((c.a - 1.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_from_u8_mixed() {
+        let c = Color::from_u8(128, 64, 32, 255);
+        assert!(c.r > 0.45 && c.r < 0.55);
+        assert!(c.g > 0.2 && c.g < 0.3);
+        assert!(c.b > 0.1 && c.b < 0.15);
+        assert!((c.a - 1.0).abs() < 0.01);
     }
 
     #[test]
@@ -504,6 +681,30 @@ mod tests {
         let c = Color::new(0.5, 0.5, 0.5, 1.0);
         let result = c * c;
         assert!((result.r - 0.25).abs() < 0.01);
+        assert!((result.g - 0.25).abs() < 0.01);
+        assert!((result.b - 0.25).abs() < 0.01);
+        assert!((result.a - 1.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_mul_via_method() {
+        let c = Color::new(0.5, 0.5, 0.5, 1.0);
+        let result = c.mul(c);
+        assert!((result.r - 0.25).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_mul_scalar_via_operator() {
+        let c = Color::new(0.5, 0.5, 0.5, 1.0);
+        let result = c * 2.0;
+        assert!((result.r - 1.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_mul_scalar_reverse() {
+        let c = Color::new(0.5, 0.5, 0.5, 1.0);
+        let result = 2.0 * c;
+        assert!((result.r - 1.0).abs() < 0.01);
     }
 
     #[test]
@@ -512,6 +713,8 @@ mod tests {
         let c = Color::from(v);
         assert!((c.r - 1.0).abs() < 0.01);
         assert!((c.g - 0.5).abs() < 0.01);
+        assert!((c.b - 0.5).abs() < 0.01);
+        assert!((c.a - 1.0).abs() < 0.01);
     }
 
     #[test]
@@ -519,5 +722,75 @@ mod tests {
         let c = Color::RED;
         let v: Vec4 = c.into();
         assert!((v.x - 1.0).abs() < 0.01);
+        assert!((v.y - 0.0).abs() < 0.01);
+        assert!((v.z - 0.0).abs() < 0.01);
+        assert!((v.w - 1.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_color_to_vec4_via_method() {
+        let c = Color::GREEN;
+        let v = c.to_vec4();
+        assert!((v.x - 0.0).abs() < 0.01);
+        assert!((v.y - 1.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_color_to_array() {
+        let c = Color::new(0.1, 0.2, 0.3, 0.4);
+        let arr = c.to_array();
+        assert!((arr[0] - 0.1).abs() < 0.001);
+        assert!((arr[1] - 0.2).abs() < 0.001);
+        assert!((arr[2] - 0.3).abs() < 0.001);
+        assert!((arr[3] - 0.4).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_color_parse_error_display() {
+        let err = ColorParseError;
+        let s = format!("{}", err);
+        assert!(!s.is_empty());
+    }
+
+    #[test]
+    fn test_color_display() {
+        let c = Color::new(1.0, 0.5, 0.25, 1.0);
+        let s = format!("{}", c);
+        assert!(s.contains("Color"));
+    }
+
+    #[test]
+    fn test_color_derive_copy() {
+        // Ensure Copy works
+        let a = Color::RED;
+        let b = a;
+        let c = a;
+        assert_eq!(a, b);
+        assert_eq!(b, c);
+    }
+
+    #[test]
+    fn test_color_magenta() {
+        assert_eq!(Color::MAGENTA, Color::new(1.0, 0.0, 1.0, 1.0));
+    }
+
+    #[test]
+    fn test_color_orange() {
+        assert_eq!(Color::ORANGE, Color::new(1.0, 0.5, 0.0, 1.0));
+    }
+
+    #[test]
+    fn test_color_gray() {
+        assert_eq!(Color::GRAY, Color::new(0.5, 0.5, 0.5, 1.0));
+    }
+
+    #[test]
+    fn test_color_light_gray() {
+        assert_eq!(Color::LIGHTGRAY, Color::new(0.75, 0.75, 0.75, 1.0));
+    }
+
+    #[test]
+    fn test_color_dark_gray() {
+        assert_eq!(Color::DARKGRAY, Color::new(0.25, 0.25, 0.25, 1.0));
     }
 }
