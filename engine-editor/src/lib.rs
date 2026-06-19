@@ -1025,17 +1025,17 @@ impl EditorApp {
 
     /// 保存场景
     pub fn save_scene(&self, path: &Path) -> anyhow::Result<()> {
-        // 简化实现，实际需要完整的序列化逻辑
         let state = self.state.read();
-        let json = serde_json::to_string_pretty(&state.scene.node_count())?;
-        std::fs::write(path, json)?;
-        Ok(())
+        engine_scene::SceneLoader::save_json(&state.scene, path)
     }
 
     /// 加载场景
-    pub fn load_scene(&mut self, _path: &Path) -> anyhow::Result<()> {
-        // 简化实现，实际需要完整的反序列化逻辑
-        self.new_scene();
+    pub fn load_scene(&mut self, path: &Path) -> anyhow::Result<()> {
+        let scene = engine_scene::SceneLoader::load_json(path)?;
+        let mut state = self.state.write();
+        state.scene = scene;
+        state.selection.clear();
+        state.action_stack.clear();
         Ok(())
     }
 

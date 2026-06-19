@@ -7,6 +7,7 @@ use engine_math::Vec2;
 
 /// 矩形区域
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Rect {
     /// X 坐标
     pub x: f32,

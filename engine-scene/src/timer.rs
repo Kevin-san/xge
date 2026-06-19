@@ -1,7 +1,7 @@
 //! 定时器系统
 
 /// 定时器模式
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum TimerMode {
     /// 单次触发
     Once,
@@ -10,7 +10,7 @@ pub enum TimerMode {
 }
 
 /// 定时器
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
 pub struct Timer {
     duration: f32,
     elapsed: f32,

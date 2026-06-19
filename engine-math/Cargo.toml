@@ -10,5 +10,7 @@ description = "Game engine math library"
 [features]
 default = ["std"]
 std = []
+serde = ["dep:serde"]
 
 [dependencies]
+serde = { version = "1.0", features = ["derive"], optional = true }

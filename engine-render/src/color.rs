@@ -7,6 +7,7 @@ use engine_math::Vec4;
 
 /// RGBA 颜色，四个分量均为 f32 范围 [0.0, 1.0]
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[repr(C)]
 pub struct Color {
     /// 红色分量

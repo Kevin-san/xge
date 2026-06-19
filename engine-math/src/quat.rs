@@ -2,6 +2,7 @@ use core::fmt;
 use core::ops::Mul;
 
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Quat {
     pub x: f32,
     pub y: f32,

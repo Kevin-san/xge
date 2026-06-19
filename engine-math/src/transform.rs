@@ -2,6 +2,7 @@ use core::fmt;
 use crate::{Vec3, Quat, Mat4};
 
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Transform {
     pub translation: Vec3,
     pub rotation: Quat,

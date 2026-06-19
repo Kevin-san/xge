@@ -4,9 +4,10 @@
 
 use super::{Node, Node2D, NodeHandle};
 use engine_math::{Rect, Vec2};
+use std::any::Any;
 
 /// 2D 相机
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Camera2D {
     /// 是否是当前激活相机
     current: bool,
@@ -33,7 +34,7 @@ impl Default for Camera2D {
 }
 
 /// 相机锚点模式
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum CameraAnchorMode {
     /// 固定矩形
     FixedRect,
@@ -105,7 +106,7 @@ impl Camera2D {
 }
 
 /// 2D 相机节点
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Camera2DNode {
     /// 基础 2D 节点
     node2d: Node2D,
@@ -219,6 +220,18 @@ impl Node for Camera2DNode {
 
     fn set_name(&mut self, name: String) {
         self.node2d.set_name(name);
+    }
+
+    fn node_type(&self) -> &'static str {
+        "Camera2D"
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
     }
 }
 

@@ -4,17 +4,20 @@
 
 use super::{Node, NodeHandle};
 use engine_math::Vec2;
+use std::any::Any;
 
 /// 2D 节点
 ///
 /// 所有 2D 游戏对象的基础节点类型。
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Node2D {
     /// 节点名称
     name: String,
     /// 父节点句柄
+    #[serde(skip)]
     parent: Option<NodeHandle>,
     /// 子节点列表
+    #[serde(skip)]
     children: Vec<NodeHandle>,
     /// 局部位置
     position: Vec2,
@@ -29,6 +32,7 @@ pub struct Node2D {
     /// 是否暂停
     paused: bool,
     /// 变换脏标记
+    #[serde(skip)]
     transform_dirty: bool,
 }
 
@@ -190,6 +194,18 @@ impl Node for Node2D {
 
     fn set_name(&mut self, name: String) {
         self.name = name;
+    }
+
+    fn node_type(&self) -> &'static str {
+        "Node2D"
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
     }
 }
 

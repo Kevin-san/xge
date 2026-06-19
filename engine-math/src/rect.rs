@@ -2,6 +2,7 @@ use crate::Vec2;
 use core::fmt;
 
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Rect {
     pub x: f32,
     pub y: f32,

@@ -7,6 +7,7 @@ use engine_math::Vec2;
 
 /// 循环模式
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum LoopMode {
     /// 播放一次
     Once,

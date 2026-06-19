@@ -7,9 +7,9 @@ description = "Scene tree and node system for game development"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-engine-math = { path = "../engine-math" }
+engine-math = { path = "../engine-math", features = ["serde"] }
 engine-utils = { path = "../engine-utils" }
-engine-render = { path = "../engine-render" }
+engine-render = { path = "../engine-render", features = ["serde"] }
 anyhow = "1.0"
 thiserror = "1.0"
 parking_lot = "0.12"

@@ -2,8 +2,10 @@
 //!
 //! 定义 Node trait 和 NodeHandle 类型。
 
+use std::any::Any;
+
 /// 节点句柄
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub struct NodeHandle(u32);
 
 impl NodeHandle {
@@ -79,6 +81,17 @@ pub trait Node {
 
     /// 设置名称
     fn set_name(&mut self, name: String);
+
+    /// 节点类型标识符（用于序列化）
+    fn node_type(&self) -> &'static str {
+        "Node"
+    }
+
+    /// 返回 Any 引用（用于 downcast）
+    fn as_any(&self) -> &dyn Any;
+
+    /// 返回 Any 可变引用（用于 downcast）
+    fn as_any_mut(&mut self) -> &mut dyn Any;
 }
 
 /// 为 dyn Node 提供类型转换方法

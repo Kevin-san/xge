@@ -4,9 +4,10 @@
 
 use super::{Node, Node2D, NodeHandle};
 use engine_math::Vec2;
+use std::any::Any;
 
 /// 刚体句柄
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub struct BodyHandle(u32);
 
 impl BodyHandle {
@@ -32,7 +33,7 @@ impl BodyHandle {
 }
 
 /// 碰撞形状
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub enum ColliderShape {
     /// 圆形
     Circle {
@@ -51,6 +52,7 @@ pub enum ColliderShape {
 /// 2D 检测区域
 ///
 /// 用于检测物理刚体进入和离开区域。
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Area2D {
     /// 碰撞形状
     pub shape: ColliderShape,
@@ -59,6 +61,7 @@ pub struct Area2D {
     /// 是否是传感器
     pub is_sensor: bool,
     /// 进入区域的刚体列表
+    #[serde(skip)]
     entered_bodies: Vec<BodyHandle>,
 }
 
@@ -105,6 +108,7 @@ impl Area2D {
 }
 
 /// 2D 区域节点
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Area2DNode {
     /// 基础 2D 节点
     node2d: Node2D,
@@ -213,6 +217,18 @@ impl Node for Area2DNode {
 
     fn set_name(&mut self, name: String) {
         self.node2d.set_name(name);
+    }
+
+    fn node_type(&self) -> &'static str {
+        "Area2D"
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
     }
 }
 

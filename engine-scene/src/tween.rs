@@ -4,7 +4,7 @@ use engine_math::{Vec2, Vec3};
 use engine_render::Color;
 
 /// 缓动曲线（30+）
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum Ease {
     /// 线性
     Linear,
@@ -244,7 +244,7 @@ fn bounce_out(t: f32) -> f32 {
 }
 
 /// 补间值类型
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub enum TweenValue {
     /// 浮点数
     Float(f32),

@@ -4,9 +4,10 @@
 
 use super::{Node, Node2D, NodeHandle};
 use engine_math::Vec2;
+use std::any::Any;
 
 /// 精灵数据
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Sprite {
     /// 纹理 ID
     pub texture_id: u32,
@@ -21,7 +22,7 @@ pub struct Sprite {
 }
 
 /// 精灵纹理区域
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct SpriteRegion {
     /// 左上角 X
     pub x: f32,
@@ -70,7 +71,7 @@ impl Sprite {
 }
 
 /// 2D 精灵节点
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Sprite2D {
     /// 基础 2D 节点
     node2d: Node2D,
@@ -176,6 +177,18 @@ impl Node for Sprite2D {
 
     fn set_name(&mut self, name: String) {
         self.node2d.set_name(name);
+    }
+
+    fn node_type(&self) -> &'static str {
+        "Sprite2D"
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
     }
 }
 

@@ -53,18 +53,20 @@ impl SceneTree {
 
     /// 添加子节点到父节点
     pub fn add_child(&mut self, parent: NodeHandle, child: NodeHandle) {
-        if parent == self.root || parent.index() as usize >= self.nodes.len() {
+        if parent.index() as usize >= self.nodes.len()
+            || child.index() as usize >= self.nodes.len()
+        {
             return;
         }
 
         // 更新子节点的父节点
-        if let Some(child_entry) = self.nodes.get_mut(parent.index() as usize) {
+        if let Some(child_entry) = self.nodes.get_mut(child.index() as usize) {
             child_entry.node.set_parent(Some(parent));
+        }
 
-            // 更新父节点的子节点列表
-            if let Some(parent_entry) = self.nodes.get_mut(parent.index() as usize) {
-                parent_entry.node.add_child(child);
-            }
+        // 更新父节点的子节点列表
+        if let Some(parent_entry) = self.nodes.get_mut(parent.index() as usize) {
+            parent_entry.node.add_child(child);
         }
     }
 
@@ -256,6 +258,69 @@ impl SceneTree {
             .get_mut(self.root.index() as usize)
             .map(|e| e.node.as_mut())
             .unwrap()
+    }
+
+    /// 添加一个已构建的节点到场景树
+    ///
+    /// 返回新节点的句柄。注意：调用者需要自行处理父子关系。
+    pub fn add_node_boxed(&mut self, name: impl Into<String>, node: Box<dyn Node>) -> NodeHandle {
+        let name = name.into();
+        let index = self.nodes.insert(NodeEntry {
+            node,
+            name: name.clone(),
+        });
+        let handle = NodeHandle::new(index as u32);
+
+        // 更新名称索引
+        self.name_index.entry(name).or_default().push(handle);
+
+        handle
+    }
+
+    /// 遍历所有节点（句柄 + 节点引用）
+    pub fn iter_nodes(&self) -> impl Iterator<Item = (NodeHandle, &dyn Node)> {
+        self.nodes.iter().map(|(idx, entry)| {
+            (NodeHandle::new(idx as u32), entry.node.as_ref())
+        })
+    }
+
+    /// 获取所有节点句柄（按 slab 顺序）
+    pub fn all_handles(&self) -> Vec<NodeHandle> {
+        self.nodes
+            .iter()
+            .map(|(idx, _)| NodeHandle::new(idx as u32))
+            .collect()
+    }
+
+    /// 获取节点名称
+    pub fn node_name(&self, handle: NodeHandle) -> Option<&str> {
+        self.nodes
+            .get(handle.index() as usize)
+            .map(|e| e.name.as_str())
+    }
+
+    /// 替换根节点
+    ///
+    /// 用新的节点替换当前的根节点。用于反序列化时恢复根节点类型。
+    pub fn replace_root(&mut self, name: impl Into<String>, node: Box<dyn Node>) {
+        let name = name.into();
+        let root_idx = self.root.index() as usize;
+
+        // 从名称索引中移除旧根节点
+        if let Some(entry) = self.nodes.get(root_idx) {
+            if let Some(handles) = self.name_index.get_mut(&entry.name) {
+                handles.retain(|&h| h != self.root);
+            }
+        }
+
+        // 替换根节点
+        if let Some(entry) = self.nodes.get_mut(root_idx) {
+            entry.node = node;
+            entry.name = name.clone();
+        }
+
+        // 更新名称索引
+        self.name_index.entry(name).or_default().push(self.root);
     }
 }
 

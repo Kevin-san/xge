@@ -4,9 +4,10 @@
 
 use super::{Node, Node2D, NodeHandle};
 use engine_math::Vec2;
+use std::any::Any;
 
 /// 刚体句柄
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub struct BodyHandle(u32);
 
 impl BodyHandle {
@@ -34,6 +35,7 @@ impl BodyHandle {
 /// 2D 物理刚体节点
 ///
 /// 关联物理引擎中的刚体，实现节点与物理世界的同步。
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Body2DNode {
     /// 基础 2D 节点
     node2d: Node2D,
@@ -178,6 +180,18 @@ impl Node for Body2DNode {
 
     fn set_name(&mut self, name: String) {
         self.node2d.set_name(name);
+    }
+
+    fn node_type(&self) -> &'static str {
+        "Body2D"
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
     }
 }
 

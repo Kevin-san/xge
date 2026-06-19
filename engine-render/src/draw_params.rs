@@ -6,6 +6,7 @@ use super::Color;
 
 /// 混合模式枚举
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum BlendMode {
     /// Alpha 混合（正常混合）
     Alpha,
@@ -57,6 +58,7 @@ impl BlendMode {
 ///
 /// 用于指定绘制时的额外参数，如颜色叠加、混合模式、z-order 等。
 #[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct DrawParams {
     /// 颜色叠加（会在纹理颜色上乘以此颜色）
     pub color: Color,

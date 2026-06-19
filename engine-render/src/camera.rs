@@ -6,6 +6,7 @@ use engine_math::{Mat4, Vec2, Vec3};
 
 /// 视口
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Viewport {
     /// X 坐标
     x: u32,
@@ -258,6 +259,7 @@ impl Default for OrthographicCamera {
 
 /// 2D 相机（支持位置、旋转、缩放）
 #[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Camera2D {
     /// 位置
     position: Vec2,

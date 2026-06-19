@@ -8,6 +8,7 @@ use std::sync::Arc;
 
 /// 纹理格式
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum TextureFormat {
     /// RGBA 8 位每通道
     RGBA8,
@@ -64,6 +65,7 @@ impl TextureFormat {
 
 /// 过滤模式
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum FilterMode {
     /// 线性过滤
     Linear,
@@ -98,6 +100,7 @@ impl FilterMode {
 
 /// 环绕模式
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum WrapMode {
     /// 钳制到边缘
     Clamp,
@@ -129,6 +132,7 @@ pub type SamplerHandle = Handle<Sampler>;
 
 /// 采样器
 #[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Sampler {
     /// 放大过滤
     pub mag_filter: FilterMode,

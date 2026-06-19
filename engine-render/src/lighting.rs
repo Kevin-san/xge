@@ -6,6 +6,7 @@ use engine_math::{Vec2, Vec3, Vec4};
 
 /// 光源类型
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum LightType {
     /// 点光源
     Point,
@@ -17,6 +18,7 @@ pub enum LightType {
 
 /// 光源结构
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Light {
     /// 光源类型
     pub light_type: LightType,

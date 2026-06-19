@@ -1,6 +1,7 @@
 use core::fmt;
 
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Mat4 {
     pub cols: [[f32; 4]; 4],
 }

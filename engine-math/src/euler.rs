@@ -2,6 +2,7 @@ use core::ops::{Add, Sub, Mul, Div};
 use core::fmt;
 
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[repr(C)]
 pub struct Euler {
     pub x: f32,
