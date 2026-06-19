@@ -100,6 +100,11 @@ impl Node3D {
     }
 
     #[inline]
+    pub fn set_aabb(&mut self, aabb: AABB) {
+        self.aabb = aabb;
+    }
+
+    #[inline]
     pub fn visible(&self) -> bool {
         self.visible
     }

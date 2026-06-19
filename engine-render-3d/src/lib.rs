@@ -9,10 +9,14 @@ mod buffer;
 mod camera;
 mod frustum;
 mod geometry;
+mod gltf_loader;
 mod light;
 mod mesh;
+mod mesh_manager;
+mod pipeline;
 mod ray;
 mod scene;
+mod shader;
 mod transform;
 mod vertex;
 
@@ -20,11 +24,26 @@ pub use buffer::{IndexBuffer, IndexFormat, VertexBuffer};
 pub use camera::Camera3D;
 pub use frustum::Frustum;
 pub use geometry::{Mat4Transform3D, Plane, Sphere, AABB};
+pub use gltf_loader::{
+    GlbFile, GltfAccessor, GltfBuffer, GltfBufferView, GltfDocument, GltfError, GltfLoader,
+    GltfMesh, GltfNode, GltfPrimitive, GltfScene,
+};
 pub use light::{
     AmbientLight, DirectionalLight, HemisphereLight, Light3D, LightManager, PointLight, SpotLight,
 };
 pub use mesh::{Mesh3D, MeshBuilder3D, Primitive};
+pub use mesh_manager::{HotReloadTracker, MeshEntry, MeshHandle, MeshHotReloader, MeshManager};
+pub use pipeline::{
+    ColorFormat, DrawCall, OpenGLBackend, RenderBackend, RenderPassType, RenderPipeline3D,
+    RenderPipelineStats, RenderQueue, RenderState, RenderTarget, WgpuBackend,
+};
 pub use ray::{HitResult, Ray3};
 pub use scene::{Node3D, NodeHandle, RenderEntity3D, Scene3D, SceneStats3D};
+pub use shader::{
+    ShaderError, ShaderModule, ShaderProgram, ShaderSource, ShaderStage, UniformInfo, UniformType,
+    VertexAttribute, VertexAttributeFormat,
+};
+#[cfg(feature = "std")]
+pub use shader::{UniformBinder, UniformValue};
 pub use transform::Transform3D;
 pub use vertex::{Vertex, VertexLayout};
