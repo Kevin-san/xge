@@ -11,11 +11,24 @@ pub mod text;
 pub mod ui_node;
 pub mod widgets;
 
-pub use input::{UiEvent, UiEventType, UiInput};
-pub use layout::{LayoutDirection, LayoutProperties, LayoutType};
-pub use text::{Font, FontSize, TextAlign};
+pub use input::{
+    DragConfig, EventListener, SubscriptionId, UiEvent, UiEventBus, UiEventType, UiInput,
+};
+pub use layout::{
+    Alignment, Anchor, AnchorLayoutEngine, AnchorOffset, Dimension, FlexContainer, FlexDirection,
+    FlexItem, FlexLayoutEngine, FlexLayoutResult, FlexWrap, JustifyContent, LayoutDirection,
+    LayoutProperties, LayoutType, Margin, Padding, Pivot, Stretch, AlignItems, AlignSelf,
+};
+pub use text::{
+    Font, FontHeader, FontLoadError, FontLoader, FontMetrics, FontParser, FontSize,
+    HorizontalHeader, KerningPair, Os2Metrics, ParsedFont, TextAlign, TextLayoutEngine,
+    TextLayoutOptions, TextLine, TextRenderer,
+};
 pub use ui_node::{UiNode, UiNodeType, UiRoot};
-pub use widgets::{Button, CheckBox, Label, Panel, TextBox};
+pub use widgets::{
+    Button, CheckBox, Grid, GridFlow, Label, Panel, ProgressBar, ScrollPanel, Slider,
+    SliderDirection, TextBox,
+};
 
 #[cfg(test)]
 mod tests {

@@ -1,11 +1,14 @@
 //! UI 节点模块
 //!
-//! 定义 UI 节点的基础类型和操作。
+//! 定义 UI 节点的基础类型和操作，集成 Flex/Anchor 布局引擎。
 
 use engine_ecs::{Component, Entity, World};
 use engine_math::{Rect, Vec2};
 
-use crate::layout::{LayoutDirection, LayoutProperties, LayoutType};
+use crate::layout::{
+    Anchor, AnchorLayoutEngine, AnchorOffset, FlexContainer, FlexItem, FlexLayoutEngine,
+    LayoutDirection, LayoutProperties, LayoutType, Pivot,
+};
 use crate::style::Style;
 
 /// UI节点类型
@@ -39,6 +42,18 @@ pub struct UiNode {
     layout_dir: LayoutDirection,
     layout_props: LayoutProperties,
     style: Style,
+    /// Flex 容器配置（当 layout == Flex 时生效）
+    flex_container: FlexContainer,
+    /// Flex 子项配置（作为父容器的子项时生效）
+    flex_item: FlexItem,
+    /// Anchor 锚点定义（当 layout == Anchor 时生效）
+    anchor_layout: Anchor,
+    /// Anchor 偏移
+    anchor_offset: AnchorOffset,
+    /// Anchor 支点
+    pivot_layout: Pivot,
+    /// 自定义尺寸（None 表示由锚点拉伸决定）
+    custom_size: Option<Vec2>,
 }
 
 impl UiNode {
@@ -57,6 +72,12 @@ impl UiNode {
             layout_dir: LayoutDirection::Horizontal,
             layout_props: LayoutProperties::default(),
             style: Style::default(),
+            flex_container: FlexContainer::default(),
+            flex_item: FlexItem::default(),
+            anchor_layout: Anchor::default(),
+            anchor_offset: AnchorOffset::default(),
+            pivot_layout: Pivot::default(),
+            custom_size: None,
         }
     }
 
@@ -150,6 +171,66 @@ impl UiNode {
         &mut self.layout_props
     }
 
+    /// 获取 Flex 容器配置
+    pub fn flex_container(&self) -> &FlexContainer {
+        &self.flex_container
+    }
+
+    /// 获取可变 Flex 容器配置
+    pub fn flex_container_mut(&mut self) -> &mut FlexContainer {
+        &mut self.flex_container
+    }
+
+    /// 获取 Flex 子项配置
+    pub fn flex_item(&self) -> &FlexItem {
+        &self.flex_item
+    }
+
+    /// 获取可变 Flex 子项配置
+    pub fn flex_item_mut(&mut self) -> &mut FlexItem {
+        &mut self.flex_item
+    }
+
+    /// 获取 Anchor 锚点定义
+    pub fn anchor_layout(&self) -> Anchor {
+        self.anchor_layout
+    }
+
+    /// 设置 Anchor 锚点定义
+    pub fn set_anchor_layout(&mut self, anchor: Anchor) {
+        self.anchor_layout = anchor;
+    }
+
+    /// 获取 Anchor 偏移
+    pub fn anchor_offset(&self) -> AnchorOffset {
+        self.anchor_offset
+    }
+
+    /// 设置 Anchor 偏移
+    pub fn set_anchor_offset(&mut self, offset: AnchorOffset) {
+        self.anchor_offset = offset;
+    }
+
+    /// 获取 Anchor 支点
+    pub fn pivot_layout(&self) -> Pivot {
+        self.pivot_layout
+    }
+
+    /// 设置 Anchor 支点
+    pub fn set_pivot_layout(&mut self, pivot: Pivot) {
+        self.pivot_layout = pivot;
+    }
+
+    /// 获取自定义尺寸
+    pub fn custom_size(&self) -> Option<Vec2> {
+        self.custom_size
+    }
+
+    /// 设置自定义尺寸（None 表示由锚点拉伸决定）
+    pub fn set_custom_size(&mut self, size: Option<Vec2>) {
+        self.custom_size = size;
+    }
+
     /// 获取样式
     pub fn style(&self) -> &Style {
         &self.style
@@ -219,6 +300,12 @@ impl UiNode {
             LayoutType::Horizontal | LayoutType::Vertical => {
                 self.layout_children(world);
             }
+            LayoutType::Flex => {
+                self.layout_children_flex(world);
+            }
+            LayoutType::Anchor => {
+                self.layout_children_anchor(world);
+            }
             LayoutType::None => {}
         }
     }
@@ -229,11 +316,17 @@ impl UiNode {
             LayoutType::Horizontal | LayoutType::Vertical => {
                 self.layout_children(world);
             }
+            LayoutType::Flex => {
+                self.layout_children_flex(world);
+            }
+            LayoutType::Anchor => {
+                self.layout_children_anchor(world);
+            }
             LayoutType::None => {}
         }
     }
 
-    /// 布局子节点
+    /// 布局子节点（Horizontal/Vertical 简单线性布局）
     fn layout_children(&self, world: &mut World) {
         let mut pos = Vec2::new(
             self.layout_props.padding.left,
@@ -257,6 +350,68 @@ impl UiNode {
                         + child_node.layout_props.margin.bottom
                         + self.layout_props.spacing;
                 }
+            }
+        }
+    }
+
+    /// 使用 Flex 布局引擎布局子节点
+    fn layout_children_flex(&self, world: &mut World) {
+        let container_rect = self.rect;
+        let container = self.flex_container;
+
+        // 收集子项数据（需要先克隆以避免借用冲突）
+        let child_data: Vec<(Entity, FlexItem, f32, f32)> = self
+            .children
+            .iter()
+            .filter_map(|&child| {
+                world.get_component::<UiNode>(child).map(|node| {
+                    let item = node.flex_item;
+                    let main = if container.direction.is_row() {
+                        node.rect.w
+                    } else {
+                        node.rect.h
+                    };
+                    let cross = if container.direction.is_row() {
+                        node.rect.h
+                    } else {
+                        node.rect.w
+                    };
+                    (child, item, main, cross)
+                })
+            })
+            .collect();
+
+        let items: Vec<(FlexItem, f32, f32)> = child_data
+            .iter()
+            .map(|(_, item, main, cross)| (*item, *main, *cross))
+            .collect();
+
+        let results = FlexLayoutEngine::layout(container_rect, &container, &items);
+
+        for ((child, _, _, _), result) in child_data.iter().zip(results.iter()) {
+            if let Some(child_node) = world.get_component_mut::<UiNode>(*child) {
+                child_node.rect = result.rect;
+            }
+        }
+    }
+
+    /// 使用 Anchor 布局引擎布局子节点
+    fn layout_children_anchor(&self, world: &mut World) {
+        let parent_rect = self.rect;
+        for &child in &self.children {
+            if let Some(child_node) = world.get_component_mut::<UiNode>(child) {
+                let anchor = child_node.anchor_layout;
+                let offset = child_node.anchor_offset;
+                let pivot = child_node.pivot_layout;
+                let custom_size = child_node.custom_size;
+                let new_rect = AnchorLayoutEngine::compute(
+                    parent_rect,
+                    anchor,
+                    offset,
+                    pivot,
+                    custom_size,
+                );
+                child_node.rect = new_rect;
             }
         }
     }
@@ -323,6 +478,12 @@ impl UiRoot {
                 LayoutType::Horizontal | LayoutType::Vertical => {
                     self.layout_children_internal(world, entity);
                 }
+                LayoutType::Flex => {
+                    self.layout_children_flex_internal(world, entity);
+                }
+                LayoutType::Anchor => {
+                    self.layout_children_anchor_internal(world, entity);
+                }
                 LayoutType::None => {}
             }
         }
@@ -354,6 +515,74 @@ impl UiRoot {
                         pos.y +=
                             child_node.rect.h + child_node.layout_props.margin.bottom + spacing;
                     }
+                }
+            }
+        }
+    }
+
+    /// Flex 布局（UiRoot 递归调用入口）
+    fn layout_children_flex_internal(&self, world: &mut World, entity: Entity) {
+        let snapshot = world.get_component::<UiNode>(entity).map(|node| {
+            (node.rect, node.flex_container, node.children().to_vec())
+        });
+
+        if let Some((container_rect, container, children)) = snapshot {
+            let child_data: Vec<(Entity, FlexItem, f32, f32)> = children
+                .iter()
+                .filter_map(|&child| {
+                    world.get_component::<UiNode>(child).map(|node| {
+                        let item = node.flex_item;
+                        let main = if container.direction.is_row() {
+                            node.rect.w
+                        } else {
+                            node.rect.h
+                        };
+                        let cross = if container.direction.is_row() {
+                            node.rect.h
+                        } else {
+                            node.rect.w
+                        };
+                        (child, item, main, cross)
+                    })
+                })
+                .collect();
+
+            let items: Vec<(FlexItem, f32, f32)> = child_data
+                .iter()
+                .map(|(_, item, main, cross)| (*item, *main, *cross))
+                .collect();
+
+            let results = FlexLayoutEngine::layout(container_rect, &container, &items);
+
+            for ((child, _, _, _), result) in child_data.iter().zip(results.iter()) {
+                if let Some(child_node) = world.get_component_mut::<UiNode>(*child) {
+                    child_node.rect = result.rect;
+                }
+            }
+        }
+    }
+
+    /// Anchor 布局（UiRoot 递归调用入口）
+    fn layout_children_anchor_internal(&self, world: &mut World, entity: Entity) {
+        let snapshot = world.get_component::<UiNode>(entity).map(|node| {
+            (node.rect, node.children().to_vec())
+        });
+
+        if let Some((parent_rect, children)) = snapshot {
+            for &child in &children {
+                if let Some(child_node) = world.get_component_mut::<UiNode>(child) {
+                    let anchor = child_node.anchor_layout;
+                    let offset = child_node.anchor_offset;
+                    let pivot = child_node.pivot_layout;
+                    let custom_size = child_node.custom_size;
+                    let new_rect = AnchorLayoutEngine::compute(
+                        parent_rect,
+                        anchor,
+                        offset,
+                        pivot,
+                        custom_size,
+                    );
+                    child_node.rect = new_rect;
                 }
             }
         }
