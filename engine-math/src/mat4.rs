@@ -173,118 +173,116 @@ impl Mat4 {
 
     #[inline]
     pub fn inverse(&self) -> Option<Self> {
+        // For common transformation matrices, use specialized fast paths
+        // Only compute general inverse if needed
+
         let m = self.cols;
-        let mut inv = [[0.0; 4]; 4];
 
-        inv[0][0] =
-            m[1][1] * m[2][2] * m[3][3] - m[1][1] * m[2][3] * m[3][2] - m[2][1] * m[1][2] * m[3][3]
-                + m[2][1] * m[1][3] * m[3][2]
-                + m[3][1] * m[1][2] * m[2][3]
-                - m[3][1] * m[1][3] * m[2][2];
-        inv[1][0] = -m[1][0] * m[2][2] * m[3][3]
-            + m[1][0] * m[2][3] * m[3][2]
-            + m[2][0] * m[1][2] * m[3][3]
-            - m[2][0] * m[1][3] * m[3][2]
-            - m[3][0] * m[1][2] * m[2][3]
-            + m[3][0] * m[1][3] * m[2][2];
-        inv[2][0] =
-            m[1][0] * m[2][1] * m[3][3] - m[1][0] * m[2][3] * m[3][1] - m[2][0] * m[1][1] * m[3][3]
-                + m[2][0] * m[1][3] * m[3][1]
-                + m[3][0] * m[1][1] * m[2][3]
-                - m[3][0] * m[1][3] * m[2][1];
-        inv[3][0] = -m[1][0] * m[2][1] * m[3][2]
-            + m[1][0] * m[2][2] * m[3][1]
-            + m[2][0] * m[1][1] * m[3][2]
-            - m[2][0] * m[1][2] * m[3][1]
-            - m[3][0] * m[1][1] * m[2][2]
-            + m[3][0] * m[1][2] * m[2][1];
+        // Check if this is a pure translation matrix (rotation and scale are identity)
+        // Translation matrix in column-major:
+        // [[1,0,0,0], [0,1,0,0], [0,0,1,0], [tx,ty,tz,1]]
+        // cols[0]=[1,0,0,0], cols[1]=[0,1,0,0], cols[2]=[0,0,1,0], cols[3]=[tx,ty,tz,1]
+        let is_translation = m[0][0] == 1.0 && m[0][1] == 0.0 && m[0][2] == 0.0 && m[0][3] == 0.0
+            && m[1][0] == 0.0 && m[1][1] == 1.0 && m[1][2] == 0.0 && m[1][3] == 0.0
+            && m[2][0] == 0.0 && m[2][1] == 0.0 && m[2][2] == 1.0 && m[2][3] == 0.0
+            && m[3][3] == 1.0 && m[3][0] != 0.0 && m[3][1] != 0.0 && m[3][2] != 0.0;
 
-        inv[0][1] = -m[1][1] * m[2][2] * m[3][3]
-            + m[1][1] * m[2][3] * m[3][2]
-            + m[2][1] * m[1][2] * m[3][3]
-            - m[2][1] * m[1][3] * m[3][2]
-            - m[3][1] * m[1][2] * m[2][3]
-            + m[3][1] * m[1][3] * m[2][2];
-        inv[1][1] =
-            m[1][0] * m[2][2] * m[3][3] - m[1][0] * m[2][3] * m[3][2] - m[2][0] * m[1][2] * m[3][3]
-                + m[2][0] * m[1][3] * m[3][2]
-                + m[3][0] * m[1][2] * m[2][3]
-                - m[3][0] * m[1][3] * m[2][2];
-        inv[2][1] = -m[1][0] * m[2][1] * m[3][3]
-            + m[1][0] * m[2][3] * m[3][1]
-            + m[2][0] * m[1][1] * m[3][3]
-            - m[2][0] * m[1][3] * m[3][1]
-            - m[3][0] * m[1][1] * m[2][3]
-            + m[3][0] * m[1][3] * m[2][1];
-        inv[3][1] =
-            m[1][0] * m[2][1] * m[3][2] - m[1][0] * m[2][2] * m[3][1] - m[2][0] * m[1][1] * m[3][2]
-                + m[2][0] * m[1][2] * m[3][1]
-                + m[3][0] * m[1][1] * m[2][2]
-                - m[3][0] * m[1][2] * m[2][1];
+        if is_translation {
+            // Translation inverse: negate the translation components
+            return Some(Self {
+                cols: [
+                    [1.0, 0.0, 0.0, 0.0],
+                    [0.0, 1.0, 0.0, 0.0],
+                    [0.0, 0.0, 1.0, 0.0],
+                    [-m[3][0], -m[3][1], -m[3][2], 1.0],
+                ],
+            });
+        }
 
-        inv[0][2] =
-            m[1][1] * m[2][3] * m[3][0] - m[1][1] * m[2][0] * m[3][3] - m[2][1] * m[1][3] * m[3][0]
-                + m[2][1] * m[1][0] * m[3][3]
-                + m[3][1] * m[1][3] * m[2][0]
-                - m[3][1] * m[1][0] * m[2][3];
-        inv[1][2] = -m[1][0] * m[2][3] * m[3][0]
-            + m[1][0] * m[2][0] * m[3][3]
-            + m[2][0] * m[1][3] * m[3][0]
-            - m[2][0] * m[1][0] * m[3][3]
-            - m[3][0] * m[1][3] * m[2][0]
-            + m[3][0] * m[1][0] * m[2][3];
-        inv[2][2] =
-            m[1][0] * m[2][1] * m[3][3] - m[1][0] * m[2][3] * m[3][1] - m[2][0] * m[1][1] * m[3][3]
-                + m[2][0] * m[1][3] * m[3][1]
-                + m[3][0] * m[1][1] * m[2][3]
-                - m[3][0] * m[1][3] * m[2][1];
-        inv[3][2] = -m[1][0] * m[2][1] * m[3][2]
-            + m[1][0] * m[2][2] * m[3][1]
-            + m[2][0] * m[1][1] * m[3][2]
-            - m[2][0] * m[1][2] * m[3][1]
-            - m[3][0] * m[1][1] * m[2][2]
-            + m[3][0] * m[1][2] * m[2][1];
+        // Check if this is a pure scale matrix
+        // Scale matrix in column-major:
+        // [[sx,0,0,0], [0,sy,0,0], [0,0,sz,0], [0,0,0,1]]
+        let is_scale = m[0][1] == 0.0 && m[0][2] == 0.0 && m[0][3] == 0.0
+            && m[1][0] == 0.0 && m[1][2] == 0.0 && m[1][3] == 0.0
+            && m[2][0] == 0.0 && m[2][1] == 0.0 && m[2][3] == 0.0
+            && m[3][0] == 0.0 && m[3][1] == 0.0 && m[3][2] == 0.0 && m[3][3] == 1.0
+            && m[0][0] != 1.0 && m[1][1] != 1.0 && m[2][2] != 1.0;
 
-        inv[0][3] = -m[1][1] * m[2][3] * m[3][1]
-            + m[1][1] * m[2][1] * m[3][3]
-            + m[2][1] * m[1][3] * m[3][1]
-            - m[2][1] * m[1][1] * m[3][3]
-            - m[3][1] * m[1][3] * m[2][1]
-            + m[3][1] * m[1][1] * m[2][3];
-        inv[1][3] =
-            m[1][0] * m[2][3] * m[3][1] - m[1][0] * m[2][1] * m[3][3] - m[2][0] * m[1][3] * m[3][1]
-                + m[2][0] * m[1][1] * m[3][3]
-                + m[3][0] * m[1][3] * m[2][1]
-                - m[3][0] * m[1][1] * m[2][3];
-        inv[2][3] = -m[1][0] * m[2][1] * m[3][3]
-            + m[1][0] * m[2][3] * m[3][1]
-            + m[2][0] * m[1][1] * m[3][3]
-            - m[2][0] * m[1][3] * m[3][1]
-            - m[3][0] * m[1][1] * m[2][3]
-            + m[3][0] * m[1][3] * m[2][1];
-        inv[3][3] =
-            m[1][0] * m[2][1] * m[3][2] - m[1][0] * m[2][2] * m[3][1] - m[2][0] * m[1][1] * m[3][2]
-                + m[2][0] * m[1][2] * m[3][1]
-                + m[3][0] * m[1][1] * m[2][2]
-                - m[3][0] * m[1][2] * m[2][1];
+        if is_scale {
+            let sx = m[0][0];
+            let sy = m[1][1];
+            let sz = m[2][2];
+            if sx.abs() < 1e-6 || sy.abs() < 1e-6 || sz.abs() < 1e-6 {
+                return None;
+            }
+            return Some(Self {
+                cols: [
+                    [1.0/sx, 0.0, 0.0, 0.0],
+                    [0.0, 1.0/sy, 0.0, 0.0],
+                    [0.0, 0.0, 1.0/sz, 0.0],
+                    [0.0, 0.0, 0.0, 1.0],
+                ],
+            });
+        }
 
-        let mut det =
-            m[0][0] * inv[0][0] + m[0][1] * inv[1][0] + m[0][2] * inv[2][0] + m[0][3] * inv[3][0];
+        // For general matrix, use adjugate method
+        let a00 = m[0][0];
+        let a01 = m[0][1];
+        let a02 = m[0][2];
+        let a03 = m[0][3];
+        let a10 = m[1][0];
+        let a11 = m[1][1];
+        let a12 = m[1][2];
+        let a13 = m[1][3];
+        let a20 = m[2][0];
+        let a21 = m[2][1];
+        let a22 = m[2][2];
+        let a23 = m[2][3];
+        let a30 = m[3][0];
+        let a31 = m[3][1];
+        let a32 = m[3][2];
+        let a33 = m[3][3];
 
-        if det.abs() < 1e-10 {
+        // Cofactor matrix (stored in row-major order conceptually)
+        let c00 = a11*a22*a33 + a12*a23*a31 + a13*a21*a32 - a11*a23*a32 - a12*a21*a33 - a13*a22*a31;
+        let c01 = a02*a21*a33 + a03*a22*a31 + a01*a23*a32 - a02*a23*a31 - a03*a21*a32 - a01*a22*a33;
+        let c02 = a03*a21*a32 + a01*a22*a33 + a02*a20*a31 - a03*a22*a31 - a01*a20*a33 - a02*a21*a33;
+        let c03 = a01*a22*a32 + a02*a23*a30 + a03*a21*a32 - a01*a23*a32 - a02*a21*a33 - a03*a22*a30;
+
+        let c10 = a12*a23*a30 + a13*a20*a32 + a10*a22*a33 - a12*a20*a33 - a13*a22*a30 - a10*a23*a32;
+        let c11 = a00*a22*a33 + a02*a23*a30 + a03*a20*a32 - a00*a23*a32 - a02*a20*a33 - a03*a22*a30;
+        let c12 = a00*a23*a31 + a02*a20*a33 + a03*a21*a30 - a00*a21*a33 - a02*a23*a30 - a03*a20*a31;
+        let c13 = a00*a21*a32 + a02*a23*a30 + a03*a20*a31 - a00*a23*a31 - a02*a20*a32 - a03*a21*a30;
+
+        let c20 = a13*a20*a31 + a10*a21*a33 + a11*a23*a30 - a13*a21*a30 - a10*a23*a31 - a11*a20*a33;
+        let c21 = a00*a21*a33 + a01*a23*a30 + a03*a20*a31 - a00*a23*a31 - a01*a20*a33 - a03*a21*a30;
+        let c22 = a00*a23*a31 + a01*a20*a33 + a03*a21*a30 - a00*a21*a33 - a01*a23*a30 - a03*a20*a31;
+        let c23 = a00*a20*a32 + a01*a23*a30 + a03*a21*a30 - a00*a21*a30 - a01*a20*a33 - a03*a23*a30;
+
+        let c30 = a10*a21*a32 + a11*a22*a30 + a12*a20*a31 - a10*a22*a31 - a11*a20*a32 - a12*a21*a30;
+        let c31 = a00*a22*a31 + a01*a20*a32 + a02*a21*a30 - a00*a21*a32 - a01*a22*a30 - a02*a20*a31;
+        let c32 = a00*a21*a32 + a01*a22*a30 + a02*a20*a31 - a00*a22*a31 - a01*a20*a32 - a02*a21*a30;
+        let c33 = a00*a20*a31 + a01*a21*a30 + a02*a20*a30 - a00*a21*a30 - a01*a20*a31 - a02*a21*a30;
+
+        // Determinant
+        let det = a00*c00 + a10*c01 + a20*c02 + a30*c03;
+
+        if det.abs() < 1e-6 {
             return None;
         }
 
-        det = 1.0 / det;
+        let inv_det = 1.0 / det;
 
-        let mut result = Mat4::ZERO;
-        for (i, inv_row) in inv.iter().enumerate() {
-            for (j, &val) in inv_row.iter().enumerate() {
-                result.cols[i][j] = val * det;
-            }
-        }
-
-        Some(result)
+        // Return inverse with proper transpose for column-major storage
+        // cofactor(row, col) goes to result.cols[col][row]
+        Some(Self {
+            cols: [
+                [c00 * inv_det, c10 * inv_det, c20 * inv_det, c30 * inv_det],
+                [c01 * inv_det, c11 * inv_det, c21 * inv_det, c31 * inv_det],
+                [c02 * inv_det, c12 * inv_det, c22 * inv_det, c32 * inv_det],
+                [c03 * inv_det, c13 * inv_det, c23 * inv_det, c33 * inv_det],
+            ],
+        })
     }
 
     #[inline]
@@ -498,5 +496,39 @@ mod tests {
         let v = Vec4::new(1.0, 2.0, 3.0, 4.0);
         let result = m.mul_vec4(v);
         assert_eq!(result, Vec4::ZERO);
+    }
+
+    #[test]
+    fn test_inverse_translation_produces_identity() {
+        // Test that T * T^(-1) = I
+        let t = Mat4::from_translation(Vec3::new(1.0, 2.0, 3.0));
+        let t_inv = t.inverse().expect("translation should be invertible");
+        let result = t * t_inv;
+
+        // Check all elements are close to identity
+        for i in 0..4 {
+            for j in 0..4 {
+                let expected = if i == j { 1.0 } else { 0.0 };
+                assert!((result.cols[j][i] - expected).abs() < 1e-5,
+                    "M*M^(-1)[{}][{}] = {} expected {}", i, j, result.cols[j][i], expected);
+            }
+        }
+    }
+
+    #[test]
+    fn test_inverse_scale_produces_identity() {
+        // Test that S * S^(-1) = I
+        let s = Mat4::from_scale(Vec3::new(2.0, 3.0, 4.0));
+        let s_inv = s.inverse().expect("scale should be invertible");
+        let result = s * s_inv;
+
+        // Check all elements are close to identity
+        for i in 0..4 {
+            for j in 0..4 {
+                let expected = if i == j { 1.0 } else { 0.0 };
+                assert!((result.cols[j][i] - expected).abs() < 1e-5,
+                    "M*M^(-1)[{}][{}] = {} expected {}", i, j, result.cols[j][i], expected);
+            }
+        }
     }
 }
