@@ -172,119 +172,72 @@ impl Mat4 {
     }
 
     #[inline]
+    #[allow(clippy::needless_range_loop, clippy::only_used_in_recursion)]
     pub fn inverse(&self) -> Option<Self> {
-        let m = self.cols;
-        let mut inv = [[0.0; 4]; 4];
+        // Column-major matrix: cols[column][row]
+        // This is equivalent to the transpose of the standard row-major representation.
+        // For a column-major matrix M, M.cols[j][i] gives element at row i, column j.
+        //
+        // We use Gauss-Jordan elimination to compute the inverse.
+        // Start with [M | I] and transform to [I | M^-1].
 
-        inv[0][0] =
-            m[1][1] * m[2][2] * m[3][3] - m[1][1] * m[2][3] * m[3][2] - m[2][1] * m[1][2] * m[3][3]
-                + m[2][1] * m[1][3] * m[3][2]
-                + m[3][1] * m[1][2] * m[2][3]
-                - m[3][1] * m[1][3] * m[2][2];
-        inv[1][0] = -m[1][0] * m[2][2] * m[3][3]
-            + m[1][0] * m[2][3] * m[3][2]
-            + m[2][0] * m[1][2] * m[3][3]
-            - m[2][0] * m[1][3] * m[3][2]
-            - m[3][0] * m[1][2] * m[2][3]
-            + m[3][0] * m[1][3] * m[2][2];
-        inv[2][0] =
-            m[1][0] * m[2][1] * m[3][3] - m[1][0] * m[2][3] * m[3][1] - m[2][0] * m[1][1] * m[3][3]
-                + m[2][0] * m[1][3] * m[3][1]
-                + m[3][0] * m[1][1] * m[2][3]
-                - m[3][0] * m[1][3] * m[2][1];
-        inv[3][0] = -m[1][0] * m[2][1] * m[3][2]
-            + m[1][0] * m[2][2] * m[3][1]
-            + m[2][0] * m[1][1] * m[3][2]
-            - m[2][0] * m[1][2] * m[3][1]
-            - m[3][0] * m[1][1] * m[2][2]
-            + m[3][0] * m[1][2] * m[2][1];
+        let mut aug = [
+            [self.cols[0][0], self.cols[1][0], self.cols[2][0], self.cols[3][0], 1.0, 0.0, 0.0, 0.0],
+            [self.cols[0][1], self.cols[1][1], self.cols[2][1], self.cols[3][1], 0.0, 1.0, 0.0, 0.0],
+            [self.cols[0][2], self.cols[1][2], self.cols[2][2], self.cols[3][2], 0.0, 0.0, 1.0, 0.0],
+            [self.cols[0][3], self.cols[1][3], self.cols[2][3], self.cols[3][3], 0.0, 0.0, 0.0, 1.0],
+        ];
 
-        inv[0][1] = -m[1][1] * m[2][2] * m[3][3]
-            + m[1][1] * m[2][3] * m[3][2]
-            + m[2][1] * m[1][2] * m[3][3]
-            - m[2][1] * m[1][3] * m[3][2]
-            - m[3][1] * m[1][2] * m[2][3]
-            + m[3][1] * m[1][3] * m[2][2];
-        inv[1][1] =
-            m[1][0] * m[2][2] * m[3][3] - m[1][0] * m[2][3] * m[3][2] - m[2][0] * m[1][2] * m[3][3]
-                + m[2][0] * m[1][3] * m[3][2]
-                + m[3][0] * m[1][2] * m[2][3]
-                - m[3][0] * m[1][3] * m[2][2];
-        inv[2][1] = -m[1][0] * m[2][1] * m[3][3]
-            + m[1][0] * m[2][3] * m[3][1]
-            + m[2][0] * m[1][1] * m[3][3]
-            - m[2][0] * m[1][3] * m[3][1]
-            - m[3][0] * m[1][1] * m[2][3]
-            + m[3][0] * m[1][3] * m[2][1];
-        inv[3][1] =
-            m[1][0] * m[2][1] * m[3][2] - m[1][0] * m[2][2] * m[3][1] - m[2][0] * m[1][1] * m[3][2]
-                + m[2][0] * m[1][2] * m[3][1]
-                + m[3][0] * m[1][1] * m[2][2]
-                - m[3][0] * m[1][2] * m[2][1];
+        // Forward elimination with partial pivoting
+        for col in 0..4 {
+            // Find pivot row
+            let mut max_row = col;
+            for row in (col + 1)..4 {
+                if aug[row][col].abs() > aug[max_row][col].abs() {
+                    max_row = row;
+                }
+            }
 
-        inv[0][2] =
-            m[1][1] * m[2][3] * m[3][0] - m[1][1] * m[2][0] * m[3][3] - m[2][1] * m[1][3] * m[3][0]
-                + m[2][1] * m[1][0] * m[3][3]
-                + m[3][1] * m[1][3] * m[2][0]
-                - m[3][1] * m[1][0] * m[2][3];
-        inv[1][2] = -m[1][0] * m[2][3] * m[3][0]
-            + m[1][0] * m[2][0] * m[3][3]
-            + m[2][0] * m[1][3] * m[3][0]
-            - m[2][0] * m[1][0] * m[3][3]
-            - m[3][0] * m[1][3] * m[2][0]
-            + m[3][0] * m[1][0] * m[2][3];
-        inv[2][2] =
-            m[1][0] * m[2][1] * m[3][3] - m[1][0] * m[2][3] * m[3][1] - m[2][0] * m[1][1] * m[3][3]
-                + m[2][0] * m[1][3] * m[3][1]
-                + m[3][0] * m[1][1] * m[2][3]
-                - m[3][0] * m[1][3] * m[2][1];
-        inv[3][2] = -m[1][0] * m[2][1] * m[3][2]
-            + m[1][0] * m[2][2] * m[3][1]
-            + m[2][0] * m[1][1] * m[3][2]
-            - m[2][0] * m[1][2] * m[3][1]
-            - m[3][0] * m[1][1] * m[2][2]
-            + m[3][0] * m[1][2] * m[2][1];
+            // Check for singular matrix
+            if aug[max_row][col].abs() < 1e-6 {
+                return None;
+            }
 
-        inv[0][3] = -m[1][1] * m[2][3] * m[3][1]
-            + m[1][1] * m[2][1] * m[3][3]
-            + m[2][1] * m[1][3] * m[3][1]
-            - m[2][1] * m[1][1] * m[3][3]
-            - m[3][1] * m[1][3] * m[2][1]
-            + m[3][1] * m[1][1] * m[2][3];
-        inv[1][3] =
-            m[1][0] * m[2][3] * m[3][1] - m[1][0] * m[2][1] * m[3][3] - m[2][0] * m[1][3] * m[3][1]
-                + m[2][0] * m[1][1] * m[3][3]
-                + m[3][0] * m[1][3] * m[2][1]
-                - m[3][0] * m[1][1] * m[2][3];
-        inv[2][3] = -m[1][0] * m[2][1] * m[3][3]
-            + m[1][0] * m[2][3] * m[3][1]
-            + m[2][0] * m[1][1] * m[3][3]
-            - m[2][0] * m[1][3] * m[3][1]
-            - m[3][0] * m[1][1] * m[2][3]
-            + m[3][0] * m[1][3] * m[2][1];
-        inv[3][3] =
-            m[1][0] * m[2][1] * m[3][2] - m[1][0] * m[2][2] * m[3][1] - m[2][0] * m[1][1] * m[3][2]
-                + m[2][0] * m[1][2] * m[3][1]
-                + m[3][0] * m[1][1] * m[2][2]
-                - m[3][0] * m[1][2] * m[2][1];
+            // Swap rows if needed
+            if max_row != col {
+                for j in 0..8 {
+                    let temp = aug[col][j];
+                    aug[col][j] = aug[max_row][j];
+                    aug[max_row][j] = temp;
+                }
+            }
 
-        let mut det =
-            m[0][0] * inv[0][0] + m[0][1] * inv[1][0] + m[0][2] * inv[2][0] + m[0][3] * inv[3][0];
+            // Scale pivot row
+            let pivot = aug[col][col];
+            for j in 0..8 {
+                aug[col][j] /= pivot;
+            }
 
-        if det.abs() < 1e-10 {
-            return None;
-        }
-
-        det = 1.0 / det;
-
-        let mut result = Mat4::ZERO;
-        for (i, inv_row) in inv.iter().enumerate() {
-            for (j, &val) in inv_row.iter().enumerate() {
-                result.cols[i][j] = val * det;
+            // Eliminate column entries in other rows
+            for row in 0..4 {
+                if row != col {
+                    let factor = aug[row][col];
+                    for j in 0..8 {
+                        aug[row][j] -= factor * aug[col][j];
+                    }
+                }
             }
         }
 
-        Some(result)
+        // Result is in columns 4-7, but we need to transpose back to column-major format
+        Some(Self {
+            cols: [
+                [aug[0][4], aug[1][4], aug[2][4], aug[3][4]],
+                [aug[0][5], aug[1][5], aug[2][5], aug[3][5]],
+                [aug[0][6], aug[1][6], aug[2][6], aug[3][6]],
+                [aug[0][7], aug[1][7], aug[2][7], aug[3][7]],
+            ],
+        })
     }
 
     #[inline]
@@ -498,5 +451,68 @@ mod tests {
         let v = Vec4::new(1.0, 2.0, 3.0, 4.0);
         let result = m.mul_vec4(v);
         assert_eq!(result, Vec4::ZERO);
+    }
+
+    #[test]
+    fn test_inverse_translation_verbose() {
+        let t = Mat4::from_translation(Vec3::new(3.0, -5.0, 2.0));
+        let inv = t.inverse().expect("translation should be invertible");
+        let result = t * inv;
+        for i in 0..4 {
+            for j in 0..4 {
+                let expected = if i == j { 1.0 } else { 0.0 };
+                assert!((result.cols[i][j] - expected).abs() < 1e-5,
+                    "M * M^-1 should be identity at [{}][{}]: got {} expected {}",
+                    i, j, result.cols[i][j], expected);
+            }
+        }
+    }
+
+    #[test]
+    fn test_inverse_scale_verbose() {
+        let s = Mat4::from_scale(Vec3::new(2.0, 3.0, 4.0));
+        let inv = s.inverse().expect("scale should be invertible");
+        let result = s * inv;
+        for i in 0..4 {
+            for j in 0..4 {
+                let expected = if i == j { 1.0 } else { 0.0 };
+                assert!((result.cols[i][j] - expected).abs() < 1e-5,
+                    "M * M^-1 should be identity at [{}][{}]: got {} expected {}",
+                    i, j, result.cols[i][j], expected);
+            }
+        }
+    }
+
+    #[test]
+    fn test_inverse_rotation_verbose() {
+        let r = Mat4::from_rotation_y(std::f32::consts::FRAC_PI_4);
+        let inv = r.inverse().expect("rotation should be invertible");
+        let result = r * inv;
+        for i in 0..4 {
+            for j in 0..4 {
+                let expected = if i == j { 1.0 } else { 0.0 };
+                assert!((result.cols[i][j] - expected).abs() < 1e-5,
+                    "M * M^-1 should be identity at [{}][{}]: got {} expected {}",
+                    i, j, result.cols[i][j], expected);
+            }
+        }
+    }
+
+    #[test]
+    fn test_inverse_combined_transform_verbose() {
+        let t = Mat4::from_translation(Vec3::new(1.0, 2.0, 3.0));
+        let r = Mat4::from_rotation_z(std::f32::consts::FRAC_PI_6);
+        let s = Mat4::from_scale(Vec3::new(2.0, 2.0, 2.0));
+        let combined = t * r * s;
+        let inv = combined.inverse().expect("combined transform should be invertible");
+        let result = combined * inv;
+        for i in 0..4 {
+            for j in 0..4 {
+                let expected = if i == j { 1.0 } else { 0.0 };
+                assert!((result.cols[i][j] - expected).abs() < 1e-4,
+                    "M * M^-1 should be identity at [{}][{}]: got {} expected {}",
+                    i, j, result.cols[i][j], expected);
+            }
+        }
     }
 }
