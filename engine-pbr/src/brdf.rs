@@ -108,11 +108,7 @@ impl CookTorranceBRDF {
         let one_minus_cos = 1.0 - cos_theta;
         let pow5 = one_minus_cos * one_minus_cos * one_minus_cos * one_minus_cos * one_minus_cos;
         // F0_90 adjusted by roughness
-        let f90 = Vec3::new(
-            1.0 + roughness,
-            1.0 + roughness,
-            1.0 + roughness,
-        );
+        let f90 = Vec3::new(1.0 + roughness, 1.0 + roughness, 1.0 + roughness);
         f0 + (f90 - f0) * pow5
     }
 
@@ -150,13 +146,7 @@ impl CookTorranceBRDF {
     /// * `l` - Light direction (normalized)
     /// * `f0` - Reflectance at normal incidence
     /// * `roughness` - Surface roughness [0, 1]
-    pub fn specular_brdf(
-        n: Vec3,
-        v: Vec3,
-        l: Vec3,
-        f0: Vec3,
-        roughness: f32,
-    ) -> Vec3 {
+    pub fn specular_brdf(n: Vec3, v: Vec3, l: Vec3, f0: Vec3, roughness: f32) -> Vec3 {
         let h = (v + l).normalize_or_zero();
         let n_dot_v = n.dot(v).max(0.0);
         let n_dot_l = n.dot(l).max(0.0);

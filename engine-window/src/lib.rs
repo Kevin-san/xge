@@ -20,7 +20,7 @@ pub use winit::monitor::{MonitorHandle, VideoMode};
 pub use winit::window::{Fullscreen, Icon, Window, WindowLevel};
 
 // 引擎级按键枚举（屏蔽 winit 依赖）
-pub use key_code::{KeyCode, MouseButton, ModifiersState};
+pub use key_code::{KeyCode, ModifiersState, MouseButton};
 
 // 引擎级输入事件
 pub use input_event::{
@@ -309,21 +309,30 @@ impl Input {
 
     pub fn key_pressed(&self, code: KeyCode) -> bool {
         matches!(
-            self.key_states.get(&code).copied().unwrap_or(KeyPressState::Released),
+            self.key_states
+                .get(&code)
+                .copied()
+                .unwrap_or(KeyPressState::Released),
             KeyPressState::Pressed | KeyPressState::JustPressed
         )
     }
 
     pub fn key_just_pressed(&self, code: KeyCode) -> bool {
         matches!(
-            self.key_states.get(&code).copied().unwrap_or(KeyPressState::Released),
+            self.key_states
+                .get(&code)
+                .copied()
+                .unwrap_or(KeyPressState::Released),
             KeyPressState::JustPressed
         )
     }
 
     pub fn key_just_released(&self, code: KeyCode) -> bool {
         matches!(
-            self.key_states.get(&code).copied().unwrap_or(KeyPressState::Released),
+            self.key_states
+                .get(&code)
+                .copied()
+                .unwrap_or(KeyPressState::Released),
             KeyPressState::JustReleased
         )
     }
@@ -332,21 +341,30 @@ impl Input {
 
     pub fn mouse_button_pressed(&self, button: MouseButton) -> bool {
         matches!(
-            self.button_states.get(&button).copied().unwrap_or(ButtonPressState::Released),
+            self.button_states
+                .get(&button)
+                .copied()
+                .unwrap_or(ButtonPressState::Released),
             ButtonPressState::Pressed | ButtonPressState::JustPressed
         )
     }
 
     pub fn mouse_button_just_pressed(&self, button: MouseButton) -> bool {
         matches!(
-            self.button_states.get(&button).copied().unwrap_or(ButtonPressState::Released),
+            self.button_states
+                .get(&button)
+                .copied()
+                .unwrap_or(ButtonPressState::Released),
             ButtonPressState::JustPressed
         )
     }
 
     pub fn mouse_button_just_released(&self, button: MouseButton) -> bool {
         matches!(
-            self.button_states.get(&button).copied().unwrap_or(ButtonPressState::Released),
+            self.button_states
+                .get(&button)
+                .copied()
+                .unwrap_or(ButtonPressState::Released),
             ButtonPressState::JustReleased
         )
     }
@@ -396,7 +414,11 @@ impl Input {
     // ===== 状态更新（来自 winit 事件） =====
 
     pub fn update_key(&mut self, code: KeyCode, state: ElementState) {
-        let current = self.key_states.get(&code).copied().unwrap_or(KeyPressState::Released);
+        let current = self
+            .key_states
+            .get(&code)
+            .copied()
+            .unwrap_or(KeyPressState::Released);
         let new_state = match (current, state) {
             (KeyPressState::Released | KeyPressState::JustReleased, ElementState::Pressed) => {
                 KeyPressState::JustPressed
@@ -422,29 +444,36 @@ impl Input {
     }
 
     pub fn update_button(&mut self, button: MouseButton, state: ElementState) {
-        let current = self.button_states.get(&button).copied().unwrap_or(ButtonPressState::Released);
+        let current = self
+            .button_states
+            .get(&button)
+            .copied()
+            .unwrap_or(ButtonPressState::Released);
         let new_state = match (current, state) {
-            (ButtonPressState::Released | ButtonPressState::JustReleased, ElementState::Pressed) => {
-                ButtonPressState::JustPressed
-            }
+            (
+                ButtonPressState::Released | ButtonPressState::JustReleased,
+                ElementState::Pressed,
+            ) => ButtonPressState::JustPressed,
             (ButtonPressState::JustPressed | ButtonPressState::Pressed, ElementState::Pressed) => {
                 ButtonPressState::Pressed
             }
             (ButtonPressState::Pressed | ButtonPressState::JustPressed, ElementState::Released) => {
                 ButtonPressState::JustReleased
             }
-            (ButtonPressState::Released | ButtonPressState::JustReleased, ElementState::Released) => {
-                ButtonPressState::Released
-            }
+            (
+                ButtonPressState::Released | ButtonPressState::JustReleased,
+                ElementState::Released,
+            ) => ButtonPressState::Released,
         };
         self.button_states.insert(button, new_state);
 
         // 生成鼠标按钮事件
-        self.events_this_frame.push(InputEvent::MouseButton(MouseButtonEvent {
-            button,
-            state,
-            modifiers: self.modifiers,
-        }));
+        self.events_this_frame
+            .push(InputEvent::MouseButton(MouseButtonEvent {
+                button,
+                state,
+                modifiers: self.modifiers,
+            }));
     }
 
     pub fn update_mouse_position(&mut self, x: f64, y: f64) {
@@ -465,10 +494,11 @@ impl Input {
 
     pub fn update_wheel(&mut self, delta: Vec2) {
         self.wheel_delta += delta;
-        self.events_this_frame.push(InputEvent::MouseWheel(MouseWheelEvent {
-            delta,
-            modifiers: self.modifiers,
-        }));
+        self.events_this_frame
+            .push(InputEvent::MouseWheel(MouseWheelEvent {
+                delta,
+                modifiers: self.modifiers,
+            }));
     }
 
     pub fn update_modifiers(&mut self, modifiers: ModifiersState) {
@@ -477,12 +507,19 @@ impl Input {
 
     pub fn add_text(&mut self, text: &str) {
         self.text_input.push_str(text);
-        self.events_this_frame.push(InputEvent::TextInput(TextInputEvent {
-            text: text.to_string(),
-        }));
+        self.events_this_frame
+            .push(InputEvent::TextInput(TextInputEvent {
+                text: text.to_string(),
+            }));
     }
 
-    pub fn update_touch(&mut self, id: u64, position: Vec2, force: f32, phase: winit::event::TouchPhase) {
+    pub fn update_touch(
+        &mut self,
+        id: u64,
+        position: Vec2,
+        force: f32,
+        phase: winit::event::TouchPhase,
+    ) {
         match phase {
             winit::event::TouchPhase::Ended | winit::event::TouchPhase::Cancelled => {
                 self.touches.remove(&id);
@@ -504,9 +541,9 @@ impl Input {
     // ===== 快捷查询 =====
 
     pub fn is_any_key_pressed(&self) -> bool {
-        self.key_states.values().any(|s| {
-            matches!(s, KeyPressState::Pressed | KeyPressState::JustPressed)
-        })
+        self.key_states
+            .values()
+            .any(|s| matches!(s, KeyPressState::Pressed | KeyPressState::JustPressed))
     }
 }
 
@@ -539,18 +576,21 @@ impl InputModule {
     pub fn process_event(&mut self, event: &Event<()>) {
         if let Event::WindowEvent { event, .. } = event {
             match event {
-                WindowEvent::KeyboardInput { event: key_event, .. } => {
+                WindowEvent::KeyboardInput {
+                    event: key_event, ..
+                } => {
                     // winit 0.29: physical_key 是 PhysicalKey（非 Option）
                     let code = key_code::map_physical_key(key_event.physical_key);
                     if matches!(code, KeyCode::Unknown) {
                         // 未知按键 — 尝试用 logical_key 的 NamedKey 兜底
                         if let winit::keyboard::Key::Named(named) = key_event.logical_key {
                             if let Some(mapped) = key_code::map_named_key_to_keycode(&named) {
-                                let state = if key_event.state == winit::event::ElementState::Pressed {
-                                    ElementState::Pressed
-                                } else {
-                                    ElementState::Released
-                                };
+                                let state =
+                                    if key_event.state == winit::event::ElementState::Pressed {
+                                        ElementState::Pressed
+                                    } else {
+                                        ElementState::Released
+                                    };
                                 self.input.update_key(mapped, state);
                             }
                         }
@@ -738,7 +778,9 @@ mod tests {
         input.update_button(MouseButton::Left, ElementState::Pressed);
         assert!(input.events_len() >= 2);
         let has_key = input.events().any(|e| matches!(e, InputEvent::Key(_)));
-        let has_mb = input.events().any(|e| matches!(e, InputEvent::MouseButton(_)));
+        let has_mb = input
+            .events()
+            .any(|e| matches!(e, InputEvent::MouseButton(_)));
         assert!(has_key);
         assert!(has_mb);
     }

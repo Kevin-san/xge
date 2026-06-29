@@ -258,13 +258,13 @@ impl Camera3D {
         // Transform to view space - inverse projection must succeed
         let inv_proj = self.inverse_projection()?;
         let view = inv_proj.mul_vec4(clip);
-        
+
         // Perspective division to get view space direction
         // view.w should be non-zero for valid projection
         if view.w.abs() < 1e-6 {
             return None;
         }
-        
+
         let view_dir = Vec3::new(view.x / view.w, view.y / view.w, -1.0).normalize();
 
         // Transform to world space using inverse view matrix
@@ -514,10 +514,7 @@ mod tests {
     #[test]
     fn test_camera_screen_to_world_ray_center() {
         let cam = Camera3D::perspective(45.0, 1.0, 0.1, 100.0);
-        let ray = cam.screen_to_world_ray(
-            Vec2::new(400.0, 300.0),
-            Vec2::new(800.0, 600.0),
-        );
+        let ray = cam.screen_to_world_ray(Vec2::new(400.0, 300.0), Vec2::new(800.0, 600.0));
         // Check if projection inverse works; if so, verify ray origin
         if let Some(r) = ray {
             let _ = r.origin;
@@ -569,10 +566,7 @@ mod tests {
     #[test]
     fn test_camera_ray_direction_forward() {
         let cam = Camera3D::perspective(45.0, 1.0, 0.1, 100.0);
-        let ray = cam.screen_to_world_ray(
-            Vec2::new(400.0, 300.0),
-            Vec2::new(800.0, 600.0),
-        );
+        let ray = cam.screen_to_world_ray(Vec2::new(400.0, 300.0), Vec2::new(800.0, 600.0));
         // If ray is Some, verify it has valid direction
         if let Some(r) = ray {
             let _ = r.direction;

@@ -211,7 +211,10 @@ impl UiEvent {
 
     /// 检查是否为焦点事件
     pub fn is_focus_event(&self) -> bool {
-        matches!(self.event_type, UiEventType::FocusIn | UiEventType::FocusOut)
+        matches!(
+            self.event_type,
+            UiEventType::FocusIn | UiEventType::FocusOut
+        )
     }
 
     /// 检查是否为拖拽事件
@@ -814,7 +817,10 @@ mod tests {
     fn test_ui_input_process_mouse_move_over_root() {
         let mut world = World::new();
         let root_entity = world.spawn();
-        world.insert(root_entity, crate::ui_node::UiNode::new(crate::ui_node::UiNodeType::Root));
+        world.insert(
+            root_entity,
+            crate::ui_node::UiNode::new(crate::ui_node::UiNodeType::Root),
+        );
         world.insert(
             root_entity,
             crate::ui_node::UiRoot::new(root_entity, Vec2::new(800.0, 600.0)),
@@ -1105,7 +1111,10 @@ mod tests {
     fn test_ui_input_process_mouse_wheel() {
         let mut world = World::new();
         let root_entity = world.spawn();
-        world.insert(root_entity, crate::ui_node::UiNode::new(crate::ui_node::UiNodeType::Root));
+        world.insert(
+            root_entity,
+            crate::ui_node::UiNode::new(crate::ui_node::UiNodeType::Root),
+        );
         world.insert(
             root_entity,
             crate::ui_node::UiRoot::new(root_entity, Vec2::new(800.0, 600.0)),

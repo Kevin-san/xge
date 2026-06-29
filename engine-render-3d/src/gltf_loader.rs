@@ -123,7 +123,9 @@ pub fn parse_json_value(s: &str) -> Result<(JsonValue, &str), GltfError> {
     let s = skip_whitespace(s);
     let bytes = s.as_bytes();
     if bytes.is_empty() {
-        return Err(GltfError::InvalidJson("Unexpected end of input".to_string()));
+        return Err(GltfError::InvalidJson(
+            "Unexpected end of input".to_string(),
+        ));
     }
     match bytes[0] {
         b'n' => parse_null(s),
@@ -156,7 +158,9 @@ fn parse_bool(s: &str) -> Result<(JsonValue, &str), GltfError> {
     } else if let Some(rest) = s.strip_prefix("false") {
         Ok((JsonValue::Bool(false), rest))
     } else {
-        Err(GltfError::InvalidJson("Expected `true` or `false`".to_string()))
+        Err(GltfError::InvalidJson(
+            "Expected `true` or `false`".to_string(),
+        ))
     }
 }
 
@@ -215,9 +219,9 @@ fn parse_string_raw(s: &str) -> Result<(String, &str), GltfError> {
                         let (_, h) = chars.next().ok_or_else(|| {
                             GltfError::InvalidJson("Invalid unicode escape".to_string())
                         })?;
-                        let d = h
-                            .to_digit(16)
-                            .ok_or_else(|| GltfError::InvalidJson("Invalid unicode escape".to_string()))?;
+                        let d = h.to_digit(16).ok_or_else(|| {
+                            GltfError::InvalidJson("Invalid unicode escape".to_string())
+                        })?;
                         code = code * 16 + d;
                     }
                     if let Some(ch) = char::from_u32(code) {
@@ -255,7 +259,9 @@ fn parse_array(s: &str) -> Result<(JsonValue, &str), GltfError> {
         } else if let Some(rest) = s.strip_prefix(']') {
             return Ok((JsonValue::Array(arr), rest));
         } else {
-            return Err(GltfError::InvalidJson("Expected `,` or `]` in array".to_string()));
+            return Err(GltfError::InvalidJson(
+                "Expected `,` or `]` in array".to_string(),
+            ));
         }
     }
 }
@@ -286,7 +292,9 @@ fn parse_object(s: &str) -> Result<(JsonValue, &str), GltfError> {
         } else if let Some(rest) = s.strip_prefix('}') {
             return Ok((JsonValue::Object(obj), rest));
         } else {
-            return Err(GltfError::InvalidJson("Expected `,` or `}` in object".to_string()));
+            return Err(GltfError::InvalidJson(
+                "Expected `,` or `}` in object".to_string(),
+            ));
         }
     }
 }
@@ -395,7 +403,9 @@ impl GltfDocument {
         let (value, rest) = parse_json_value(json)?;
         let rest = skip_whitespace(rest);
         if !rest.is_empty() {
-            return Err(GltfError::InvalidJson("Trailing content after JSON".to_string()));
+            return Err(GltfError::InvalidJson(
+                "Trailing content after JSON".to_string(),
+            ));
         }
         let obj = value
             .as_object()
@@ -405,9 +415,9 @@ impl GltfDocument {
         let mut accessors = Vec::new();
         if let Some(JsonValue::Array(arr)) = obj.get("accessors") {
             for v in arr {
-                let o = v
-                    .as_object()
-                    .ok_or_else(|| GltfError::ParseFailed("Accessor is not an object".to_string()))?;
+                let o = v.as_object().ok_or_else(|| {
+                    GltfError::ParseFailed("Accessor is not an object".to_string())
+                })?;
                 accessors.push(GltfAccessor {
                     buffer_view: o.get("bufferView").and_then(|v| v.as_usize()).unwrap_or(0),
                     byte_offset: o.get("byteOffset").and_then(|v| v.as_usize()).unwrap_or(0),
@@ -426,9 +436,9 @@ impl GltfDocument {
         let mut buffer_views = Vec::new();
         if let Some(JsonValue::Array(arr)) = obj.get("bufferViews") {
             for v in arr {
-                let o = v
-                    .as_object()
-                    .ok_or_else(|| GltfError::ParseFailed("BufferView is not an object".to_string()))?;
+                let o = v.as_object().ok_or_else(|| {
+                    GltfError::ParseFailed("BufferView is not an object".to_string())
+                })?;
                 buffer_views.push(GltfBufferView {
                     buffer: o.get("buffer").and_then(|v| v.as_usize()).unwrap_or(0),
                     byte_offset: o.get("byteOffset").and_then(|v| v.as_usize()).unwrap_or(0),
@@ -459,7 +469,10 @@ impl GltfDocument {
                 let o = v
                     .as_object()
                     .ok_or_else(|| GltfError::ParseFailed("Mesh is not an object".to_string()))?;
-                let name = o.get("name").and_then(|v| v.as_str()).map(|s| s.to_string());
+                let name = o
+                    .get("name")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
                 let mut prims = Vec::new();
                 if let Some(JsonValue::Array(parr)) = o.get("primitives") {
                     for pv in parr {
@@ -481,7 +494,10 @@ impl GltfDocument {
                         });
                     }
                 }
-                meshes.push(GltfMesh { name, primitives: prims });
+                meshes.push(GltfMesh {
+                    name,
+                    primitives: prims,
+                });
             }
         }
 
@@ -623,7 +639,9 @@ impl GlbFile {
             match chunk_type {
                 GLB_CHUNK_JSON => {
                     json_chunk = core::str::from_utf8(chunk_data)
-                        .map_err(|_| GltfError::InvalidJson("Invalid UTF-8 in JSON chunk".to_string()))?
+                        .map_err(|_| {
+                            GltfError::InvalidJson("Invalid UTF-8 in JSON chunk".to_string())
+                        })?
                         .to_string();
                 }
                 GLB_CHUNK_BIN => {
@@ -679,7 +697,9 @@ pub fn type_component_count(type_str: &str) -> usize {
 fn read_component_f32(buf: &[u8], offset: usize, component_type: u32) -> Result<f32, GltfError> {
     let size = component_type_size(component_type);
     if offset + size > buf.len() {
-        return Err(GltfError::BufferDecodeFailed("Accessor out of bounds".to_string()));
+        return Err(GltfError::BufferDecodeFailed(
+            "Accessor out of bounds".to_string(),
+        ));
     }
     Ok(match component_type {
         5126 => {
@@ -716,7 +736,9 @@ fn read_component_f32(buf: &[u8], offset: usize, component_type: u32) -> Result<
 fn read_component_u32(buf: &[u8], offset: usize, component_type: u32) -> Result<u32, GltfError> {
     let size = component_type_size(component_type);
     if offset + size > buf.len() {
-        return Err(GltfError::BufferDecodeFailed("Accessor out of bounds".to_string()));
+        return Err(GltfError::BufferDecodeFailed(
+            "Accessor out of bounds".to_string(),
+        ));
     }
     Ok(match component_type {
         5120 => buf[offset] as i8 as u32,
@@ -778,7 +800,9 @@ pub fn decode_accessor_f32(
             accessor.type_str
         )));
     }
-    let stride = buffer_view.stride.unwrap_or(component_size * component_count);
+    let stride = buffer_view
+        .stride
+        .unwrap_or(component_size * component_count);
 
     let total_values = accessor.count * component_count;
     let mut result = Vec::with_capacity(total_values);
@@ -788,7 +812,11 @@ pub fn decode_accessor_f32(
         let element_offset = base_offset + i * stride;
         for j in 0..component_count {
             let value_offset = element_offset + j * component_size;
-            result.push(read_component_f32(buffer, value_offset, accessor.component_type)?);
+            result.push(read_component_f32(
+                buffer,
+                value_offset,
+                accessor.component_type,
+            )?);
         }
     }
 
@@ -822,7 +850,11 @@ pub fn decode_accessor_u32(
     let base_offset = buffer_view.byte_offset + accessor.byte_offset;
     for i in 0..accessor.count {
         let value_offset = base_offset + i * stride;
-        result.push(read_component_u32(buffer, value_offset, accessor.component_type)?);
+        result.push(read_component_u32(
+            buffer,
+            value_offset,
+            accessor.component_type,
+        )?);
     }
 
     Ok(result)
@@ -901,11 +933,7 @@ impl GltfLoader {
 
         let mut vertices = Vec::with_capacity(vertex_count);
         for i in 0..vertex_count {
-            let pos = Vec3::new(
-                positions[i * 3],
-                positions[i * 3 + 1],
-                positions[i * 3 + 2],
-            );
+            let pos = Vec3::new(positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]);
             let normal = if let Some(ref n) = normals {
                 Vec3::new(n[i * 3], n[i * 3 + 1], n[i * 3 + 2])
             } else {
@@ -1560,10 +1588,7 @@ mod tests {
 
     #[test]
     fn test_error_display_messages() {
-        assert_eq!(
-            format!("{}", GltfError::MissingBuffer),
-            "Missing buffer"
-        );
+        assert_eq!(format!("{}", GltfError::MissingBuffer), "Missing buffer");
         assert_eq!(
             format!("{}", GltfError::InvalidGlbHeader),
             "Invalid GLB header"
@@ -1600,7 +1625,7 @@ mod tests {
         buffer.extend_from_slice(&positions[1].to_le_bytes());
         buffer.extend_from_slice(&positions[2].to_le_bytes());
         buffer.extend_from_slice(&99.0f32.to_le_bytes()); // padding
-        // Vertex 1: 3 floats + 1 float padding
+                                                          // Vertex 1: 3 floats + 1 float padding
         buffer.extend_from_slice(&positions[3].to_le_bytes());
         buffer.extend_from_slice(&positions[4].to_le_bytes());
         buffer.extend_from_slice(&positions[5].to_le_bytes());

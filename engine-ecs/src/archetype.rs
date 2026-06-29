@@ -251,11 +251,22 @@ impl ArchetypeStorage {
     }
 
     /// push entity + 一个组件值 C（用于 spawn 或 insert 场景的填充）
-    pub fn push_entity_with_component<C: Component>(&mut self, arch_id: u32, _entity: Entity, value: C) {
+    pub fn push_entity_with_component<C: Component>(
+        &mut self,
+        arch_id: u32,
+        _entity: Entity,
+        value: C,
+    ) {
         let type_id = std::any::TypeId::of::<C>();
-        let arch = self.archetypes.iter_mut().find(|a| a.id == arch_id).expect("archetype not found");
+        let arch = self
+            .archetypes
+            .iter_mut()
+            .find(|a| a.id == arch_id)
+            .expect("archetype not found");
         // 确保 C 列存在
-        arch.columns.entry(type_id).or_insert_with(|| Box::new(ColumnVec::<C>::new()));
+        arch.columns
+            .entry(type_id)
+            .or_insert_with(|| Box::new(ColumnVec::<C>::new()));
         // 对 *每个* 已有列：要么 push C（如果类型匹配），要么 push 一个空值？
         // —— 不，这里我们只保证列类型匹配的列 push 值，
         //    其他列的 push 应由调用方在 *同一循环里* 再调用本方法。
@@ -275,7 +286,11 @@ impl ArchetypeStorage {
 
     /// 完成一次 push：把 entity id 加入该 archetype 的 entities 列表
     pub fn finalize_push_entity(&mut self, arch_id: u32, entity: Entity) -> u32 {
-        let arch = self.archetypes.iter_mut().find(|a| a.id == arch_id).expect("archetype not found");
+        let arch = self
+            .archetypes
+            .iter_mut()
+            .find(|a| a.id == arch_id)
+            .expect("archetype not found");
         let row = arch.entities.len();
         arch.entities.push(entity);
         row as u32
@@ -284,8 +299,14 @@ impl ArchetypeStorage {
     /// 向指定 archetype 的 C 列 push 值（不触发生命周期 hook，用于 move 场景）
     pub fn push_raw_component<C: Component>(&mut self, arch_id: u32, value: C) {
         let type_id = std::any::TypeId::of::<C>();
-        let arch = self.archetypes.iter_mut().find(|a| a.id == arch_id).expect("archetype not found");
-        arch.columns.entry(type_id).or_insert_with(|| Box::new(ColumnVec::<C>::new()));
+        let arch = self
+            .archetypes
+            .iter_mut()
+            .find(|a| a.id == arch_id)
+            .expect("archetype not found");
+        arch.columns
+            .entry(type_id)
+            .or_insert_with(|| Box::new(ColumnVec::<C>::new()));
         let col = arch.columns.get_mut(&type_id).unwrap();
         if let Some(cv) = <dyn Column>::as_any_mut(&mut **col).downcast_mut::<ColumnVec<C>>() {
             cv.push_raw(value);
@@ -313,7 +334,12 @@ impl ArchetypeStorage {
         typed.get_mut(row as usize)
     }
 
-    pub fn replace_component<C: Component>(&mut self, arch_id: u32, row: u32, value: C) -> Option<C> {
+    pub fn replace_component<C: Component>(
+        &mut self,
+        arch_id: u32,
+        row: u32,
+        value: C,
+    ) -> Option<C> {
         let type_id = std::any::TypeId::of::<C>();
         let arch = self.archetypes.iter_mut().find(|a| a.id == arch_id)?;
         let col = arch.columns.get_mut(&type_id)?;
@@ -360,7 +386,12 @@ impl ArchetypeStorage {
 
     /// 迁移 src_arch.row 的 *所有* 组件列到 dst_arch 的末尾（不触发生命周期）
     /// 返回：被 swap 到 row 位置的 entity（如果有）
-    pub fn move_all_columns_row(&mut self, src_arch_id: u32, row: usize, dst_arch_id: u32) -> Option<Entity> {
+    pub fn move_all_columns_row(
+        &mut self,
+        src_arch_id: u32,
+        row: usize,
+        dst_arch_id: u32,
+    ) -> Option<Entity> {
         let except: &[TypeId] = &[];
         self.move_all_columns_row_except(src_arch_id, row, dst_arch_id, except)
     }
@@ -408,7 +439,8 @@ impl ArchetypeStorage {
                     dst.columns.insert(*type_id, col);
                 }
             }
-            let (src_parts, dst_parts) = split_archetypes_mut(&mut self.archetypes, src_idx, dst_idx);
+            let (src_parts, dst_parts) =
+                split_archetypes_mut(&mut self.archetypes, src_idx, dst_idx);
             if let (Some(src_arch), Some(dst_arch)) = (src_parts, dst_parts) {
                 if let (Some(src_col), Some(dst_col)) = (
                     src_arch.columns.get_mut(type_id),

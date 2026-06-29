@@ -2,7 +2,7 @@
 
 use engine_math::Vec2;
 
-use crate::key_code::{KeyCode, MouseButton, ModifiersState};
+use crate::key_code::{KeyCode, ModifiersState, MouseButton};
 
 /// 按键事件
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -202,11 +202,7 @@ mod tests {
         });
 
         match (&key, &mouse, &motion) {
-            (
-                InputEvent::Key(_),
-                InputEvent::MouseButton(_),
-                InputEvent::MouseMotion(_),
-            ) => {}
+            (InputEvent::Key(_), InputEvent::MouseButton(_), InputEvent::MouseMotion(_)) => {}
             _ => panic!("Unexpected input event variants"),
         }
     }

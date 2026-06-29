@@ -108,7 +108,8 @@ impl Commands {
 
     /// 插入组件
     pub fn insert<C: Component>(&mut self, entity: Entity, component: C) {
-        self.queue.push(Box::new(InsertComponentOp { entity, component }));
+        self.queue
+            .push(Box::new(InsertComponentOp { entity, component }));
     }
 
     /// 移除组件
@@ -146,7 +147,6 @@ impl Default for Commands {
         Self::new()
     }
 }
-
 
 #[cfg(test)]
 mod tests {
