@@ -1015,20 +1015,18 @@ impl BlueprintIR {
     }
 
     /// Serialize to binary (bincode)
-    pub fn serialize(&self) -> Result<Vec<u8>, bincode::Error> {
-        bincode::serialize(self)
+    pub fn serialize(&self) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+        Ok(bincode::serde::encode_to_vec(self, bincode::config::standard())?)
     }
 
     /// Deserialize from binary with size limit to prevent DoS attacks
-    pub fn deserialize(bytes: &[u8]) -> Result<Self, bincode::Error> {
+    pub fn deserialize(bytes: &[u8]) -> Result<Self, Box<dyn std::error::Error>> {
         // 限制大小为 10MB
         const MAX_IR_SIZE: u64 = 10 * 1024 * 1024;
         if bytes.len() as u64 > MAX_IR_SIZE {
-            return Err(bincode::Error::new(bincode::ErrorKind::Custom(
-                "IR too large".to_string(),
-            )));
+            return Err("IR too large".into());
         }
-        bincode::deserialize(bytes)
+        Ok(bincode::serde::decode_from_slice(bytes, bincode::config::standard())?.0)
     }
 }
 
