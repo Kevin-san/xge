@@ -65,10 +65,6 @@ pub struct UiEvent {
     drag_delta: Vec2,
 }
 
-// SAFETY: UiEvent only contains Send + Sync fields
-unsafe impl Send for UiEvent {}
-unsafe impl Sync for UiEvent {}
-
 impl UiEvent {
     /// 创建新的UI事件
     pub fn new(event_type: UiEventType, target: Entity) -> Self {
@@ -1120,5 +1116,14 @@ mod tests {
             &mut events,
         );
         assert_eq!(events.len(), 1);
+    }
+
+    fn assert_send<T: Send>() {}
+    fn assert_sync<T: Sync>() {}
+
+    #[test]
+    fn test_ui_event_send_sync() {
+        assert_send::<UiEvent>();
+        assert_sync::<UiEvent>();
     }
 }

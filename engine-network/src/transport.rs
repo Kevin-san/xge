@@ -600,10 +600,8 @@ impl TlsConfig {
         if let Some(ca_path) = &self.ca_file {
             let ca_pem = fs::read(ca_path)
                 .map_err(|e| NetError::Tls(format!("Failed to read CA file: {}", e)))?;
-            for item in rustls_pemfile::certs(&mut ca_pem.as_slice())
-                .map_err(|e| NetError::Tls(format!("Failed to parse CA cert: {}", e)))?
-            {
-                let der = rustls::pki_types::CertificateDer::from(item);
+            for item in rustls_pemfile::certs(&mut ca_pem.as_slice()) {
+                let der = item.map_err(|e| NetError::Tls(format!("Failed to parse CA cert: {}", e)))?;
                 root_store.add(der)
                     .map_err(|e| NetError::Tls(format!("Failed to add CA cert: {}", e)))?;
             }

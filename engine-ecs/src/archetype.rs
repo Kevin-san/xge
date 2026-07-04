@@ -89,12 +89,15 @@ impl<C: Component> ColumnVec<C> {
     }
 
     /// 取出行中值（不触发 on_remove —— 调用方决定是否调用）
-    pub fn swap_take_raw(&mut self, row: usize) -> C {
+    pub fn swap_take_raw(&mut self, row: usize) -> Option<C> {
+        if row >= self.data.len() {
+            return None;
+        }
         let last = self.data.len() - 1;
         if row != last {
             self.data.swap(row, last);
         }
-        self.data.pop().expect("row out of bounds")
+        self.data.pop()
     }
 
     pub fn len(&self) -> usize {
@@ -129,19 +132,21 @@ impl<C: Component> Column for ColumnVec<C> {
         if row != last {
             self.data.swap(row, last);
         }
-        let mut v = self.data.pop().expect("pop failed");
-        v.on_remove();
+        if let Some(mut v) = self.data.pop() {
+            v.on_remove();
+        }
     }
 
     fn move_row_to(&mut self, row: usize, other: &mut dyn Column) -> bool {
         if row >= self.data.len() {
             return false;
         }
-        // 尝试把 other 下转为 ColumnVec<C>。若成功则直接 move 值
         if let Some(other_typed) = <dyn Column>::as_any_mut(other).downcast_mut::<Self>() {
-            let value = self.swap_take_raw(row);
-            other_typed.push_raw(value);
-            true
+            if let Some(value) = self.swap_take_raw(row) {
+                other_typed.push_raw(value);
+                return true;
+            }
+            false
         } else {
             false
         }
@@ -326,11 +331,7 @@ impl ArchetypeStorage {
         let arch = self.archetypes.iter_mut().find(|a| a.id == arch_id)?;
         let col = arch.columns.get_mut(&type_id)?;
         let typed = <dyn Column>::as_any_mut(&mut **col).downcast_mut::<ColumnVec<C>>()?;
-        if (row as usize) < typed.len() {
-            Some(typed.swap_take_raw(row as usize))
-        } else {
-            None
-        }
+        typed.swap_take_raw(row as usize)
     }
 
     /// 删除 arch_id 的 row 行（对每列 swap_remove_row + entities.swap_remove(row)）
@@ -708,5 +709,46 @@ mod tests {
         s.remove_row(arch, 0);
         let rem1 = REM.with(|c| c.borrow().load(Ordering::SeqCst));
         assert_eq!(rem1, 1);
+    }
+
+    #[test]
+    fn test_columnvec_swap_take_raw_empty() {
+        let mut col: ColumnVec<Position> = ColumnVec::new();
+        assert!(col.swap_take_raw(0).is_none());
+        assert!(col.swap_take_raw(100).is_none());
+    }
+
+    #[test]
+    fn test_columnvec_swap_take_raw_out_of_bounds() {
+        let mut col: ColumnVec<Position> = ColumnVec::new();
+        col.push(Position { x: 1.0 });
+        col.push(Position { x: 2.0 });
+        assert!(col.swap_take_raw(2).is_none());
+        assert!(col.swap_take_raw(100).is_none());
+        assert_eq!(col.len(), 2);
+    }
+
+    #[test]
+    fn test_columnvec_swap_take_raw_valid() {
+        let mut col: ColumnVec<Position> = ColumnVec::new();
+        col.push(Position { x: 1.0 });
+        col.push(Position { x: 2.0 });
+        col.push(Position { x: 3.0 });
+
+        let val = col.swap_take_raw(1);
+        assert!(val.is_some());
+        assert_eq!(val.unwrap().x, 2.0);
+        assert_eq!(col.len(), 2);
+        assert_eq!(col.get(0).unwrap().x, 1.0);
+        assert_eq!(col.get(1).unwrap().x, 3.0);
+    }
+
+    fn assert_send<T: Send>() {}
+    fn assert_sync<T: Sync>() {}
+
+    #[test]
+    fn test_archetype_storage_send_sync() {
+        assert_send::<ArchetypeStorage>();
+        assert_sync::<ArchetypeStorage>();
     }
 }
