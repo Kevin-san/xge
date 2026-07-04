@@ -51,6 +51,43 @@ impl Quat {
     }
 
     #[inline]
+    pub fn from_euler(x: f32, y: f32, z: f32) -> Self {
+        let cx = (x * 0.5).cos();
+        let sx = (x * 0.5).sin();
+        let cy = (y * 0.5).cos();
+        let sy = (y * 0.5).sin();
+        let cz = (z * 0.5).cos();
+        let sz = (z * 0.5).sin();
+
+        Self {
+            x: sx * cy * cz - cx * sy * sz,
+            y: cx * sy * cz + sx * cy * sz,
+            z: cx * cy * sz - sx * sy * cz,
+            w: cx * cy * cz + sx * sy * sz,
+        }
+    }
+
+    #[inline]
+    pub fn to_euler(self) -> Vec3 {
+        let sinr_cosp = 2.0 * (self.w * self.x + self.y * self.z);
+        let cosr_cosp = 1.0 - 2.0 * (self.x * self.x + self.y * self.y);
+        let roll = sinr_cosp.atan2(cosr_cosp);
+
+        let sinp = 2.0 * (self.w * self.y - self.z * self.x);
+        let pitch = if sinp.abs() >= 1.0 {
+            sinp.signum() * std::f32::consts::FRAC_PI_2
+        } else {
+            sinp.asin()
+        };
+
+        let siny_cosp = 2.0 * (self.w * self.z + self.x * self.y);
+        let cosy_cosp = 1.0 - 2.0 * (self.y * self.y + self.z * self.z);
+        let yaw = siny_cosp.atan2(cosy_cosp);
+
+        Vec3::new(roll, pitch, yaw)
+    }
+
+    #[inline]
     pub fn inverse(self) -> Self {
         let len_sq = self.x * self.x + self.y * self.y + self.z * self.z + self.w * self.w;
         if len_sq > 0.0 {
@@ -335,6 +372,55 @@ mod tests {
         let v = Vec3::new(1.0, 2.0, 3.0);
         let result = q * v;
         assert_eq!(result, v);
+    }
+
+    #[test]
+    fn test_from_euler_identity() {
+        let q = Quat::from_euler(0.0, 0.0, 0.0);
+        assert_eq!(q, Quat::IDENTITY);
+    }
+
+    #[test]
+    fn test_from_euler_x_rotation() {
+        let q = Quat::from_euler(std::f32::consts::FRAC_PI_2, 0.0, 0.0);
+        let v = Vec3::Y;
+        let result = q * v;
+        assert!((result.z - 1.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_from_euler_y_rotation() {
+        let q = Quat::from_euler(0.0, std::f32::consts::FRAC_PI_2, 0.0);
+        let v = Vec3::X;
+        let result = q * v;
+        assert!((result.z + 1.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_from_euler_z_rotation() {
+        let q = Quat::from_euler(0.0, 0.0, std::f32::consts::FRAC_PI_2);
+        let v = Vec3::X;
+        let result = q * v;
+        assert!((result.y - 1.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_to_euler_identity() {
+        let q = Quat::IDENTITY;
+        let euler = q.to_euler();
+        assert!((euler.x).abs() < 1e-5);
+        assert!((euler.y).abs() < 1e-5);
+        assert!((euler.z).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_from_euler_to_euler_roundtrip() {
+        let angles = Vec3::new(0.5, 0.7, 0.9);
+        let q = Quat::from_euler(angles.x, angles.y, angles.z);
+        let result = q.to_euler();
+        assert!((result.x - angles.x).abs() < 1e-4);
+        assert!((result.y - angles.y).abs() < 1e-4);
+        assert!((result.z - angles.z).abs() < 1e-4);
     }
 
     #[test]

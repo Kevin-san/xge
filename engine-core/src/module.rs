@@ -102,6 +102,15 @@ impl ModuleRegistry {
             }
         }
     }
+
+    pub fn get_by_name(&self, name: &str) -> Option<std::cell::Ref<'_, dyn Module>> {
+        let borrow = self.modules.borrow();
+        if borrow.contains_key(name) {
+            Some(std::cell::Ref::map(borrow, |map| map.get(name).unwrap().as_ref()))
+        } else {
+            None
+        }
+    }
 }
 
 fn topological_sort(

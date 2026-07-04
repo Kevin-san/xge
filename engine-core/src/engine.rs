@@ -1,5 +1,6 @@
 use crate::module::ModuleRegistry;
 use crate::time::Time;
+use engine_ecs::World;
 use engine_window::{
     CursorGrabMode, CursorIcon, Event, InputModule, Window, WindowExt, WindowState,
 };
@@ -34,6 +35,7 @@ pub struct Engine {
     input_module: Arc<Mutex<InputModule>>,
     window_state: WindowState,
     quit_flag: Option<Arc<std::sync::atomic::AtomicBool>>,
+    world: World,
 }
 
 impl Default for Engine {
@@ -52,6 +54,7 @@ impl Engine {
             input_module: Arc::new(Mutex::new(InputModule::new())),
             window_state: WindowState::new(),
             quit_flag: None,
+            world: World::new(),
         }
     }
 
@@ -80,6 +83,18 @@ impl Engine {
 
     pub fn modules(&self) -> &ModuleRegistry {
         &self.modules
+    }
+
+    pub fn world(&self) -> &World {
+        &self.world
+    }
+
+    pub fn world_mut(&mut self) -> &mut World {
+        &mut self.world
+    }
+
+    pub fn is_running(&self) -> bool {
+        self.quit_flag.as_ref().map_or(true, |flag| !flag.load(std::sync::atomic::Ordering::SeqCst))
     }
 
     // ===== 窗口访问 =====
