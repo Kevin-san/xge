@@ -116,12 +116,12 @@ impl Packet {
 
     /// Serialize packet to bytes
     pub fn serialize(&self) -> NetResult<Vec<u8>> {
-        bincode::serialize(self).map_err(NetError::from)
+        bincode2::serialize(self).map_err(NetError::from)
     }
 
     /// Deserialize packet from bytes
     pub fn deserialize(data: &[u8]) -> NetResult<Self> {
-        bincode::deserialize(data).map_err(|e| NetError::Deserialization(e.to_string()))
+        bincode2::deserialize(data).map_err(|e| NetError::Deserialization(e.to_string()))
     }
 
     /// Check if packet is reliable

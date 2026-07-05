@@ -15,7 +15,7 @@ gl = ["glow"]
 # External crates
 glow = { version = "0.13", optional = true }
 image = { version = "0.25", features = ["png", "jpeg", "bmp", "gif"] }
-anyhow = "1.0"
+anyhow = "1.0.103"
 parking_lot = "0.12"
 thiserror = "1.0"
 bytemuck = { version = "1.14", features = ["derive"] }

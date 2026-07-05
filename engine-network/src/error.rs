@@ -97,8 +97,8 @@ impl From<rustls::Error> for NetError {
     }
 }
 
-impl From<bincode::Error> for NetError {
-    fn from(err: bincode::Error) -> Self {
+impl From<bincode2::Error> for NetError {
+    fn from(err: bincode2::Error) -> Self {
         Self::Serialization(err.to_string())
     }
 }
