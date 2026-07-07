@@ -1,11 +1,21 @@
 use core::fmt;
 use crate::{Vec3, Quat, Mat4};
 
-#[derive(Clone, Copy, PartialEq, Debug, Default)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Transform {
     pub translation: Vec3,
     pub rotation: Quat,
     pub scale: Vec3,
+}
+
+impl Default for Transform {
+    fn default() -> Self {
+        Self {
+            translation: Vec3::ZERO,
+            rotation: Quat::IDENTITY,
+            scale: Vec3::ONE,
+        }
+    }
 }
 
 impl Transform {

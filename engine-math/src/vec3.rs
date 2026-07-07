@@ -1,12 +1,18 @@
 use core::fmt;
 use core::ops::{Add, AddAssign, Div, Mul, MulAssign, Neg, Sub, SubAssign};
 
-#[derive(Clone, Copy, PartialEq, Debug, Default)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 #[repr(C)]
 pub struct Vec3 {
     pub x: f32,
     pub y: f32,
     pub z: f32,
+}
+
+impl Default for Vec3 {
+    fn default() -> Self {
+        Self::ZERO
+    }
 }
 
 impl Vec3 {

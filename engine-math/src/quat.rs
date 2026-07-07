@@ -1,12 +1,20 @@
 use core::fmt;
 use core::ops::Mul;
 
-#[derive(Clone, Copy, PartialEq, Debug, Default)]
+use super::{Euler, Vec3};
+
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Quat {
     pub x: f32,
     pub y: f32,
     pub z: f32,
     pub w: f32,
+}
+
+impl Default for Quat {
+    fn default() -> Self {
+        Self::IDENTITY
+    }
 }
 
 impl Quat {
@@ -48,6 +56,49 @@ impl Quat {
             z: half.sin(),
             w: half.cos(),
         }
+    }
+
+    /// 从欧拉角创建四元数（ZYX顺序，即yaw-pitch-roll）
+    #[inline]
+    pub fn from_euler(euler: Euler) -> Self {
+        let euler_rad = euler.to_radians();
+        let (sx, cx) = (euler_rad.x.sin(), euler_rad.x.cos());
+        let (sy, cy) = (euler_rad.y.sin(), euler_rad.y.cos());
+        let (sz, cz) = (euler_rad.z.sin(), euler_rad.z.cos());
+
+        Self {
+            x: sx * cy * cz + cx * sy * sz,
+            y: cx * sy * cz - sx * cy * sz,
+            z: cx * cy * sz - sx * sy * cz,
+            w: cx * cy * cz + sx * sy * sz,
+        }
+    }
+
+    /// 将四元数转换为欧拉角（ZYX顺序，即yaw-pitch-roll）
+    #[inline]
+    pub fn to_euler(&self) -> Euler {
+        // 使用ZYX顺序提取欧拉角
+        let sinr_cosp = 2.0 * (self.w * self.x + self.y * self.z);
+        let cosr_cosp = 1.0 - 2.0 * (self.x * self.x + self.y * self.y);
+        let x = sinr_cosp.atan2(cosr_cosp);
+
+        let sinp = 2.0 * (self.w * self.y - self.z * self.x);
+        let y = if sinp.abs() >= 1.0 {
+            core::f32::consts::FRAC_PI_2.copysign(sinp)
+        } else {
+            sinp.asin()
+        };
+
+        let siny_cosp = 2.0 * (self.w * self.z + self.x * self.y);
+        let cosy_cosp = 1.0 - 2.0 * (self.y * self.y + self.z * self.z);
+        let z = siny_cosp.atan2(cosy_cosp);
+
+        // 转换为度数
+        Euler::new(
+            x * 180.0 / core::f32::consts::PI,
+            y * 180.0 / core::f32::consts::PI,
+            z * 180.0 / core::f32::consts::PI,
+        )
     }
 
     #[inline]
@@ -169,7 +220,7 @@ impl fmt::Display for Quat {
     }
 }
 
-use super::Vec3;
+
 
 #[cfg(test)]
 mod tests {
