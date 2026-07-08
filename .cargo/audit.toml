@@ -1,0 +1,21 @@
+[advisories]
+ignore = [
+    "RUSTSEC-2026-0194",
+    "RUSTSEC-2026-0195",
+]
+
+[advisories.ignore.RUSTSEC-2026-0194]
+reason = "间接依赖，由 winit → smithay-client-toolkit → wayland-scanner 引入，等待上游升级"
+notes = [
+    "quick-xml 0.39.4 存在二次时间复杂度的属性名检查问题",
+    "上游 wayland-scanner v0.31.10 依赖 quick-xml ^0.39",
+    "需等待 wayland-scanner 升级到支持 quick-xml >= 0.41.0 的版本",
+]
+
+[advisories.ignore.RUSTSEC-2026-0195]
+reason = "间接依赖，由 winit → smithay-client-toolkit → wayland-scanner 引入，等待上游升级"
+notes = [
+    "quick-xml 0.39.4 存在命名空间声明分配无界的 DoS 问题",
+    "上游 wayland-scanner v0.31.10 依赖 quick-xml ^0.39",
+    "需等待 wayland-scanner 升级到支持 quick-xml >= 0.41.0 的版本",
+]

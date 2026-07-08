@@ -593,26 +593,202 @@ impl PhysicsWorld2D {
         aabb_a.intersects(&aabb_b)
     }
 
-    /// 碰撞响应
+    /// 碰撞响应 - Sequential Impulse 算法
     fn resolve_collisions(&mut self) {
-        // 简化的碰撞响应实现
-        // 实际实现需要考虑弹性、摩擦等因素
-        let _ = self;
-    }
+        let mut impulses: Vec<(usize, Vec2, Vec2, f32)> = Vec::new();
 
-    #[allow(dead_code)]
-    fn resolve_contact(&self, _contact: &Contact) {}
+        for _ in 0..self.config.velocity_iterations {
+            impulses.clear();
 
-    /// 关节约束求解
-    fn solve_joints(&mut self) {
-        for joint in &self.joints {
-            self.apply_joint_constraint(joint);
+            for manifold in self.manifolds.values() {
+                for contact in &manifold.contacts {
+                    if let Some((idx_a, idx_b, impulse, r_a, r_b)) =
+                        self.calculate_impulse(manifold.body_a, manifold.body_b, contact)
+                    {
+                        impulses.push((idx_a, impulse, r_a, 1.0));
+                        impulses.push((idx_b, -impulse, r_b, 1.0));
+                    }
+                }
+            }
+
+            for (idx, impulse, r, factor) in &impulses {
+                if *idx < self.bodies.len() {
+                    let body = &mut self.bodies[*idx];
+                    body.apply_impulse(*impulse * *factor);
+                    body.apply_impulse_at_point(*impulse * *factor, *r);
+                }
+            }
         }
     }
 
-    /// 应用关节约束
-    fn apply_joint_constraint(&self, _joint: &Joint2D) {
-        // 简化的关节实现
+    /// 计算接触冲量
+    fn calculate_impulse(
+        &self,
+        idx_a: usize,
+        idx_b: usize,
+        contact: &Contact,
+    ) -> Option<(usize, usize, Vec2, Vec2, Vec2)> {
+        if idx_a >= self.bodies.len() || idx_b >= self.bodies.len() {
+            return None;
+        }
+
+        let body_a = &self.bodies[idx_a];
+        let body_b = &self.bodies[idx_b];
+
+        if !body_a.is_enabled() || !body_b.is_enabled() {
+            return None;
+        }
+
+        let r_a = contact.position - body_a.position();
+        let r_b = contact.position - body_b.position();
+
+        let v_a = body_a.linear_velocity() + body_a.angular_velocity() * Vec2::new(-r_a.y, r_a.x);
+        let v_b = body_b.linear_velocity() + body_b.angular_velocity() * Vec2::new(-r_b.y, r_b.x);
+
+        let dv = v_b - v_a;
+        let normal = contact.normal;
+        let vn = dv.dot(normal);
+
+        if vn > 0.0 {
+            return None;
+        }
+
+        let r_a_cross_n = r_a.cross(normal);
+        let r_b_cross_n = r_b.cross(normal);
+
+        let d_inv_mass = body_a.inverse_mass() + body_b.inverse_mass();
+        let d_inv_inertia = body_a.inverse_inertia() * r_a_cross_n * r_a_cross_n
+            + body_b.inverse_inertia() * r_b_cross_n * r_b_cross_n;
+
+        let effective_mass = 1.0 / (d_inv_mass + d_inv_inertia);
+
+        let restitution = (body_a.collider_indices()
+            .first()
+            .and_then(|&i| self.colliders.get(i))
+            .map(|c| c.restitution())
+            .unwrap_or(self.config.default_restitution)
+            + body_b.collider_indices()
+                .first()
+                .and_then(|&i| self.colliders.get(i))
+                .map(|c| c.restitution())
+                .unwrap_or(self.config.default_restitution))
+            / 2.0;
+
+        let j = -(1.0 + restitution) * vn * effective_mass;
+        let impulse = normal * j;
+
+        Some((idx_a, idx_b, impulse, r_a, r_b))
+    }
+
+    /// 关节约束求解
+    fn solve_joints(&mut self) {
+        let mut impulses: Vec<(usize, Vec2, Vec2)> = Vec::new();
+
+        for _ in 0..self.config.velocity_iterations {
+            impulses.clear();
+
+            for joint in &self.joints {
+                if let Some((idx_a, idx_b, impulse, r_a, r_b)) = self.calculate_joint_impulse(joint) {
+                    impulses.push((idx_a, -impulse, r_a));
+                    impulses.push((idx_b, impulse, r_b));
+                }
+            }
+
+            for (idx, impulse, r) in &impulses {
+                if *idx < self.bodies.len() {
+                    let body = &mut self.bodies[*idx];
+                    body.apply_impulse(*impulse);
+                    body.apply_impulse_at_point(*impulse, *r);
+                }
+            }
+        }
+    }
+
+    /// 计算关节冲量
+    fn calculate_joint_impulse(
+        &self,
+        joint: &Joint2D,
+    ) -> Option<(usize, usize, Vec2, Vec2, Vec2)> {
+        let idx_a = joint.body_a();
+        let idx_b = joint.body_b();
+
+        if idx_a >= self.bodies.len() || idx_b >= self.bodies.len() {
+            return None;
+        }
+
+        let body_a = &self.bodies[idx_a];
+        let body_b = &self.bodies[idx_b];
+
+        if !body_a.is_enabled() || !body_b.is_enabled() {
+            return None;
+        }
+
+        let anchor_a = joint.anchor_a();
+        let anchor_b = joint.anchor_b();
+
+        let r_a = anchor_a - body_a.position();
+        let r_b = anchor_b - body_b.position();
+
+        let v_a = body_a.linear_velocity() + body_a.angular_velocity() * Vec2::new(-r_a.y, r_a.x);
+        let v_b = body_b.linear_velocity() + body_b.angular_velocity() * Vec2::new(-r_b.y, r_b.x);
+
+        let dv = v_b - v_a;
+
+        let (normal, vn) = match joint.joint_type() {
+            crate::JointType::Distance => {
+                let delta = anchor_b - anchor_a;
+                let distance = delta.length();
+                if distance == 0.0 {
+                    return None;
+                }
+                let normal = delta / distance;
+                let vn = dv.dot(normal);
+                if vn > 0.0 {
+                    return None;
+                }
+                (normal, vn)
+            }
+            crate::JointType::Revolute => {
+                let delta = anchor_b - anchor_a;
+                if delta.length_squared() <= 0.0001 {
+                    return None;
+                }
+                let normal = delta.normalize();
+                let vn = dv.dot(normal);
+                if vn > 0.0 {
+                    return None;
+                }
+                (normal, vn)
+            }
+            crate::JointType::Weld => {
+                let delta = anchor_b - anchor_a;
+                if delta.length_squared() <= 0.0001 {
+                    return None;
+                }
+                let normal = delta.normalize();
+                let vn = dv.dot(normal);
+                (normal, vn)
+            }
+            _ => return None,
+        };
+
+        let r_a_cross_n = r_a.cross(normal);
+        let r_b_cross_n = r_b.cross(normal);
+
+        let d_inv_mass = body_a.inverse_mass() + body_b.inverse_mass();
+        let d_inv_inertia = body_a.inverse_inertia() * r_a_cross_n * r_a_cross_n
+            + body_b.inverse_inertia() * r_b_cross_n * r_b_cross_n;
+
+        let effective_mass = 1.0 / (d_inv_mass + d_inv_inertia);
+
+        let j = if joint.joint_type() == crate::JointType::Weld {
+            -vn * 100.0
+        } else {
+            -vn * effective_mass
+        };
+
+        let impulse = normal * j;
+        Some((idx_a, idx_b, impulse, r_a, r_b))
     }
 
     /// 位置修正
@@ -620,12 +796,54 @@ impl PhysicsWorld2D {
         let slop = 0.005;
         let baumgarte = 0.2;
 
-        for manifold in self.manifolds.values_mut() {
-            for contact in &mut manifold.contacts {
+        let mut corrections: Vec<(usize, usize, Vec2)> = Vec::new();
+
+        for manifold in self.manifolds.values() {
+            for contact in &manifold.contacts {
                 let correction = contact.normal * contact.penetration * baumgarte;
                 if correction.length() > slop {
-                    // 位置修正
+                    corrections.push((manifold.body_a, manifold.body_b, correction));
                 }
+            }
+        }
+
+        for (idx_a, idx_b, correction) in &corrections {
+            self.apply_position_correction(*idx_a, *idx_b, *correction);
+        }
+    }
+
+    /// 应用位置修正
+    fn apply_position_correction(&mut self, idx_a: usize, idx_b: usize, correction: Vec2) {
+        if idx_a >= self.bodies.len() || idx_b >= self.bodies.len() || idx_a == idx_b {
+            return;
+        }
+
+        let body_a = &self.bodies[idx_a];
+        let body_b = &self.bodies[idx_b];
+
+        let total_mass = body_a.mass() + body_b.mass();
+        if total_mass <= 0.0 {
+            return;
+        }
+
+        let factor_a = body_b.mass() / total_mass;
+        let factor_b = body_a.mass() / total_mass;
+
+        if idx_a < idx_b {
+            let (left, right) = self.bodies.split_at_mut(idx_b);
+            if left[idx_a].is_dynamic() {
+                left[idx_a].set_position(left[idx_a].position() - correction * factor_a);
+            }
+            if right[0].is_dynamic() {
+                right[0].set_position(right[0].position() + correction * factor_b);
+            }
+        } else {
+            let (left, right) = self.bodies.split_at_mut(idx_a);
+            if left[idx_b].is_dynamic() {
+                left[idx_b].set_position(left[idx_b].position() + correction * factor_b);
+            }
+            if right[0].is_dynamic() {
+                right[0].set_position(right[0].position() - correction * factor_a);
             }
         }
     }

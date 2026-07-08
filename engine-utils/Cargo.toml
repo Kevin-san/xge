@@ -8,6 +8,6 @@ license = "MIT OR Apache-2.0"
 description = "Game engine utility library"
 
 [dependencies]
-# 无外部依赖，使用 std::sync 替代 parking_lot
+parking_lot = "0.12"
 
 [dev-dependencies]

@@ -2,6 +2,8 @@
 //!
 //! 提供场景树的完整实现，包括节点管理和遍历。
 
+use engine_math::{Mat4, Vec3};
+use engine_render::RenderContext;
 use slab::Slab;
 use std::collections::HashMap;
 
@@ -213,6 +215,11 @@ impl SceneTree {
         self.draw_node(self.root);
     }
 
+    /// 绘制场景树（带渲染上下文，支持变换累积）
+    pub fn draw_with_context(&self, ctx: &mut RenderContext) {
+        self.draw_node_with_context(self.root, ctx, Mat4::IDENTITY);
+    }
+
     /// 递归绘制节点
     fn draw_node(&self, handle: NodeHandle) {
         if handle.index() as usize >= self.nodes.len() {
@@ -235,6 +242,47 @@ impl SceneTree {
         for child in children {
             self.draw_node(child);
         }
+    }
+
+    /// 递归绘制节点（带渲染上下文）
+    fn draw_node_with_context(&self, handle: NodeHandle, ctx: &mut RenderContext, parent_transform: Mat4) {
+        if handle.index() as usize >= self.nodes.len() {
+            return;
+        }
+
+        let (children, node_transform) = {
+            if let Some(entry) = self.nodes.get(handle.index() as usize) {
+                if !entry.node.visible() {
+                    return;
+                }
+
+                let node_transform = if let Some(node_2d) = entry.node.as_any().downcast_ref::<Node2D>() {
+                    let pos = node_2d.position();
+                    let rot = node_2d.rotation();
+                    let scale = node_2d.scale();
+                    let t = Mat4::from_translation(Vec3::new(pos.x, pos.y, 0.0));
+                    let r = Mat4::from_rotation_z(rot);
+                    let s = Mat4::from_scale(Vec3::new(scale.x, scale.y, 1.0));
+                    parent_transform * t * r * s
+                } else {
+                    parent_transform
+                };
+
+                ctx.push_transform(node_transform);
+                entry.node.on_draw();
+
+                let children = entry.node.children().to_vec();
+                (children, node_transform)
+            } else {
+                return;
+            }
+        };
+
+        for child in children {
+            self.draw_node_with_context(child, ctx, node_transform);
+        }
+
+        ctx.pop_transform();
     }
 
     /// 获取节点数量

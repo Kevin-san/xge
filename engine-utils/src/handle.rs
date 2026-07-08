@@ -2,7 +2,7 @@ use core::fmt;
 use core::marker::PhantomData;
 
 /// 类型安全句柄，使用索引 + 代际号机制避免悬挂引用
-#[derive(Copy)]
+#[derive(Copy, Ord, PartialOrd)]
 pub struct Handle<T> {
     index: u32,
     generation: u32,

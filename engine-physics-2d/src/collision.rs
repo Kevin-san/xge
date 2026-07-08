@@ -17,6 +17,8 @@ pub struct Contact {
     pub normal_impulse: f32,
     /// 切向冲量
     pub tangent_impulse: f32,
+    /// 累积冲量
+    pub accumulated_impulse: f32,
 }
 
 impl Contact {
@@ -28,6 +30,7 @@ impl Contact {
             penetration,
             normal_impulse: 0.0,
             tangent_impulse: 0.0,
+            accumulated_impulse: 0.0,
         }
     }
 }

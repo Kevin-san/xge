@@ -210,6 +210,47 @@ pub struct TouchPoint {
     pub phase: winit::event::TouchPhase,
 }
 
+// ===== 手柄接口（预留）=====
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum GamepadButton {
+    A,
+    B,
+    X,
+    Y,
+    LeftBumper,
+    RightBumper,
+    LeftTrigger,
+    RightTrigger,
+    Back,
+    Start,
+    LeftStick,
+    RightStick,
+    DpadUp,
+    DpadDown,
+    DpadLeft,
+    DpadRight,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct GamepadAxis {
+    pub left_stick_x: f32,
+    pub left_stick_y: f32,
+    pub right_stick_x: f32,
+    pub right_stick_y: f32,
+    pub left_trigger: f32,
+    pub right_trigger: f32,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct GamepadState {
+    pub id: u64,
+    pub connected: bool,
+    pub buttons: HashMap<GamepadButton, bool>,
+    pub axis: GamepadAxis,
+    pub name: String,
+}
+
 // ===== 输入状态 =====
 
 /// 按键状态
@@ -328,6 +369,22 @@ impl Input {
         )
     }
 
+    pub fn pressed_keys(&self) -> Vec<KeyCode> {
+        self.key_states
+            .iter()
+            .filter(|(_, s)| matches!(s, KeyPressState::Pressed | KeyPressState::JustPressed))
+            .map(|(k, _)| *k)
+            .collect()
+    }
+
+    pub fn released_keys(&self) -> Vec<KeyCode> {
+        self.key_states
+            .iter()
+            .filter(|(_, s)| matches!(s, KeyPressState::Released | KeyPressState::JustReleased))
+            .map(|(k, _)| *k)
+            .collect()
+    }
+
     // ===== 鼠标查询 =====
 
     pub fn mouse_button_pressed(&self, button: MouseButton) -> bool {
@@ -349,6 +406,34 @@ impl Input {
             self.button_states.get(&button).copied().unwrap_or(ButtonPressState::Released),
             ButtonPressState::JustReleased
         )
+    }
+
+    pub fn pressed_buttons(&self) -> Vec<MouseButton> {
+        self.button_states
+            .iter()
+            .filter(|(_, s)| matches!(s, ButtonPressState::Pressed | ButtonPressState::JustPressed))
+            .map(|(k, _)| *k)
+            .collect()
+    }
+
+    pub fn released_buttons(&self) -> Vec<MouseButton> {
+        self.button_states
+            .iter()
+            .filter(|(_, s)| matches!(s, ButtonPressState::Released | ButtonPressState::JustReleased))
+            .map(|(k, _)| *k)
+            .collect()
+    }
+
+    pub fn mouse_pressed(&self, button: MouseButton) -> bool {
+        self.mouse_button_pressed(button)
+    }
+
+    pub fn mouse_just_pressed(&self, button: MouseButton) -> bool {
+        self.mouse_button_just_pressed(button)
+    }
+
+    pub fn mouse_just_released(&self, button: MouseButton) -> bool {
+        self.mouse_button_just_released(button)
     }
 
     pub fn mouse_position(&self) -> Vec2 {

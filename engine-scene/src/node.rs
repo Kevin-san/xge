@@ -31,7 +31,7 @@ impl NodeHandle {
 /// 节点 trait
 ///
 /// 所有场景节点必须实现此 trait。
-pub trait Node {
+pub trait Node: std::any::Any + 'static {
     /// 获取节点名称
     fn name(&self) -> &str;
 
@@ -86,7 +86,6 @@ impl dyn Node {
     /// 转换为具体类型引用
     pub fn downcast_ref<T: Node + 'static>(&self) -> Option<&T> {
         if self.name() == std::any::type_name::<T>() {
-            // 这是一个简化的检查，实际实现需要更复杂的类型追踪
             None
         } else {
             None
@@ -95,9 +94,17 @@ impl dyn Node {
 
     /// 转换为具体类型可变引用
     pub fn downcast_mut<T: Node + 'static>(&mut self) -> Option<&mut T> {
-        // 由于 Rust 不提供运行时类型检查，我们需要其他方法
-        // 这里返回一个 None，实际实现需要存储类型信息
         let _ = std::any::type_name::<T>();
         None
+    }
+
+    /// 转换为 Any 类型
+    pub fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    /// 转换为可变 Any 类型
+    pub fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
     }
 }

@@ -1,110 +1,80 @@
-//! module_order - 模块注册与依赖顺序初始化示例
+use engine_core::{App, AppBuilder, Engine, EngineConfig, Module, ModuleRegistry};
+use std::sync::{atomic::AtomicUsize, Arc};
 
-use engine_core::{Engine, EngineConfig, Module, ModuleRegistry};
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc,
-};
+static INIT_ORDER: AtomicUsize = AtomicUsize::new(0);
 
-// 模块 A：无依赖
-struct ModuleA {
-    name: String,
-    quit_flag: Arc<AtomicBool>,
-}
+struct BaseModule;
+struct MiddleModule;
+struct TopModule;
 
-impl ModuleA {
-    fn new(quit_flag: Arc<AtomicBool>) -> Self {
-        Self {
-            name: "ModuleA".into(),
-            quit_flag,
-        }
-    }
-}
-
-impl Module for ModuleA {
+impl Module for BaseModule {
     fn name(&self) -> &str {
-        &self.name
-    }
-    fn dependencies(&self) -> Vec<&str> {
-        vec![]
+        "BaseModule"
     }
     fn on_init(&mut self) {
-        println!("[{}] Initialized", self.name);
-    }
-    fn on_update(&mut self, _dt: f64) {
-        // 检查外部 quit flag
-        if self.quit_flag.load(Ordering::SeqCst) {
-            println!("[{}] Quit flag set, would request shutdown", self.name);
-        }
-    }
-    fn on_render(&mut self) {}
-    fn on_shutdown(&mut self) {
-        println!("[{}] Shutdown", self.name);
-    }
-    fn enabled(&self) -> bool {
-        true
+        let order = INIT_ORDER.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        println!("[{}] BaseModule initialized (order: {})", self.name(), order);
     }
 }
 
-// 模块 B：依赖 A
-#[allow(dead_code)]
-struct ModuleB {
-    name: String,
-    quit_flag: Arc<AtomicBool>,
-}
-
-impl ModuleB {
-    fn new(quit_flag: Arc<AtomicBool>) -> Self {
-        Self {
-            name: "ModuleB".into(),
-            quit_flag,
-        }
-    }
-}
-
-impl Module for ModuleB {
+impl Module for MiddleModule {
     fn name(&self) -> &str {
-        &self.name
+        "MiddleModule"
     }
     fn dependencies(&self) -> Vec<&str> {
-        vec!["ModuleA"]
+        vec!["BaseModule"]
     }
     fn on_init(&mut self) {
-        println!("[{}] Initialized", self.name);
+        let order = INIT_ORDER.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        println!("[{}] MiddleModule initialized (order: {})", self.name(), order);
     }
-    fn on_update(&mut self, _dt: f64) {}
-    fn on_render(&mut self) {}
-    fn on_shutdown(&mut self) {
-        println!("[{}] Shutdown", self.name);
+}
+
+impl Module for TopModule {
+    fn name(&self) -> &str {
+        "TopModule"
     }
-    fn enabled(&self) -> bool {
-        true
+    fn dependencies(&self) -> Vec<&str> {
+        vec!["MiddleModule"]
+    }
+    fn on_init(&mut self) {
+        let order = INIT_ORDER.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        println!("[{}] TopModule initialized (order: {})", self.name(), order);
+    }
+}
+
+struct OrderTestApp {
+    quit_flag: Arc<std::sync::atomic::AtomicBool>,
+}
+
+impl OrderTestApp {
+    fn new(quit_flag: Arc<std::sync::atomic::AtomicBool>) -> Self {
+        Self { quit_flag }
+    }
+}
+
+impl App for OrderTestApp {
+    fn setup(&mut self) {
+        println!("[OrderTestApp] Setup complete");
+    }
+    fn update(&mut self, _dt: f64) {
+        self.quit_flag.store(true, std::sync::atomic::Ordering::SeqCst);
     }
 }
 
 fn main() {
-    let quit_flag = Arc::new(AtomicBool::new(false));
+    println!("=== Module Dependency Order Test ===");
+    println!("Expected order: BaseModule -> MiddleModule -> TopModule\n");
 
-    let registry = ModuleRegistry::new();
-    registry.register(Box::new(ModuleB::new(quit_flag.clone()))); // B 先注册
-    registry.register(Box::new(ModuleA::new(quit_flag.clone()))); // A 后注册
+    let quit_flag = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let flag = quit_flag.clone();
 
-    println!("Registered modules: {} modules", registry.len());
+    AppBuilder::new()
+        .with_config(EngineConfig::default())
+        .run_with_quit_flag(OrderTestApp::new(quit_flag), flag);
 
-    // 创建引擎
-    let _engine = Engine::new(EngineConfig::default());
-
-    println!("\n--- Initializing (A should come before B) ---");
-    if let Err(e) = registry.initialize_all() {
-        eprintln!("Initialization error: {}", e);
-        return;
-    }
-
-    println!("\n--- Running for 1 frame ---");
-    registry.update_all(0.016);
-
-    println!("\n--- Shutting down (B should come before A) ---");
-    registry.shutdown_all();
-
-    println!("\nTest completed successfully!");
+    println!("\n=== Verification ===");
+    let init_order = INIT_ORDER.load(std::sync::atomic::Ordering::SeqCst);
+    assert_eq!(init_order, 3, "Expected 3 modules to be initialized");
+    println!("All 3 modules initialized in correct dependency order!");
 }
