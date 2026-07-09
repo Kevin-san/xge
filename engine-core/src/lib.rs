@@ -4,6 +4,7 @@ pub mod engine;
 pub mod event;
 pub mod log;
 pub mod module;
+pub mod profiler;
 pub mod schedule;
 pub mod time;
 
@@ -12,6 +13,7 @@ pub use build_info::{BUILD_COMMIT_HASH, BUILD_TIMESTAMP, ENGINE_VERSION};
 pub use engine::{Engine, EngineConfig};
 pub use event::EventBus;
 pub use module::{Module, ModuleRegistry};
+pub use profiler::{Profiler, ScopeGuard, ScopeStats};
 pub use schedule::Schedule;
 pub use time::Time;
 

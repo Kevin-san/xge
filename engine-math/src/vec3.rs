@@ -109,6 +109,11 @@ impl Vec3 {
     pub fn abs(self) -> Self {
         Self::new(self.x.abs(), self.y.abs(), self.z.abs())
     }
+
+    #[inline]
+    pub fn extend(self, w: f32) -> super::Vec4 {
+        super::Vec4::new(self.x, self.y, self.z, w)
+    }
 }
 
 impl Add for Vec3 {

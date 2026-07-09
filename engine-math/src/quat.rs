@@ -18,6 +18,54 @@ impl Quat {
     };
 
     #[inline]
+    pub fn from_euler(euler: super::Euler) -> Self {
+        let cx = (euler.x / 2.0).cos();
+        let sx = (euler.x / 2.0).sin();
+        let cy = (euler.y / 2.0).cos();
+        let sy = (euler.y / 2.0).sin();
+        let cz = (euler.z / 2.0).cos();
+        let sz = (euler.z / 2.0).sin();
+
+        Self {
+            x: sx * cy * cz - cx * sy * sz,
+            y: cx * sy * cz + sx * cy * sz,
+            z: cx * cy * sz - sx * sy * cz,
+            w: cx * cy * cz + sx * sy * sz,
+        }
+    }
+
+    #[inline]
+    pub fn to_euler(self) -> super::Euler {
+        super::Euler::from_quat(self)
+    }
+
+    #[inline]
+    pub fn from_axis_angle(axis: Vec3, angle: f32) -> Self {
+        let half = angle / 2.0;
+        let s = half.sin();
+        let c = half.cos();
+        let axis = axis.normalize();
+        Self {
+            x: axis.x * s,
+            y: axis.y * s,
+            z: axis.z * s,
+            w: c,
+        }
+    }
+
+    #[inline]
+    pub fn to_axis_angle(self) -> (Vec3, f32) {
+        let len_sq = self.x * self.x + self.y * self.y + self.z * self.z;
+        if len_sq < 1e-10 {
+            return (Vec3::X, 0.0);
+        }
+        let len = len_sq.sqrt();
+        let angle = 2.0 * self.w.acos();
+        let axis = Vec3::new(self.x / len, self.y / len, self.z / len);
+        (axis, angle)
+    }
+
+    #[inline]
     pub fn from_rotation_x(angle: f32) -> Self {
         let half = angle / 2.0;
         Self {
