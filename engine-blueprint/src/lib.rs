@@ -1014,21 +1014,19 @@ impl BlueprintIR {
         self.entry_point
     }
 
-    /// Serialize to binary (bincode)
-    pub fn serialize(&self) -> Result<Vec<u8>, bincode::Error> {
-        bincode::serialize(self)
+    /// Serialize to binary (postcard)
+    pub fn serialize(&self) -> Result<Vec<u8>, postcard::Error> {
+        postcard::to_allocvec(self)
     }
 
     /// Deserialize from binary with size limit to prevent DoS attacks
-    pub fn deserialize(bytes: &[u8]) -> Result<Self, bincode::Error> {
+    pub fn deserialize(bytes: &[u8]) -> Result<Self, postcard::Error> {
         // 限制大小为 10MB
-        const MAX_IR_SIZE: u64 = 10 * 1024 * 1024;
-        if bytes.len() as u64 > MAX_IR_SIZE {
-            return Err(bincode::Error::new(bincode::ErrorKind::Custom(
-                "IR too large".to_string(),
-            )));
+        const MAX_IR_SIZE: usize = 10 * 1024 * 1024;
+        if bytes.len() > MAX_IR_SIZE {
+            return Err(postcard::Error::DeserializeUnexpectedEnd);
         }
-        bincode::deserialize(bytes)
+        postcard::from_bytes(bytes)
     }
 }
 

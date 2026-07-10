@@ -260,7 +260,7 @@ impl NetworkClient {
         let data = self.manager.recv(channel_id)?;
         if let Some(d) = data {
             // Parse as message
-            let msg = bincode::deserialize::<Message>(&d)
+            let msg = postcard::from_bytes::<Message>(&d)
                 .map_err(|e| NetError::Deserialization(e.to_string()))?;
             Ok(Some(msg))
         } else {
