@@ -14,7 +14,7 @@ winit = "0.29"
 raw-window-handle = "0.5"
 
 # bitflags for ModifiersState
-bitflags = "1.3"
+bitflags = "2.4"
 
 # engine math for Vec2
 engine-math = { path = "../engine-math" }
@@ -23,10 +23,10 @@ engine-math = { path = "../engine-math" }
 thiserror = "1.0"
 
 # arboard for cross-platform clipboard access
-arboard = { version = "3.4", features = ["image-data"] }
+arboard = { version = "3.6", features = ["image-data"] }
 
 # once_cell for global state
-once_cell = "1.19"
+once_cell = "1.21"
 
 [dev-dependencies]
 # For testing

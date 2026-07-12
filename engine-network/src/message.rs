@@ -20,17 +20,16 @@ pub trait NetMessage: Serialize + DeserializeOwned + Send + Sync + 'static {
 
     /// Serialize message to bytes
     fn encode(&self) -> NetResult<Vec<u8>> {
-        bincode::serialize(self).map_err(|e| NetError::Serialization(e.to_string()))
+        bincode::serde::encode_to_vec(self, bincode::config::standard()).map_err(NetError::from)
     }
 
     /// Deserialize message from bytes
     fn decode(data: &[u8]) -> NetResult<Self> {
-        // 限制反序列化大小以防止 DoS 攻击
-        const MAX_MESSAGE_SIZE: usize = 10 * 1024 * 1024; // 10MB
+        const MAX_MESSAGE_SIZE: usize = 10 * 1024 * 1024;
         if data.len() > MAX_MESSAGE_SIZE {
             return Err(NetError::Deserialization("Message too large".to_string()));
         }
-        bincode::deserialize(data).map_err(|e| NetError::Deserialization(e.to_string()))
+        bincode::serde::decode_from_slice(data, bincode::config::standard()).map(|(v, _)| v).map_err(NetError::from)
     }
 }
 
@@ -88,17 +87,16 @@ impl Message {
 
     /// Serialize the message wrapper to bytes
     pub fn encode(&self) -> NetResult<Vec<u8>> {
-        bincode::serialize(self).map_err(|e| NetError::Serialization(e.to_string()))
+        bincode::serde::encode_to_vec(self, bincode::config::standard()).map_err(NetError::from)
     }
 
     /// Deserialize message wrapper from bytes
     pub fn from_bytes(data: &[u8]) -> NetResult<Self> {
-        // 限制反序列化大小以防止 DoS 攻击
-        const MAX_MESSAGE_SIZE: usize = 10 * 1024 * 1024; // 10MB
+        const MAX_MESSAGE_SIZE: usize = 10 * 1024 * 1024;
         if data.len() > MAX_MESSAGE_SIZE {
             return Err(NetError::Deserialization("Message too large".to_string()));
         }
-        bincode::deserialize(data).map_err(|e| NetError::Deserialization(e.to_string()))
+        bincode::serde::decode_from_slice(data, bincode::config::standard()).map(|(v, _)| v).map_err(NetError::from)
     }
 
     /// Get message size

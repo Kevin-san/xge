@@ -260,8 +260,9 @@ impl NetworkClient {
         let data = self.manager.recv(channel_id)?;
         if let Some(d) = data {
             // Parse as message
-            let msg = bincode::deserialize::<Message>(&d)
-                .map_err(|e| NetError::Deserialization(e.to_string()))?;
+            let msg = bincode::serde::decode_from_slice(&d, bincode::config::standard())
+                .map(|(v, _)| v)
+                .map_err(NetError::from)?;
             Ok(Some(msg))
         } else {
             Ok(None)

@@ -97,9 +97,15 @@ impl From<rustls::Error> for NetError {
     }
 }
 
-impl From<bincode::Error> for NetError {
-    fn from(err: bincode::Error) -> Self {
+impl From<bincode::error::EncodeError> for NetError {
+    fn from(err: bincode::error::EncodeError) -> Self {
         Self::Serialization(err.to_string())
+    }
+}
+
+impl From<bincode::error::DecodeError> for NetError {
+    fn from(err: bincode::error::DecodeError) -> Self {
+        Self::Deserialization(err.to_string())
     }
 }
 
