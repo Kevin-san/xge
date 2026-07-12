@@ -1,6 +1,4 @@
-//! minimal_app - 完整 App trait 实现示例
-
-use engine_core::{App, AppBuilder, EngineConfig};
+use engine_core::{App, AppBuilder, EngineConfig, EngineContext};
 use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc,
@@ -23,11 +21,11 @@ impl MyGame {
 }
 
 impl App for MyGame {
-    fn setup(&mut self) {
+    fn setup(&mut self, _context: &EngineContext<'_>) {
         println!("[MyGame] Setup complete");
     }
 
-    fn update(&mut self, dt: f64) {
+    fn update(&mut self, _context: &EngineContext<'_>, dt: f64) {
         self.frame_count += 1;
         println!(
             "[MyGame] Update frame {} (dt={:.2}ms)",
@@ -35,17 +33,15 @@ impl App for MyGame {
             dt * 1000.0
         );
 
-        // 达到最大帧数后请求退出
         if self.frame_count >= self.max_frames {
             self.quit_flag.store(true, Ordering::SeqCst);
         }
     }
 
-    fn render(&mut self) {
-        // 渲染逻辑（空实现）
+    fn render(&mut self, _context: &EngineContext<'_>) {
     }
 
-    fn shutdown(&mut self) {
+    fn shutdown(&mut self, _context: &EngineContext<'_>) {
         println!("[MyGame] Shutdown after {} frames", self.frame_count);
     }
 }

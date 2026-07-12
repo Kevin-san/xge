@@ -1,12 +1,9 @@
-//! module_order - 模块注册与依赖顺序初始化示例
-
-use engine_core::{Engine, EngineConfig, Module, ModuleRegistry};
+use engine_core::{Engine, EngineConfig, EngineContext, Module, ModuleRegistry};
 use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc,
 };
 
-// 模块 A：无依赖
 struct ModuleA {
     name: String,
     quit_flag: Arc<AtomicBool>,
@@ -28,17 +25,16 @@ impl Module for ModuleA {
     fn dependencies(&self) -> Vec<&str> {
         vec![]
     }
-    fn on_init(&mut self) {
+    fn on_init(&mut self, _context: &EngineContext<'_>) {
         println!("[{}] Initialized", self.name);
     }
-    fn on_update(&mut self, _dt: f64) {
-        // 检查外部 quit flag
+    fn on_update(&mut self, _context: &EngineContext<'_>, _dt: f64) {
         if self.quit_flag.load(Ordering::SeqCst) {
             println!("[{}] Quit flag set, would request shutdown", self.name);
         }
     }
-    fn on_render(&mut self) {}
-    fn on_shutdown(&mut self) {
+    fn on_render(&mut self, _context: &EngineContext<'_>) {}
+    fn on_shutdown(&mut self, _context: &EngineContext<'_>) {
         println!("[{}] Shutdown", self.name);
     }
     fn enabled(&self) -> bool {
@@ -46,7 +42,6 @@ impl Module for ModuleA {
     }
 }
 
-// 模块 B：依赖 A
 #[allow(dead_code)]
 struct ModuleB {
     name: String,
@@ -69,12 +64,12 @@ impl Module for ModuleB {
     fn dependencies(&self) -> Vec<&str> {
         vec!["ModuleA"]
     }
-    fn on_init(&mut self) {
+    fn on_init(&mut self, _context: &EngineContext<'_>) {
         println!("[{}] Initialized", self.name);
     }
-    fn on_update(&mut self, _dt: f64) {}
-    fn on_render(&mut self) {}
-    fn on_shutdown(&mut self) {
+    fn on_update(&mut self, _context: &EngineContext<'_>, _dt: f64) {}
+    fn on_render(&mut self, _context: &EngineContext<'_>) {}
+    fn on_shutdown(&mut self, _context: &EngineContext<'_>) {
         println!("[{}] Shutdown", self.name);
     }
     fn enabled(&self) -> bool {
@@ -85,26 +80,31 @@ impl Module for ModuleB {
 fn main() {
     let quit_flag = Arc::new(AtomicBool::new(false));
 
-    let registry = ModuleRegistry::new();
-    registry.register(Box::new(ModuleB::new(quit_flag.clone()))); // B 先注册
-    registry.register(Box::new(ModuleA::new(quit_flag.clone()))); // A 后注册
+    let mut registry = ModuleRegistry::new();
+    registry.register(Box::new(ModuleB::new(quit_flag.clone())));
+    registry.register(Box::new(ModuleA::new(quit_flag.clone())));
 
     println!("Registered modules: {} modules", registry.len());
 
-    // 创建引擎
-    let _engine = Engine::new(EngineConfig::default());
+    let mut engine = Engine::new(EngineConfig::default());
+    let context = EngineContext::new(
+        &engine.config(),
+        &engine.time(),
+        &engine.filesystem(),
+        engine.thread_pool(),
+    );
 
     println!("\n--- Initializing (A should come before B) ---");
-    if let Err(e) = registry.initialize_all() {
+    if let Err(e) = registry.initialize_all(&context) {
         eprintln!("Initialization error: {}", e);
         return;
     }
 
     println!("\n--- Running for 1 frame ---");
-    registry.update_all(0.016);
+    registry.update_all(&context, 0.016);
 
     println!("\n--- Shutting down (B should come before A) ---");
-    registry.shutdown_all();
+    registry.shutdown_all(&context);
 
     println!("\nTest completed successfully!");
 }

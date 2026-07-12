@@ -1,11 +1,10 @@
+use futures_lite::future;
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
 
-/// Task queue type alias
 type TaskQueue = Arc<Mutex<VecDeque<Box<dyn FnOnce() + Send>>>>;
 
-/// 线程池
 pub struct ThreadPool {
     workers: Vec<Worker>,
     task_queue: TaskQueue,
@@ -42,6 +41,15 @@ impl ThreadPool {
         queue.push_back(Box::new(f));
     }
 
+    pub fn spawn_future<F>(&self, future: F)
+    where
+        F: futures_lite::Future<Output = ()> + Send + 'static,
+    {
+        self.spawn(move || {
+            future::block_on(future);
+        });
+    }
+
     pub fn try_spawn<F: FnOnce() + Send + 'static>(&self, f: F) -> bool {
         let mut queue = self.task_queue.lock().unwrap();
         if queue.len() < self.workers.len() * 10 {
@@ -50,6 +58,24 @@ impl ThreadPool {
         } else {
             false
         }
+    }
+
+    pub fn block_on<F>(&self, f: F) -> F::Output
+    where
+        F: futures_lite::Future + Send + 'static,
+        F::Output: Send + 'static,
+    {
+        future::block_on(f)
+    }
+
+    pub fn shutdown(&self) {
+        for _ in &self.workers {
+            self.spawn(|| {});
+        }
+    }
+
+    pub fn active_count(&self) -> usize {
+        self.workers.len()
     }
 
     pub fn num_threads(&self) -> usize {
@@ -111,7 +137,22 @@ mod tests {
             });
         }
 
-        // 等待任务完成
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        assert_eq!(counter.load(Ordering::SeqCst), 10);
+    }
+
+    #[test]
+    fn test_spawn_future() {
+        let pool = ThreadPool::new_with_threads(2);
+        let counter = Arc::new(AtomicUsize::new(0));
+
+        for _i in 0..10 {
+            let c = counter.clone();
+            pool.spawn_future(async move {
+                c.fetch_add(1, Ordering::SeqCst);
+            });
+        }
+
         std::thread::sleep(std::time::Duration::from_millis(100));
         assert_eq!(counter.load(Ordering::SeqCst), 10);
     }
@@ -120,5 +161,18 @@ mod tests {
     fn test_num_threads() {
         let pool = ThreadPool::new_with_threads(4);
         assert_eq!(pool.num_threads(), 4);
+    }
+
+    #[test]
+    fn test_active_count() {
+        let pool = ThreadPool::new_with_threads(4);
+        assert_eq!(pool.active_count(), 4);
+    }
+
+    #[test]
+    fn test_block_on() {
+        let pool = ThreadPool::new();
+        let result = pool.block_on(async { 42 });
+        assert_eq!(result, 42);
     }
 }

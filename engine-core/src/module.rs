@@ -1,39 +1,84 @@
-use std::cell::RefCell;
+use std::any::Any;
 use std::collections::HashMap;
 
-/// 模块 trait
-///
-/// 所有引擎模块必须实现此 trait
-pub trait Module: Send + Sync {
-    /// 获取模块唯一名称
+pub struct EngineContext<'a> {
+    config: &'a crate::engine::EngineConfig,
+    time: &'a engine_platform::Time,
+    filesystem: &'a engine_platform::FileSystem,
+    thread_pool: &'a engine_platform::ThreadPool,
+}
+
+impl<'a> EngineContext<'a> {
+    pub fn new(
+        config: &'a crate::engine::EngineConfig,
+        time: &'a engine_platform::Time,
+        filesystem: &'a engine_platform::FileSystem,
+        thread_pool: &'a engine_platform::ThreadPool,
+    ) -> Self {
+        Self {
+            config,
+            time,
+            filesystem,
+            thread_pool,
+        }
+    }
+
+    pub fn config(&self) -> &'a crate::engine::EngineConfig {
+        self.config
+    }
+
+    pub fn time(&self) -> &'a engine_platform::Time {
+        self.time
+    }
+
+    pub fn filesystem(&self) -> &'a engine_platform::FileSystem {
+        self.filesystem
+    }
+
+    pub fn spawn_task<F>(&self, future: F)
+    where
+        F: futures_lite::Future<Output = ()> + Send + 'static,
+    {
+        self.thread_pool.spawn_future(future);
+    }
+}
+
+pub trait Module: Send + Sync + Any {
     fn name(&self) -> &str;
 
-    /// 获取依赖的模块名称列表
     fn dependencies(&self) -> Vec<&str> {
         vec![]
     }
 
-    /// 模块初始化回调
-    fn on_init(&mut self) {}
+    fn on_init(&mut self, _engine: &EngineContext<'_>) {}
 
-    /// 模块每帧更新回调
-    fn on_update(&mut self, _dt: f64) {}
+    fn on_update(&mut self, _engine: &EngineContext<'_>, _dt: f64) {}
 
-    /// 模块渲染前回调
-    fn on_render(&mut self) {}
+    fn on_render(&mut self, _engine: &EngineContext<'_>) {}
 
-    /// 模块关闭回调
-    fn on_shutdown(&mut self) {}
+    fn on_shutdown(&mut self, _engine: &EngineContext<'_>) {}
 
-    /// 检查模块是否启用
     fn enabled(&self) -> bool {
         true
     }
 }
 
-/// 模块注册表
+impl dyn Module {
+    pub fn is<T: Module + 'static>(&self) -> bool {
+        (self as &dyn Any).is::<T>()
+    }
+
+    pub fn downcast_ref<T: Module + 'static>(&self) -> Option<&T> {
+        (self as &dyn Any).downcast_ref::<T>()
+    }
+
+    pub fn downcast_mut<T: Module + 'static>(&mut self) -> Option<&mut T> {
+        (self as &mut dyn Any).downcast_mut::<T>()
+    }
+}
+
 pub struct ModuleRegistry {
-    modules: RefCell<HashMap<String, Box<dyn Module>>>,
+    modules: HashMap<String, Box<dyn Module>>,
 }
 
 impl Default for ModuleRegistry {
@@ -45,30 +90,52 @@ impl Default for ModuleRegistry {
 impl ModuleRegistry {
     pub fn new() -> Self {
         Self {
-            modules: RefCell::new(HashMap::new()),
+            modules: HashMap::new(),
         }
     }
 
-    pub fn register(&self, module: Box<dyn Module>) {
+    pub fn register(&mut self, module: Box<dyn Module>) {
         let name = module.name().to_string();
-        self.modules.borrow_mut().insert(name, module);
+        self.modules.insert(name, module);
+    }
+
+    pub fn get<T: Module + 'static>(&self) -> Option<&T> {
+        self.modules
+            .values()
+            .find(|m| m.is::<T>())
+            .and_then(|m| m.downcast_ref::<T>())
+    }
+
+    pub fn get_mut<T: Module + 'static>(&mut self) -> Option<&mut T> {
+        self.modules
+            .values_mut()
+            .find(|m| m.is::<T>())
+            .and_then(|m| m.downcast_mut::<T>())
+    }
+
+    pub fn get_by_name(&self, name: &str) -> Option<&dyn Module> {
+        self.modules.get(name).map(|m| m.as_ref())
+    }
+
+    pub fn get_by_name_mut(&mut self, name: &str) -> Option<&mut dyn Module> {
+        self.modules.get_mut(name).map(|m| m.as_mut())
     }
 
     pub fn len(&self) -> usize {
-        self.modules.borrow().len()
+        self.modules.len()
     }
 
     pub fn is_empty(&self) -> bool {
-        self.modules.borrow().is_empty()
+        self.modules.is_empty()
     }
 
-    pub fn initialize_all(&self) -> Result<(), CycleError> {
-        let sorted = topological_sort(&mut self.modules.borrow_mut())?;
+    pub fn initialize_all(&mut self, context: &EngineContext<'_>) -> Result<(), CycleError> {
+        let sorted = topological_sort(&mut self.modules)?;
 
         for name in sorted {
-            if let Some(module) = self.modules.borrow_mut().get_mut(&name) {
+            if let Some(module) = self.modules.get_mut(&name) {
                 if module.enabled() {
-                    module.on_init();
+                    module.on_init(context);
                 }
             }
         }
@@ -76,28 +143,28 @@ impl ModuleRegistry {
         Ok(())
     }
 
-    pub fn update_all(&self, dt: f64) {
-        for module in self.modules.borrow_mut().values_mut() {
+    pub fn update_all(&mut self, context: &EngineContext<'_>, dt: f64) {
+        for module in self.modules.values_mut() {
             if module.enabled() {
-                module.on_update(dt);
+                module.on_update(context, dt);
             }
         }
     }
 
-    pub fn render_all(&self) {
-        for module in self.modules.borrow_mut().values_mut() {
+    pub fn render_all(&mut self, context: &EngineContext<'_>) {
+        for module in self.modules.values_mut() {
             if module.enabled() {
-                module.on_render();
+                module.on_render(context);
             }
         }
     }
 
-    pub fn shutdown_all(&self) {
-        let names: Vec<String> = self.modules.borrow().keys().cloned().collect();
+    pub fn shutdown_all(&mut self, context: &EngineContext<'_>) {
+        let names: Vec<String> = self.modules.keys().cloned().collect();
         for name in names.into_iter().rev() {
-            if let Some(mut module) = self.modules.borrow_mut().remove(&name) {
+            if let Some(mut module) = self.modules.remove(&name) {
                 if module.enabled() {
-                    module.on_shutdown();
+                    module.on_shutdown(context);
                 }
             }
         }
@@ -135,6 +202,9 @@ fn topological_sort(
 
         if let Some(module) = modules.get(name) {
             for dep in module.dependencies() {
+                if !modules.contains_key(dep) {
+                    return Err(CycleError(format!("Missing dependency '{}' for '{}'", dep, name)));
+                }
                 visit(dep, modules, visited, in_stack, result)?;
             }
         }
@@ -160,11 +230,7 @@ pub struct CycleError(pub String);
 
 impl std::fmt::Display for CycleError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "Circular dependency detected involving module: {}",
-            self.0
-        )
+        write!(f, "{}", self.0)
     }
 }
 

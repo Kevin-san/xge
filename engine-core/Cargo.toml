@@ -8,7 +8,18 @@ rust-version = "1.70"
 
 [dependencies]
 anyhow.workspace = true
+thiserror.workspace = true
+parking_lot.workspace = true
+futures-lite.workspace = true
+bytemuck.workspace = true
+serde.workspace = true
+ahash.workspace = true
+log.workspace = true
+env_logger.workspace = true
+toml.workspace = true
 engine-window = { path = "../engine-window" }
+engine-platform = { path = "../engine-platform" }
+engine-utils = { path = "../engine-utils" }
 
 [build-dependencies]
 chrono.workspace = true
