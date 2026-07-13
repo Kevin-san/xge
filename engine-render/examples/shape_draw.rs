@@ -2,8 +2,8 @@
 //!
 //! 本示例演示如何使用 Renderer 绘制基本图形（矩形、圆形、线条等）。
 
-use engine_render::RenderContext;
 use engine_render::Color;
+use engine_render::RenderContext;
 
 fn main() {
     println!("Shape Draw Example");

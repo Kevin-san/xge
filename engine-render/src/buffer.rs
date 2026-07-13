@@ -222,9 +222,7 @@ impl<T: Copy> Buffer<T> {
 
     /// 获取数据作为类型化切片（只读）
     pub fn as_slice(&self) -> &[T] {
-        unsafe {
-            std::slice::from_raw_parts(self.data.as_ptr() as *const T, self.count)
-        }
+        unsafe { std::slice::from_raw_parts(self.data.as_ptr() as *const T, self.count) }
     }
 
     /// 随机访问（安全）
@@ -257,7 +255,8 @@ impl<T: Copy> Buffer<T> {
     fn grow(&mut self, additional: usize) {
         let new_cap = (self.capacity + additional).max(16).next_power_of_two();
         self.capacity = new_cap;
-        self.data.reserve(new_cap * std::mem::size_of::<T>() - self.data.len());
+        self.data
+            .reserve(new_cap * std::mem::size_of::<T>() - self.data.len());
     }
 }
 

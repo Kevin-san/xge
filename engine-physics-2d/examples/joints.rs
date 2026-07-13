@@ -136,7 +136,11 @@ fn main() {
     ));
     println!("   - Prismatic joint index: {}", prismatic_idx);
     println!("   - Axis: X direction (1.0, 0.0)");
-    println!("   - Axis vector: ({:.2}, {:.2})", prismatic_joint.axis().x, prismatic_joint.axis().y);
+    println!(
+        "   - Axis vector: ({:.2}, {:.2})",
+        prismatic_joint.axis().x,
+        prismatic_joint.axis().y
+    );
     println!();
 
     // 6. 演示移除关节

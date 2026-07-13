@@ -12,9 +12,9 @@
 //! - `set_fps(fps)` — 自定义帧率
 //! - `frame_count()` / `current_frame_rect()` — 查询信息
 
-use engine_utils::Handle;
 use super::{Color, DrawParams, Sprite, TextureHandle};
 use engine_math::Vec2;
+use engine_utils::Handle;
 
 /// 循环模式
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
@@ -152,7 +152,11 @@ impl AnimatedSprite {
                     0
                 } else {
                     let mod_idx = (clamped / frame_duration) as usize % cycle_frames;
-                    if mod_idx < self.frames.len() { mod_idx } else { cycle_frames - mod_idx }
+                    if mod_idx < self.frames.len() {
+                        mod_idx
+                    } else {
+                        cycle_frames - mod_idx
+                    }
                 }
             }
         };

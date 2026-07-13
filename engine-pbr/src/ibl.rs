@@ -253,11 +253,7 @@ impl IBLBaker {
         let n_dot_v = n_dot_v.clamp(0.0, 1.0);
         let roughness = roughness.clamp(0.0, 1.0);
 
-        let v = Vec3::new(
-            (1.0 - n_dot_v * n_dot_v).max(0.0).sqrt(),
-            0.0,
-            n_dot_v,
-        );
+        let v = Vec3::new((1.0 - n_dot_v * n_dot_v).max(0.0).sqrt(), 0.0, n_dot_v);
 
         let mut a = 0.0; // F0 scale
         let mut b = 0.0; // F0 bias
@@ -304,11 +300,7 @@ impl IBLBaker {
         let cos_theta = cos_theta.clamp(-1.0, 1.0);
         let sin_theta = (1.0 - cos_theta * cos_theta).max(0.0).sqrt();
 
-        Vec3::new(
-            sin_theta * phi.cos(),
-            sin_theta * phi.sin(),
-            cos_theta,
-        )
+        Vec3::new(sin_theta * phi.cos(), sin_theta * phi.sin(), cos_theta)
     }
 
     /// Halton sequence for quasi-random sampling
@@ -436,7 +428,8 @@ impl IBLBaker {
             for y in 0..size {
                 for x in 0..size {
                     let dir = Self::cube_map_direction(face, x, y, size);
-                    let prefiltered = Self::prefilter_env(&env_sampler, dir, roughness, sample_count);
+                    let prefiltered =
+                        Self::prefilter_env(&env_sampler, dir, roughness, sample_count);
                     data.set_face_pixel(face, x, y, prefiltered);
                 }
             }
@@ -446,7 +439,12 @@ impl IBLBaker {
     }
 
     /// Prefilter environment map for specular IBL using GGX importance sampling
-    fn prefilter_env<F>(env_sampler: &F, normal: Vec3, roughness: f32, sample_count: u32) -> [f32; 3]
+    fn prefilter_env<F>(
+        env_sampler: &F,
+        normal: Vec3,
+        roughness: f32,
+        sample_count: u32,
+    ) -> [f32; 3]
     where
         F: Fn(Vec3) -> Vec3,
     {
@@ -502,7 +500,7 @@ impl IBLBaker {
         let v = (2.0 * y as f32 + 1.0) / size as f32 - 1.0;
 
         match face {
-            0 => Vec3::new(1.0, v, -u),   // +X
+            0 => Vec3::new(1.0, v, -u),  // +X
             1 => Vec3::new(-1.0, v, u),  // -X
             2 => Vec3::new(u, 1.0, -v),  // +Y
             3 => Vec3::new(u, -1.0, v),  // -Y
@@ -1069,8 +1067,8 @@ mod tests {
 
         // With uniform environment, irradiance should be approximately pi * env_color
         let pixel = data.get_face_pixel(4, 1, 1); // +Z face, center-ish
-        // Irradiance for uniform env = env_color * pi
-        // So 0.5 * pi ≈ 1.57
+                                                  // Irradiance for uniform env = env_color * pi
+                                                  // So 0.5 * pi ≈ 1.57
         assert!(pixel[0] > 0.0);
         assert!(pixel[1] > 0.0);
         assert!(pixel[2] > 0.0);
@@ -1079,9 +1077,7 @@ mod tests {
     #[test]
     fn test_bake_prefilter_data_basic() {
         let baker = IBLBaker::new();
-        let env_sampler = |dir: Vec3| {
-            Vec3::new(1.0, 1.0, 1.0) * dir.z.max(0.0)
-        };
+        let env_sampler = |dir: Vec3| Vec3::new(1.0, 1.0, 1.0) * dir.z.max(0.0);
         let data = baker.bake_prefilter_data(4, 0.5, 32, env_sampler);
         assert_eq!(data.size, 4);
         assert_eq!(data.roughness, 0.5);
