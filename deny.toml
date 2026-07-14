@@ -33,3 +33,29 @@ external-default-features = "allow"
 unknown-registry = "deny"
 unknown-git = "deny"
 allow-git = []
+
+[advisories]
+
+[[advisories.ignore]]
+id = "RUSTSEC-2026-0195"
+reason = "quick-xml vulnerability is a transitive dependency through winit/smithay-client-toolkit. Will be resolved when upgrading winit to 0.30+"
+
+[[advisories.ignore]]
+id = "RUSTSEC-2026-0194"
+reason = "quick-xml vulnerability is a transitive dependency through winit/smithay-client-toolkit. Will be resolved when upgrading winit to 0.30+"
+
+[[advisories.ignore]]
+id = "RUSTSEC-2025-0141"
+reason = "bincode unmaintained warning is a transitive dependency. Currently not used in production-critical code paths."
+
+[[advisories.ignore]]
+id = "RUSTSEC-2024-0436"
+reason = "paste unmaintained warning is a transitive dependency. Will be resolved when updating dependent crates."
+
+[[advisories.ignore]]
+id = "RUSTSEC-2025-0134"
+reason = "rustls-pemfile unmaintained warning is a transitive dependency through engine-network. Will be resolved when updating rustls dependencies."
+
+[[advisories.ignore]]
+id = "RUSTSEC-2026-0192"
+reason = "ttf-parser unmaintained warning is a transitive dependency through winit/sctk-adwaita. Will be resolved when upgrading winit to 0.30+"

@@ -206,8 +206,7 @@ mod tests {
     fn test_gzip_compress_decompress() {
         let data = b"test data for compression";
         let compressed = Compress::gzip(data, 6).unwrap();
-        let decompressed =
-            Compress::decompress(&compressed, crate::AssetCompress::Gzip).unwrap();
+        let decompressed = Compress::decompress(&compressed, crate::AssetCompress::Gzip).unwrap();
         assert_eq!(data.to_vec(), decompressed);
     }
 
@@ -234,8 +233,7 @@ mod tests {
         let data = b"brotli fallback test";
         let compressed = Compress::brotli(data, 5).unwrap();
         // brotli 内部 fallback 到 gzip，所以使用 Gzip 解压
-        let decompressed =
-            Compress::decompress(&compressed, crate::AssetCompress::Gzip).unwrap();
+        let decompressed = Compress::decompress(&compressed, crate::AssetCompress::Gzip).unwrap();
         assert_eq!(data.to_vec(), decompressed);
     }
 
@@ -243,8 +241,7 @@ mod tests {
     fn test_lz4_falls_back_to_zstd() {
         let data = b"lz4 fallback test";
         let compressed = Compress::lz4(data).unwrap();
-        let decompressed =
-            Compress::decompress(&compressed, crate::AssetCompress::Zstd).unwrap();
+        let decompressed = Compress::decompress(&compressed, crate::AssetCompress::Zstd).unwrap();
         assert_eq!(data.to_vec(), decompressed);
     }
 
@@ -275,7 +272,8 @@ mod tests {
     #[test]
     fn test_decrypt_default_no_encryption() {
         let data = b"plain content";
-        let decrypted = Encrypt::decrypt(data, &[0u8; 16], &[0u8; 12], crate::AssetEncrypt::None).unwrap();
+        let decrypted =
+            Encrypt::decrypt(data, &[0u8; 16], &[0u8; 12], crate::AssetEncrypt::None).unwrap();
         assert_eq!(data.to_vec(), decrypted);
     }
 
