@@ -51,6 +51,47 @@ impl Quat {
     }
 
     #[inline]
+    pub fn from_mat4(mat: &Mat4) -> Self {
+        let m = &mat.cols;
+
+        let trace = m[0][0] + m[1][1] + m[2][2];
+
+        if trace > 0.0 {
+            let s = 2.0 * (trace + 1.0).sqrt();
+            Self {
+                x: (m[2][1] - m[1][2]) / s,
+                y: (m[0][2] - m[2][0]) / s,
+                z: (m[1][0] - m[0][1]) / s,
+                w: 0.25 * s,
+            }
+        } else if m[0][0] > m[1][1] && m[0][0] > m[2][2] {
+            let s = 2.0 * (1.0 + m[0][0] - m[1][1] - m[2][2]).sqrt();
+            Self {
+                x: 0.25 * s,
+                y: (m[0][1] + m[1][0]) / s,
+                z: (m[0][2] + m[2][0]) / s,
+                w: (m[2][1] - m[1][2]) / s,
+            }
+        } else if m[1][1] > m[2][2] {
+            let s = 2.0 * (1.0 + m[1][1] - m[0][0] - m[2][2]).sqrt();
+            Self {
+                x: (m[0][1] + m[1][0]) / s,
+                y: 0.25 * s,
+                z: (m[1][2] + m[2][1]) / s,
+                w: (m[0][2] - m[2][0]) / s,
+            }
+        } else {
+            let s = 2.0 * (1.0 + m[2][2] - m[0][0] - m[1][1]).sqrt();
+            Self {
+                x: (m[0][2] + m[2][0]) / s,
+                y: (m[1][2] + m[2][1]) / s,
+                z: 0.25 * s,
+                w: (m[1][0] - m[0][1]) / s,
+            }
+        }
+    }
+
+    #[inline]
     pub fn inverse(self) -> Self {
         let len_sq = self.x * self.x + self.y * self.y + self.z * self.z + self.w * self.w;
         if len_sq > 0.0 {
@@ -169,6 +210,7 @@ impl fmt::Display for Quat {
     }
 }
 
+use super::Mat4;
 use super::Vec3;
 
 #[cfg(test)]
@@ -189,7 +231,6 @@ mod tests {
         let angle = std::f32::consts::FRAC_PI_2;
         let q = Quat::from_rotation_x(angle);
 
-        // Rotate Y axis by 90 degrees around X should give Z axis
         let v = Vec3::Y;
         let result = q * v;
         assert!((result.x - 0.0).abs() < 1e-6);
@@ -202,7 +243,6 @@ mod tests {
         let angle = std::f32::consts::FRAC_PI_2;
         let q = Quat::from_rotation_y(angle);
 
-        // Rotate X axis by 90 degrees around Y should give -Z axis
         let v = Vec3::X;
         let result = q * v;
         assert!((result.x - 0.0).abs() < 1e-6);
@@ -215,7 +255,6 @@ mod tests {
         let angle = std::f32::consts::FRAC_PI_2;
         let q = Quat::from_rotation_z(angle);
 
-        // Rotate X axis by 90 degrees around Z should give Y axis
         let v = Vec3::X;
         let result = q * v;
         assert!((result.x - 0.0).abs() < 1e-6);
@@ -238,7 +277,6 @@ mod tests {
         let q = Quat::from_rotation_x(std::f32::consts::FRAC_PI_4);
         let inv = q.inverse();
 
-        // q * inv should be identity
         let combined = q * inv;
         assert!((combined.x - 0.0).abs() < 1e-6);
         assert!((combined.y - 0.0).abs() < 1e-6);
@@ -288,10 +326,8 @@ mod tests {
         let q2 = Quat::from_rotation_y(std::f32::consts::FRAC_PI_2);
         let combined = q1 * q2;
 
-        // Apply combined rotation to X axis
         let v = Vec3::X;
         let result = combined * v;
-        // The combined rotation should produce a unit vector
         assert!((result.length() - 1.0).abs() < 1e-5);
     }
 
@@ -309,10 +345,8 @@ mod tests {
         let q2 = Quat::from_rotation_x(std::f32::consts::PI);
         let result = q1.slerp(q2, 0.5);
 
-        // Halfway rotation should be 90 degrees around X
         let v = Vec3::Y;
         let rotated = result * v;
-        // Y rotated by 90 deg around X -> Z
         assert!((rotated.z - 1.0).abs() < 1e-5 || (rotated.z + 1.0).abs() < 1e-5);
     }
 
@@ -322,7 +356,6 @@ mod tests {
         let q2 = Quat::from_rotation_x(std::f32::consts::FRAC_PI_2);
         let result = q1.nlerp(q2, 0.5);
 
-        // nlerp result should be normalized
         let len =
             (result.x * result.x + result.y * result.y + result.z * result.z + result.w * result.w)
                 .sqrt();
@@ -342,9 +375,18 @@ mod tests {
         let q = Quat::from_rotation_x(std::f32::consts::FRAC_PI_4);
         let q2 = q * q;
 
-        // Two 45 degree rotations = 90 degree rotation
         let v = Vec3::Y;
         let result = q2 * v;
         assert!((result.z - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_from_mat4_identity() {
+        let m = Mat4::IDENTITY;
+        let q = Quat::from_mat4(&m);
+        assert!((q.w - 1.0).abs() < 1e-6);
+        assert!((q.x).abs() < 1e-6);
+        assert!((q.y).abs() < 1e-6);
+        assert!((q.z).abs() < 1e-6);
     }
 }

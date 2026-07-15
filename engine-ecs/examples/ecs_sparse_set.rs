@@ -61,9 +61,11 @@ fn main() {
     let test_indices = [0, 100, 1000, 5000, 9999];
     for idx in test_indices {
         // 找到第 idx 个实体
-        let target_entity = entities.iter().enumerate().find_map(|(i, e)| {
-            if i == idx { Some(*e) } else { None }
-        });
+        let target_entity =
+            entities
+                .iter()
+                .enumerate()
+                .find_map(|(i, e)| if i == idx { Some(*e) } else { None });
 
         if let Some(entity) = target_entity {
             let pos = world.get_component::<Position>(entity);
@@ -110,9 +112,11 @@ fn main() {
     // 1000 次随机查询
     for _ in 0..1000 {
         let idx = ((rand_simple() * count as f32) as usize) % (count as usize);
-        let target_entity = entities.iter().enumerate().find_map(|(i, e)| {
-            if i == idx { Some(*e) } else { None }
-        });
+        let target_entity =
+            entities
+                .iter()
+                .enumerate()
+                .find_map(|(i, e)| if i == idx { Some(*e) } else { None });
         if let Some(entity) = target_entity {
             let _ = world.get_component::<Position>(entity);
             let _ = world.get_component::<Velocity>(entity);

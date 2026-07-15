@@ -26,20 +26,23 @@
 
 // Re-export commonly used types
 pub use animated_sprite::{AnimatedSprite, LoopMode};
-pub use buffer::{Buffer, IndexBuffer, IndexBuffer16, VertexBuffer, BufferMemoryHint, BufferUsage};
+pub use buffer::{Buffer, BufferMemoryHint, BufferUsage, IndexBuffer, IndexBuffer16, VertexBuffer};
 pub use camera::{Camera2D, OrthographicCamera, View, Viewport};
 pub use color::Color;
 pub use debug_renderer::DebugRenderer;
 pub use draw_params::{BlendMode, DrawParams};
 pub use image::Image;
-pub use pipeline::{BindGroup, BindGroupLayout, BlendOperation, ColorWriteMask, CompareFunction, DepthStencilState, Pipeline, PipelineDescriptor, PipelineType, PolygonMode, PrimitiveTopology, BlendFactor};
+pub use pipeline::{
+    BindGroup, BindGroupLayout, BlendFactor, BlendOperation, ColorWriteMask, CompareFunction,
+    DepthStencilState, Pipeline, PipelineDescriptor, PipelineType, PolygonMode, PrimitiveTopology,
+};
 pub use render_stats::RenderStats;
 pub use renderer::{RenderContext, Renderer};
 pub use shader::ShaderModule;
 pub use sprite::Rect;
 pub use sprite::Sprite;
 pub use sprite_batch::{BatchRenderer, SpriteBatch};
-pub use texture::{FilterMode, Sampler, Texture2D, TextureHandle, TextureFormat, WrapMode};
+pub use texture::{FilterMode, Sampler, Texture2D, TextureFormat, TextureHandle, WrapMode};
 pub use texture_atlas::{PackAlgorithm, PackResult, TextureAtlas, TextureAtlasBuilder};
 
 // Module declarations

@@ -1,5 +1,7 @@
-use core::ops::{Add, Sub, Mul, Div};
 use core::fmt;
+
+use crate::Quat;
+use crate::Vec3;
 
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
 #[repr(C)]
@@ -16,55 +18,71 @@ impl Euler {
     }
 
     #[inline]
-    pub fn to_radians(self) -> Self {
-        Self::new(
-            self.x * core::f32::consts::PI / 180.0,
-            self.y * core::f32::consts::PI / 180.0,
-            self.z * core::f32::consts::PI / 180.0,
-        )
+    pub fn from_vec3(v: Vec3) -> Self {
+        Self {
+            x: v.x,
+            y: v.y,
+            z: v.z,
+        }
     }
 
     #[inline]
-    pub fn to_degrees(self) -> Self {
-        Self::new(
-            self.x * 180.0 / core::f32::consts::PI,
-            self.y * 180.0 / core::f32::consts::PI,
-            self.z * 180.0 / core::f32::consts::PI,
-        )
+    pub fn to_vec3(&self) -> Vec3 {
+        Vec3::new(self.x, self.y, self.z)
+    }
+
+    #[inline]
+    pub fn to_quat(&self) -> Quat {
+        let cx = self.x.cos();
+        let sx = self.x.sin();
+        let cy = self.y.cos();
+        let sy = self.y.sin();
+        let cz = self.z.cos();
+        let sz = self.z.sin();
+
+        Quat {
+            x: sx * cy * cz - cx * sy * sz,
+            y: cx * sy * cz + sx * cy * sz,
+            z: cx * cy * sz - sx * sy * cz,
+            w: cx * cy * cz + sx * sy * sz,
+        }
     }
 }
 
-impl Add for Euler {
-    type Output = Self;
-    fn add(self, other: Self) -> Self {
-        Self::new(self.x + other.x, self.y + other.y, self.z + other.z)
-    }
-}
+impl From<Quat> for Euler {
+    fn from(q: Quat) -> Self {
+        let q = q.normalize();
 
-impl Sub for Euler {
-    type Output = Self;
-    fn sub(self, other: Self) -> Self {
-        Self::new(self.x - other.x, self.y - other.y, self.z - other.z)
-    }
-}
+        let sinr_cosp = 2.0 * (q.w * q.x + q.y * q.z);
+        let cosr_cosp = 1.0 - 2.0 * (q.x * q.x + q.y * q.y);
+        let roll = sinr_cosp.atan2(cosr_cosp);
 
-impl Mul<f32> for Euler {
-    type Output = Self;
-    fn mul(self, scalar: f32) -> Self {
-        Self::new(self.x * scalar, self.y * scalar, self.z * scalar)
-    }
-}
+        let sinp = 2.0 * (q.w * q.y - q.z * q.x);
+        let pitch = if sinp.abs() >= 1.0 {
+            sinp.copysign(std::f32::consts::FRAC_PI_2)
+        } else {
+            sinp.asin()
+        };
 
-impl Div<f32> for Euler {
-    type Output = Self;
-    fn div(self, scalar: f32) -> Self {
-        Self::new(self.x / scalar, self.y / scalar, self.z / scalar)
+        let siny_cosp = 2.0 * (q.w * q.z + q.x * q.y);
+        let cosy_cosp = 1.0 - 2.0 * (q.y * q.y + q.z * q.z);
+        let yaw = siny_cosp.atan2(cosy_cosp);
+
+        Self {
+            x: pitch,
+            y: yaw,
+            z: roll,
+        }
     }
 }
 
 impl fmt::Display for Euler {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Euler({:.4}, {:.4}, {:.4})", self.x, self.y, self.z)
+        write!(
+            f,
+            "Euler(x: {:.3}, y: {:.3}, z: {:.3})",
+            self.x, self.y, self.z
+        )
     }
 }
 
@@ -73,10 +91,57 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_radians_conversion() {
-        let euler = Euler::new(180.0, 90.0, 45.0);
-        let rad = euler.to_radians();
-        assert!((rad.x - core::f32::consts::PI).abs() < 1e-5);
-        assert!((rad.y - core::f32::consts::PI / 2.0).abs() < 1e-5);
+    fn test_new() {
+        let e = Euler::new(0.0, 0.0, 0.0);
+        assert_eq!(e.x, 0.0);
+        assert_eq!(e.y, 0.0);
+        assert_eq!(e.z, 0.0);
+    }
+
+    #[test]
+    fn test_from_vec3() {
+        let v = Vec3::new(1.0, 2.0, 3.0);
+        let e = Euler::from_vec3(v);
+        assert_eq!(e.x, 1.0);
+        assert_eq!(e.y, 2.0);
+        assert_eq!(e.z, 3.0);
+    }
+
+    #[test]
+    fn test_to_vec3() {
+        let e = Euler::new(1.0, 2.0, 3.0);
+        let v = e.to_vec3();
+        assert_eq!(v.x, 1.0);
+        assert_eq!(v.y, 2.0);
+        assert_eq!(v.z, 3.0);
+    }
+
+    #[test]
+    fn test_to_quat_identity() {
+        let e = Euler::new(0.0, 0.0, 0.0);
+        let q = e.to_quat();
+        assert!((q.x - 0.0).abs() < 1e-6);
+        assert!((q.y - 0.0).abs() < 1e-6);
+        assert!((q.z - 0.0).abs() < 1e-6);
+        assert!((q.w - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_to_quat_90_x() {
+        let e = Euler::new(std::f32::consts::FRAC_PI_2, 0.0, 0.0);
+        let q = e.to_quat();
+        assert!((q.x - 1.0).abs() < 1e-6);
+        assert!((q.y - 0.0).abs() < 1e-6);
+        assert!((q.z - 0.0).abs() < 1e-6);
+        assert!((q.w - 0.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_from_quat_identity() {
+        let q = Quat::IDENTITY;
+        let e: Euler = q.into();
+        assert!((e.x).abs() < 1e-6);
+        assert!((e.y).abs() < 1e-6);
+        assert!((e.z).abs() < 1e-6);
     }
 }

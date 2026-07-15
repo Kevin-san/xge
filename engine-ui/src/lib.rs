@@ -15,9 +15,9 @@ pub use input::{
     DragConfig, EventListener, SubscriptionId, UiEvent, UiEventBus, UiEventType, UiInput,
 };
 pub use layout::{
-    Alignment, Anchor, AnchorLayoutEngine, AnchorOffset, Dimension, FlexContainer, FlexDirection,
-    FlexItem, FlexLayoutEngine, FlexLayoutResult, FlexWrap, JustifyContent, LayoutDirection,
-    LayoutProperties, LayoutType, Margin, Padding, Pivot, Stretch, AlignItems, AlignSelf,
+    AlignItems, AlignSelf, Alignment, Anchor, AnchorLayoutEngine, AnchorOffset, Dimension,
+    FlexContainer, FlexDirection, FlexItem, FlexLayoutEngine, FlexLayoutResult, FlexWrap,
+    JustifyContent, LayoutDirection, LayoutProperties, LayoutType, Margin, Padding, Pivot, Stretch,
 };
 pub use text::{
     Font, FontHeader, FontLoadError, FontLoader, FontMetrics, FontParser, FontSize,
@@ -75,7 +75,10 @@ mod tests {
         let mut world = World::new();
         let root_entity = world.spawn();
         world.insert(root_entity, UiNode::new(UiNodeType::Root));
-        world.insert(root_entity, UiRoot::new(root_entity, Vec2::new(800.0, 600.0)));
+        world.insert(
+            root_entity,
+            UiRoot::new(root_entity, Vec2::new(800.0, 600.0)),
+        );
         assert!(world.get_component::<UiRoot>(root_entity).is_some());
     }
 
@@ -84,7 +87,10 @@ mod tests {
         let mut world = World::new();
         let root_entity = world.spawn();
         world.insert(root_entity, UiNode::new(UiNodeType::Root));
-        world.insert(root_entity, UiRoot::new(root_entity, Vec2::new(1024.0, 768.0)));
+        world.insert(
+            root_entity,
+            UiRoot::new(root_entity, Vec2::new(1024.0, 768.0)),
+        );
         let root = world.get_component::<UiRoot>(root_entity).unwrap().clone();
         root.update(&mut world);
         let node = world.get_component::<UiNode>(root_entity).unwrap();

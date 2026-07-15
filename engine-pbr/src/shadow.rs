@@ -52,7 +52,12 @@ pub fn orthographic(left: f32, right: f32, bottom: f32, top: f32, near: f32, far
             [2.0 / rpl, 0.0, 0.0, 0.0],
             [0.0, 2.0 / tpb, 0.0, 0.0],
             [0.0, 0.0, -2.0 / fpn, 0.0],
-            [-(right + left) / rpl, -(top + bottom) / tpb, -(far + near) / fpn, 1.0],
+            [
+                -(right + left) / rpl,
+                -(top + bottom) / tpb,
+                -(far + near) / fpn,
+                1.0,
+            ],
         ],
     }
 }
@@ -150,7 +155,9 @@ impl ShadowCascade {
     /// Returns homogeneous shadow coordinate [x, y, z, w]
     /// where x,y are in [0,1] UV space and z is the depth.
     pub fn compute_shadow_coord(&self, world_pos: Vec3) -> Vec4 {
-        let coord = self.view_proj.mul_vec4(Vec4::new(world_pos.x, world_pos.y, world_pos.z, 1.0));
+        let coord = self
+            .view_proj
+            .mul_vec4(Vec4::new(world_pos.x, world_pos.y, world_pos.z, 1.0));
         // Convert from NDC [-1, 1] to UV [0, 1]
         Vec4::new(
             coord.x * 0.5 + 0.5,
@@ -356,10 +363,7 @@ impl ShadowMapRenderer {
         let z_biased = z - self.config.bias;
 
         // Average over all samples
-        let lit_count = depth_samples
-            .iter()
-            .filter(|&&d| z_biased < d)
-            .count();
+        let lit_count = depth_samples.iter().filter(|&&d| z_biased < d).count();
 
         lit_count as f32 / depth_samples.len() as f32
     }
@@ -717,11 +721,7 @@ mod tests {
     #[test]
     fn test_set_light_view() {
         let mut renderer = ShadowMapRenderer::default();
-        renderer.set_light_view(
-            Vec3::new(0.0, -1.0, 0.0),
-            Vec3::new(0.0, 0.0, 0.0),
-            50.0,
-        );
+        renderer.set_light_view(Vec3::new(0.0, -1.0, 0.0), Vec3::new(0.0, 0.0, 0.0), 50.0);
         // Just verify it doesn't panic
         assert_eq!(renderer.cascades.len(), 4);
     }

@@ -590,19 +590,17 @@ impl TlsConfig {
     pub fn build_client_config(&self) -> NetResult<ClientConfig> {
         let mut root_store = RootCertStore::empty();
         // Add Mozilla's root CAs
-        root_store.extend(
-            webpki_roots::TLS_SERVER_ROOTS
-                .iter()
-                .cloned(),
-        );
+        root_store.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
 
         // Load custom CA if provided
         if let Some(ca_path) = &self.ca_file {
             let ca_pem = fs::read(ca_path)
                 .map_err(|e| NetError::Tls(format!("Failed to read CA file: {}", e)))?;
             for item in rustls_pemfile::certs(&mut ca_pem.as_slice()) {
-                let der = item.map_err(|e| NetError::Tls(format!("Failed to parse CA cert: {}", e)))?;
-                root_store.add(der)
+                let der =
+                    item.map_err(|e| NetError::Tls(format!("Failed to parse CA cert: {}", e)))?;
+                root_store
+                    .add(der)
                     .map_err(|e| NetError::Tls(format!("Failed to add CA cert: {}", e)))?;
             }
         }
@@ -660,11 +658,8 @@ impl TlsTcpTransport {
             .map_err(|e| NetError::Tls(format!("Invalid domain: {}", e)))?
             .to_owned();
 
-        let conn = rustls::client::ClientConnection::new(
-            Arc::new(client_config),
-            domain,
-        )
-        .map_err(|e| NetError::Tls(format!("Failed to create TLS session: {}", e)))?;
+        let conn = rustls::client::ClientConnection::new(Arc::new(client_config), domain)
+            .map_err(|e| NetError::Tls(format!("Failed to create TLS session: {}", e)))?;
 
         let conn_arc = Arc::new(Mutex::new(conn));
         let stream_arc = Arc::new(Mutex::new(tcp));
@@ -797,9 +792,11 @@ impl NetChannel for TlsTcpTransport {
             let mut stream = self.stream.lock();
 
             // Write to TLS connection's write buffer
-            conn.writer().write_all(&chunk)
+            conn.writer()
+                .write_all(&chunk)
                 .map_err(|e| NetError::Tls(format!("TLS write error: {}", e)))?;
-            self.bytes_out.fetch_add(chunk.len() as u64, Ordering::SeqCst);
+            self.bytes_out
+                .fetch_add(chunk.len() as u64, Ordering::SeqCst);
             self.msg_out.fetch_add(1, Ordering::SeqCst);
 
             // Write pending TLS data to socket

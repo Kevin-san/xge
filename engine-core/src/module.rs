@@ -62,6 +62,10 @@ impl ModuleRegistry {
         self.modules.borrow().is_empty()
     }
 
+    pub fn contains(&self, name: &str) -> bool {
+        self.modules.borrow().contains_key(name)
+    }
+
     pub fn initialize_all(&self) -> Result<(), CycleError> {
         let sorted = topological_sort(&mut self.modules.borrow_mut())?;
 

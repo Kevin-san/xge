@@ -44,9 +44,11 @@ fn get_clipboard() -> Result<std::sync::MutexGuard<'static, arboard::Clipboard>,
         // 尝试初始化；若同时有多个线程并发插入，保留第一个成功的实例
         let _ = CLIPBOARD.set(Mutex::new(cb));
     }
-    CLIPBOARD.get().unwrap().lock().map_err(|e| {
-        ClipboardError::Unknown(format!("剪贴板互斥锁被污染: {}", e))
-    })
+    CLIPBOARD
+        .get()
+        .unwrap()
+        .lock()
+        .map_err(|e| ClipboardError::Unknown(format!("剪贴板互斥锁被污染: {}", e)))
 }
 
 /// 从系统剪贴板获取文本内容
@@ -119,9 +121,9 @@ pub fn has_text() -> Result<bool, ClipboardError> {
 /// - `Err(ClipboardError)` — 清空失败
 pub fn clear() -> Result<(), ClipboardError> {
     let mut clipboard = get_clipboard()?;
-    clipboard.clear().map_err(|e| {
-        ClipboardError::Unknown(format!("清空剪贴板失败: {}", e))
-    })
+    clipboard
+        .clear()
+        .map_err(|e| ClipboardError::Unknown(format!("清空剪贴板失败: {}", e)))
 }
 
 #[cfg(test)]
@@ -132,7 +134,10 @@ mod tests {
     fn test_set_empty_text_returns_error() {
         let result = set_text("");
         assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), ClipboardError::ContentUnavailable));
+        assert!(matches!(
+            result.unwrap_err(),
+            ClipboardError::ContentUnavailable
+        ));
     }
 
     #[test]
