@@ -8,7 +8,7 @@ rust-version.workspace = true
 
 [dependencies]
 # winit for window management and events
-winit = "0.29"
+winit = "0.30"
 
 # raw-window-handle for graphics API integration
 raw-window-handle = "0.5"

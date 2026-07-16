@@ -134,6 +134,10 @@ mod tests {
     use super::*;
     use winit::event::{Event, WindowEvent};
 
+    fn dummy_window_id() -> winit::window::WindowId {
+        unsafe { std::mem::zeroed() }
+    }
+
     #[test]
     fn test_initial_state() {
         let state = WindowState::new();
@@ -148,14 +152,14 @@ mod tests {
         let state = WindowState::new();
 
         let event = Event::WindowEvent {
-            window_id: unsafe { std::mem::zeroed() },
+            window_id: dummy_window_id(),
             event: WindowEvent::Focused(false),
         };
         state.process_event(&event);
         assert!(!state.is_focused());
 
         let event = Event::WindowEvent {
-            window_id: unsafe { std::mem::zeroed() },
+            window_id: dummy_window_id(),
             event: WindowEvent::Focused(true),
         };
         state.process_event(&event);
@@ -165,14 +169,12 @@ mod tests {
     #[test]
     fn test_minimized_event() {
         let state = WindowState::new();
-        // winit 0.29 没有 Minimized 事件变体，此处仅测试默认值
         assert!(!state.is_minimized());
     }
 
     #[test]
     fn test_maximized_event() {
         let state = WindowState::new();
-        // winit 0.29 没有 Maximized 事件变体，此处仅测试默认值
         assert!(!state.is_maximized());
     }
 
@@ -181,14 +183,14 @@ mod tests {
         let state = WindowState::new();
 
         let event = Event::WindowEvent {
-            window_id: unsafe { std::mem::zeroed() },
+            window_id: dummy_window_id(),
             event: WindowEvent::Occluded(true),
         };
         state.process_event(&event);
         assert!(!state.is_visible());
 
         let event = Event::WindowEvent {
-            window_id: unsafe { std::mem::zeroed() },
+            window_id: dummy_window_id(),
             event: WindowEvent::Occluded(false),
         };
         state.process_event(&event);
@@ -200,7 +202,7 @@ mod tests {
         let state = WindowState::new();
 
         let event = Event::WindowEvent {
-            window_id: unsafe { std::mem::zeroed() },
+            window_id: dummy_window_id(),
             event: WindowEvent::Resized(winit::dpi::PhysicalSize {
                 width: 1920,
                 height: 1080,
@@ -217,7 +219,7 @@ mod tests {
         let state = WindowState::new();
 
         let event = Event::WindowEvent {
-            window_id: unsafe { std::mem::zeroed() },
+            window_id: dummy_window_id(),
             event: WindowEvent::CloseRequested,
         };
         state.process_event(&event);

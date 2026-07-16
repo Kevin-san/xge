@@ -323,16 +323,18 @@ mod tests {
         assert_eq!(config.log_level, cloned.log_level);
     }
 
+    fn dummy_window_id() -> engine_window::WindowId {
+        unsafe { std::mem::zeroed() }
+    }
+
     #[test]
     fn test_process_window_event_no_panic() {
         let engine = Engine::default();
-        // 构造一个空的 Event 来测试
         let event = Event::WindowEvent {
-            window_id: unsafe { std::mem::zeroed() },
+            window_id: dummy_window_id(),
             event: engine_window::WindowEvent::Focused(true),
         };
         engine.process_window_event(&event);
-        // 应仍处于默认状态
         assert!(engine.is_focused());
         assert!(!engine.is_minimized());
     }
