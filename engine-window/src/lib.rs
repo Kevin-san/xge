@@ -16,7 +16,7 @@ use std::collections::HashMap;
 pub use winit::dpi::{LogicalPosition, LogicalSize, PhysicalPosition, PhysicalSize, Position};
 pub use winit::event::{DeviceEvent, Event, WindowEvent};
 pub use winit::event_loop::{ControlFlow, EventLoop, EventLoopBuilder, EventLoopProxy};
-pub use winit::monitor::{MonitorHandle, VideoMode};
+pub use winit::monitor::{MonitorHandle, VideoModeHandle};
 pub use winit::window::{Fullscreen, Icon, Window, WindowLevel};
 
 // 引擎级按键枚举（屏蔽 winit 依赖）
@@ -100,7 +100,7 @@ impl WindowExt for Window {
     }
 
     fn set_engine_cursor_icon(&self, icon: CursorIcon) {
-        self.set_cursor_icon(map_cursor_icon(icon));
+        self.set_cursor(map_cursor_icon(icon));
     }
 
     fn set_engine_cursor_position(&self, x: f64, y: f64) -> Result<(), String> {
@@ -112,55 +112,79 @@ impl WindowExt for Window {
 // ===== 窗口配置 =====
 
 pub struct WindowBuilder {
-    builder: winit::window::WindowBuilder,
+    title: String,
+    width: u32,
+    height: u32,
+    resizable: bool,
+    maximized: bool,
+    visible: bool,
+    decorations: bool,
+    transparent: bool,
 }
 
 impl WindowBuilder {
     pub fn new() -> Self {
         Self {
-            builder: winit::window::WindowBuilder::new(),
+            title: "Game Engine".to_string(),
+            width: 1280,
+            height: 720,
+            resizable: true,
+            maximized: false,
+            visible: true,
+            decorations: true,
+            transparent: false,
         }
     }
 
     pub fn with_title(mut self, title: &str) -> Self {
-        self.builder = self.builder.with_title(title);
+        self.title = title.to_string();
         self
     }
 
     pub fn with_inner_size(mut self, width: u32, height: u32) -> Self {
-        self.builder = self
-            .builder
-            .with_inner_size(PhysicalSize::new(width, height));
+        self.width = width;
+        self.height = height;
         self
     }
 
     pub fn with_resizable(mut self, resizable: bool) -> Self {
-        self.builder = self.builder.with_resizable(resizable);
+        self.resizable = resizable;
         self
     }
 
     pub fn with_maximized(mut self, maximized: bool) -> Self {
-        self.builder = self.builder.with_maximized(maximized);
+        self.maximized = maximized;
         self
     }
 
     pub fn with_visible(mut self, visible: bool) -> Self {
-        self.builder = self.builder.with_visible(visible);
+        self.visible = visible;
         self
     }
 
     pub fn with_decorations(mut self, decorations: bool) -> Self {
-        self.builder = self.builder.with_decorations(decorations);
+        self.decorations = decorations;
         self
     }
 
     pub fn with_transparent(mut self, transparent: bool) -> Self {
-        self.builder = self.builder.with_transparent(transparent);
+        self.transparent = transparent;
         self
     }
 
     pub fn build(self, event_loop: &EventLoop<()>) -> Result<Window, Box<dyn std::error::Error>> {
-        self.builder.build(event_loop).map_err(|e| e.into())
+        event_loop
+            .create_window(
+                winit::window::WindowAttributes::default()
+                    .with_title(self.title)
+                    .with_inner_size(PhysicalSize::new(self.width, self.height))
+                    .with_resizable(self.resizable)
+                    .with_maximized(self.maximized)
+                    .with_visible(self.visible)
+                    .with_decorations(self.decorations)
+                    .with_transparent(self.transparent),
+            )
+            .map_err(|e| e.into())
     }
 }
 

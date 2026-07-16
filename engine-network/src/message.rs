@@ -2,6 +2,7 @@
 
 use crate::error::{NetError, NetResult};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde_json;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
@@ -20,7 +21,7 @@ pub trait NetMessage: Serialize + DeserializeOwned + Send + Sync + 'static {
 
     /// Serialize message to bytes
     fn encode(&self) -> NetResult<Vec<u8>> {
-        bincode::serialize(self).map_err(|e| NetError::Serialization(e.to_string()))
+        serde_json::to_vec(self).map_err(|e| NetError::Serialization(e.to_string()))
     }
 
     /// Deserialize message from bytes
@@ -30,7 +31,7 @@ pub trait NetMessage: Serialize + DeserializeOwned + Send + Sync + 'static {
         if data.len() > MAX_MESSAGE_SIZE {
             return Err(NetError::Deserialization("Message too large".to_string()));
         }
-        bincode::deserialize(data).map_err(|e| NetError::Deserialization(e.to_string()))
+        serde_json::from_slice(data).map_err(|e| NetError::Deserialization(e.to_string()))
     }
 }
 
@@ -88,7 +89,7 @@ impl Message {
 
     /// Serialize the message wrapper to bytes
     pub fn encode(&self) -> NetResult<Vec<u8>> {
-        bincode::serialize(self).map_err(|e| NetError::Serialization(e.to_string()))
+        serde_json::to_vec(self).map_err(|e| NetError::Serialization(e.to_string()))
     }
 
     /// Deserialize message wrapper from bytes
@@ -98,7 +99,7 @@ impl Message {
         if data.len() > MAX_MESSAGE_SIZE {
             return Err(NetError::Deserialization("Message too large".to_string()));
         }
-        bincode::deserialize(data).map_err(|e| NetError::Deserialization(e.to_string()))
+        serde_json::from_slice(data).map_err(|e| NetError::Deserialization(e.to_string()))
     }
 
     /// Get message size
