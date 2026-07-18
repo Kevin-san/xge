@@ -51,6 +51,28 @@ pub struct TextInputEvent {
     pub text: String,
 }
 
+/// 触摸输入事件
+#[derive(Debug, Clone, PartialEq)]
+pub struct TouchInputEvent {
+    /// 触摸点 ID
+    pub id: u64,
+    /// 触摸位置（窗口内坐标）
+    pub position: Vec2,
+    /// 触摸力度（0.0 = 无力度信息）
+    pub force: f32,
+    /// 触摸阶段
+    pub phase: TouchPhase,
+}
+
+/// 触摸阶段
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TouchPhase {
+    Started,
+    Moved,
+    Ended,
+    Cancelled,
+}
+
 /// 元素状态
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ElementState {
@@ -74,6 +96,8 @@ pub enum InputEvent {
     MouseWheel(MouseWheelEvent),
     /// 文本输入事件
     TextInput(TextInputEvent),
+    /// 触摸输入事件
+    TouchInput(TouchInputEvent),
 }
 
 /// 光标可见性
@@ -159,6 +183,17 @@ mod tests {
     #[test]
     fn test_cursor_icon_default() {
         assert_eq!(CursorIcon::default(), CursorIcon::Default);
+    }
+
+    #[test]
+    fn test_touch_input_event() {
+        let event = InputEvent::TouchInput(TouchInputEvent {
+            id: 0,
+            position: Vec2::new(100.0, 200.0),
+            force: 0.5,
+            phase: TouchPhase::Started,
+        });
+        assert!(matches!(event, InputEvent::TouchInput(_)));
     }
 
     #[test]

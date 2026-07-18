@@ -2,6 +2,7 @@
 //!
 //! 提供跨平台窗口管理、输入事件处理和剪贴板访问
 
+pub mod action_binding;
 pub mod clipboard;
 pub mod input_event;
 pub mod key_code;
@@ -25,7 +26,8 @@ pub use key_code::{KeyCode, ModifiersState, MouseButton};
 // 引擎级输入事件
 pub use input_event::{
     CursorGrabMode, CursorIcon, CursorVisibility, ElementState, InputEvent, KeyEvent,
-    MouseButtonEvent, MouseMotionEvent, MouseWheelEvent, TextInputEvent,
+    MouseButtonEvent, MouseMotionEvent, MouseWheelEvent, TextInputEvent, TouchInputEvent,
+    TouchPhase,
 };
 
 // 窗口状态
@@ -33,6 +35,9 @@ pub use window_state::{WindowSize, WindowState};
 
 // 剪贴板错误
 pub use crate::clipboard::ClipboardError;
+
+// 动作绑定
+pub use action_binding::{ActionBindings, InputSource};
 
 // ===== 引擎级窗口 API（屏蔽 winit 依赖）=====
 
@@ -248,6 +253,8 @@ pub struct Input {
     modifiers: ModifiersState,
     text_input: String,
     touches: HashMap<u64, TouchPoint>,
+    // DPI 缩放因子
+    scale_factor: f64,
     // 本帧生成的输入事件（队列）
     events_this_frame: Vec<InputEvent>,
 }
@@ -263,6 +270,7 @@ impl Input {
             modifiers: ModifiersState::empty(),
             text_input: String::new(),
             touches: HashMap::new(),
+            scale_factor: 1.0,
             events_this_frame: Vec::new(),
         }
     }
@@ -536,6 +544,22 @@ impl Input {
                 );
             }
         }
+
+        // Generate engine-level touch event
+        let engine_phase = match phase {
+            winit::event::TouchPhase::Started => crate::input_event::TouchPhase::Started,
+            winit::event::TouchPhase::Moved => crate::input_event::TouchPhase::Moved,
+            winit::event::TouchPhase::Ended => crate::input_event::TouchPhase::Ended,
+            winit::event::TouchPhase::Cancelled => crate::input_event::TouchPhase::Cancelled,
+        };
+        self.events_this_frame.push(InputEvent::TouchInput(
+            crate::input_event::TouchInputEvent {
+                id,
+                position,
+                force,
+                phase: engine_phase,
+            },
+        ));
     }
 
     // ===== 快捷查询 =====
@@ -544,6 +568,54 @@ impl Input {
         self.key_states
             .values()
             .any(|s| matches!(s, KeyPressState::Pressed | KeyPressState::JustPressed))
+    }
+
+    // ===== 按下键/按钮迭代器 =====
+
+    /// 返回当前所有按下的键的迭代器
+    pub fn pressed_keys(&self) -> impl Iterator<Item = KeyCode> + '_ {
+        self.key_states
+            .iter()
+            .filter(|(_, &s)| matches!(s, KeyPressState::Pressed | KeyPressState::JustPressed))
+            .map(|(&code, _)| code)
+    }
+
+    /// 返回当前所有按下的鼠标按钮的迭代器
+    pub fn pressed_buttons(&self) -> impl Iterator<Item = MouseButton> + '_ {
+        self.button_states
+            .iter()
+            .filter(|(_, &s)| {
+                matches!(s, ButtonPressState::Pressed | ButtonPressState::JustPressed)
+            })
+            .map(|(&btn, _)| btn)
+    }
+
+    /// 返回已按下的键数量
+    pub fn pressed_key_count(&self) -> usize {
+        self.key_states
+            .values()
+            .filter(|&&s| matches!(s, KeyPressState::Pressed | KeyPressState::JustPressed))
+            .count()
+    }
+
+    /// 返回已按下的鼠标按钮数量
+    pub fn pressed_button_count(&self) -> usize {
+        self.button_states
+            .values()
+            .filter(|&&s| matches!(s, ButtonPressState::Pressed | ButtonPressState::JustPressed))
+            .count()
+    }
+
+    // ===== DPI 缩放 =====
+
+    /// 获取 DPI 缩放因子
+    pub fn scale_factor(&self) -> f64 {
+        self.scale_factor
+    }
+
+    /// 更新 DPI 缩放因子
+    pub fn set_scale_factor(&mut self, factor: f64) {
+        self.scale_factor = factor;
     }
 }
 
@@ -846,5 +918,33 @@ mod tests {
     fn test_window_builder_new() {
         let builder = WindowBuilder::new();
         let _ = builder.with_title("Test").with_inner_size(800, 600);
+    }
+
+    #[test]
+    fn test_pressed_keys_iterator() {
+        let mut input = Input::new();
+        input.update_key(KeyCode::A, ElementState::Pressed);
+        input.update_key(KeyCode::D, ElementState::Pressed);
+        let pressed: Vec<_> = input.pressed_keys().collect();
+        assert_eq!(pressed.len(), 2);
+        assert!(pressed.contains(&KeyCode::A));
+        assert!(pressed.contains(&KeyCode::D));
+    }
+
+    #[test]
+    fn test_pressed_buttons_iterator() {
+        let mut input = Input::new();
+        input.update_button(MouseButton::Left, ElementState::Pressed);
+        input.update_button(MouseButton::Right, ElementState::Pressed);
+        let pressed: Vec<_> = input.pressed_buttons().collect();
+        assert_eq!(pressed.len(), 2);
+    }
+
+    #[test]
+    fn test_scale_factor() {
+        let mut input = Input::new();
+        assert_eq!(input.scale_factor(), 1.0);
+        input.set_scale_factor(2.0);
+        assert_eq!(input.scale_factor(), 2.0);
     }
 }
