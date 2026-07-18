@@ -18,11 +18,19 @@ impl Mat3 {
     #[allow(clippy::too_many_arguments)]
     #[inline]
     pub fn new(
-        m00: f32, m01: f32, m02: f32,
-        m10: f32, m11: f32, m12: f32,
-        m20: f32, m21: f32, m22: f32,
+        m00: f32,
+        m01: f32,
+        m02: f32,
+        m10: f32,
+        m11: f32,
+        m12: f32,
+        m20: f32,
+        m21: f32,
+        m22: f32,
     ) -> Self {
-        Self { cols: [[m00, m01, m02], [m10, m11, m12], [m20, m21, m22]] }
+        Self {
+            cols: [[m00, m01, m02], [m10, m11, m12], [m20, m21, m22]],
+        }
     }
 
     #[inline]
@@ -83,8 +91,10 @@ impl Mat3 {
     #[inline]
     pub fn determinant(&self) -> f32 {
         self.cols[0][0] * (self.cols[1][1] * self.cols[2][2] - self.cols[2][1] * self.cols[1][2])
-            - self.cols[1][0] * (self.cols[0][1] * self.cols[2][2] - self.cols[2][1] * self.cols[0][2])
-            + self.cols[2][0] * (self.cols[0][1] * self.cols[1][2] - self.cols[1][1] * self.cols[0][2])
+            - self.cols[1][0]
+                * (self.cols[0][1] * self.cols[2][2] - self.cols[2][1] * self.cols[0][2])
+            + self.cols[2][0]
+                * (self.cols[0][1] * self.cols[1][2] - self.cols[1][1] * self.cols[0][2])
     }
 
     #[inline]
@@ -111,9 +121,15 @@ impl Mat3 {
     #[inline]
     pub fn to_cols_array(&self) -> [f32; 9] {
         [
-            self.cols[0][0], self.cols[0][1], self.cols[0][2],
-            self.cols[1][0], self.cols[1][1], self.cols[1][2],
-            self.cols[2][0], self.cols[2][1], self.cols[2][2],
+            self.cols[0][0],
+            self.cols[0][1],
+            self.cols[0][2],
+            self.cols[1][0],
+            self.cols[1][1],
+            self.cols[1][2],
+            self.cols[2][0],
+            self.cols[2][1],
+            self.cols[2][2],
         ]
     }
 }

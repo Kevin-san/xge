@@ -1,7 +1,7 @@
 //! 轻量自旋锁 — 用于高频短持有场景
 
-use core::sync::atomic::{AtomicBool, Ordering};
 use core::ops::{Deref, DerefMut};
+use core::sync::atomic::{AtomicBool, Ordering};
 
 /// 轻量自旋锁
 pub struct SpinLock<T> {
@@ -23,7 +23,11 @@ impl<T> SpinLock<T> {
 
     /// 获取锁（自旋等待）
     pub fn lock(&self) -> SpinLockGuard<'_, T> {
-        while self.lock.compare_exchange_weak(false, true, Ordering::Acquire, Ordering::Relaxed).is_err() {
+        while self
+            .lock
+            .compare_exchange_weak(false, true, Ordering::Acquire, Ordering::Relaxed)
+            .is_err()
+        {
             core::hint::spin_loop();
         }
         SpinLockGuard { lock: self }
@@ -31,7 +35,11 @@ impl<T> SpinLock<T> {
 
     /// 尝试获取锁
     pub fn try_lock(&self) -> Option<SpinLockGuard<'_, T>> {
-        if self.lock.compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed).is_ok() {
+        if self
+            .lock
+            .compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed)
+            .is_ok()
+        {
             Some(SpinLockGuard { lock: self })
         } else {
             None

@@ -8,28 +8,40 @@ pub struct Mat2 {
 }
 
 impl Mat2 {
-    pub const IDENTITY: Self = Self { cols: [[1.0, 0.0], [0.0, 1.0]] };
-    pub const ZERO: Self = Self { cols: [[0.0, 0.0], [0.0, 0.0]] };
+    pub const IDENTITY: Self = Self {
+        cols: [[1.0, 0.0], [0.0, 1.0]],
+    };
+    pub const ZERO: Self = Self {
+        cols: [[0.0, 0.0], [0.0, 0.0]],
+    };
 
     #[inline]
     pub fn new(m00: f32, m01: f32, m10: f32, m11: f32) -> Self {
-        Self { cols: [[m00, m01], [m10, m11]] }
+        Self {
+            cols: [[m00, m01], [m10, m11]],
+        }
     }
 
     #[inline]
     pub fn from_cols(x: Vec2, y: Vec2) -> Self {
-        Self { cols: [[x.x, x.y], [y.x, y.y]] }
+        Self {
+            cols: [[x.x, x.y], [y.x, y.y]],
+        }
     }
 
     #[inline]
     pub fn from_scale(scale: Vec2) -> Self {
-        Self { cols: [[scale.x, 0.0], [0.0, scale.y]] }
+        Self {
+            cols: [[scale.x, 0.0], [0.0, scale.y]],
+        }
     }
 
     #[inline]
     pub fn from_angle(angle: f32) -> Self {
         let (s, c) = angle.sin_cos();
-        Self { cols: [[c, s], [-s, c]] }
+        Self {
+            cols: [[c, s], [-s, c]],
+        }
     }
 
     #[inline]
@@ -72,7 +84,12 @@ impl Mat2 {
 
     #[inline]
     pub fn to_cols_array(&self) -> [f32; 4] {
-        [self.cols[0][0], self.cols[0][1], self.cols[1][0], self.cols[1][1]]
+        [
+            self.cols[0][0],
+            self.cols[0][1],
+            self.cols[1][0],
+            self.cols[1][1],
+        ]
     }
 }
 

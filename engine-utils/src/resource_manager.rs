@@ -44,6 +44,11 @@ impl<T> ResourceManager<T> {
         self.resources.contains_key(id)
     }
 
+    /// 重新加载资源（替换已有值，返回旧值）
+    pub fn reload(&mut self, id: AssetId, value: T) -> Option<T> {
+        self.resources.insert(id, value)
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = (&AssetId, &T)> {
         self.resources.iter()
     }
@@ -86,5 +91,36 @@ mod tests {
         let old = rm.load(id, 2);
         assert_eq!(old, Some(1));
         assert_eq!(rm.get(&id), Some(&2));
+    }
+
+    #[test]
+    fn test_reload() {
+        let mut rm = ResourceManager::new();
+        let id = AssetId::new(42);
+        rm.load(id, "v1");
+        let old = rm.reload(id, "v2");
+        assert_eq!(old, Some("v1"));
+        assert_eq!(rm.get(&id), Some(&"v2"));
+    }
+
+    #[test]
+    fn test_contains() {
+        let mut rm = ResourceManager::new();
+        let id = AssetId::new(1);
+        assert!(!rm.contains(&id));
+        rm.load(id, 100);
+        assert!(rm.contains(&id));
+    }
+
+    #[test]
+    fn test_len_and_is_empty() {
+        let mut rm = ResourceManager::new();
+        assert!(rm.is_empty());
+        assert_eq!(rm.len(), 0);
+
+        rm.load(AssetId::new(1), "a");
+        rm.load(AssetId::new(2), "b");
+        assert_eq!(rm.len(), 2);
+        assert!(!rm.is_empty());
     }
 }
