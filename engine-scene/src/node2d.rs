@@ -3,7 +3,7 @@
 //! 提供 2D 节点实现，包含变换属性。
 
 use super::{Node, NodeHandle};
-use engine_math::Vec2;
+use engine_math::{Mat3, Vec2, Vec3};
 
 /// 2D 节点
 ///
@@ -122,6 +122,55 @@ impl Node2D {
     /// 获取父节点句柄
     pub fn parent(&self) -> Option<NodeHandle> {
         self.parent
+    }
+
+    /// 计算局部变换矩阵（2D 仿射变换用 3x3 矩阵表示）
+    ///
+    /// 矩阵组合顺序：Scale -> Rotate -> Translate
+    pub fn local_matrix(&self) -> Mat3 {
+        let t = Mat3::new(
+            1.0, 0.0, 0.0,
+            0.0, 1.0, 0.0,
+            self.position.x, self.position.y, 1.0,
+        );
+        let r = Mat3::from_rotation_z(self.rotation);
+        let s = Mat3::from_scale(Vec3::new(self.scale.x, self.scale.y, 1.0));
+        t * r * s
+    }
+
+    /// 设置世界位置（需要传入父节点的世界逆矩阵）
+    ///
+    /// 仅在父节点存在时有效
+    pub fn set_world_position(&mut self, world_pos: Vec2, parent_world_matrix: &Mat3) {
+        if let Some(inv) = parent_world_matrix.inverse() {
+            let local = inv.mul_vec3(Vec3::new(world_pos.x, world_pos.y, 1.0));
+            self.position = Vec2::new(local.x, local.y);
+            self.transform_dirty = true;
+        }
+    }
+
+    /// 获取世界位置（需要传入父节点的世界矩阵）
+    pub fn world_position(&self, parent_world_matrix: &Mat3) -> Vec2 {
+        let local = parent_world_matrix.mul_vec3(Vec3::new(self.position.x, self.position.y, 1.0));
+        Vec2::new(local.x, local.y)
+    }
+
+    /// 获取世界旋转（需要传入父节点旋转）
+    pub fn world_rotation(&self, parent_rotation: f32) -> f32 {
+        parent_rotation + self.rotation
+    }
+
+    /// 获取世界缩放（需要传入父节点缩放）
+    pub fn world_scale(&self, parent_scale: Vec2) -> Vec2 {
+        Vec2::new(
+            parent_scale.x * self.scale.x,
+            parent_scale.y * self.scale.y,
+        )
+    }
+
+    /// 计算世界变换矩阵（需要传入父节点的世界矩阵）
+    pub fn world_matrix(&self, parent_world_matrix: &Mat3) -> Mat3 {
+        *parent_world_matrix * self.local_matrix()
     }
 }
 
@@ -349,5 +398,118 @@ mod tests {
     fn test_node2d_handle_new() {
         let h = NodeHandle::new(5);
         assert_eq!(h.index(), 5);
+    }
+
+    // ============= 世界变换和矩阵测试 =============
+
+    #[test]
+    fn test_node2d_local_matrix_identity() {
+        let node = Node2D::new("n");
+        let m = node.local_matrix();
+        // 平移分量在 cols[2][0] 和 cols[2][1]
+        assert!((m.cols[2][0] - 0.0).abs() < 1e-5);
+        assert!((m.cols[2][1] - 0.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_node2d_local_matrix_translation() {
+        let mut node = Node2D::new("n");
+        node.set_position(Vec2::new(5.0, 3.0));
+        let m = node.local_matrix();
+        assert!((m.cols[2][0] - 5.0).abs() < 1e-5);
+        assert!((m.cols[2][1] - 3.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_node2d_local_matrix_scale() {
+        let mut node = Node2D::new("n");
+        node.set_scale(Vec2::new(2.0, 3.0));
+        let m = node.local_matrix();
+        assert!((m.cols[0][0] - 2.0).abs() < 1e-5);
+        assert!((m.cols[1][1] - 3.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_node2d_world_position_no_parent() {
+        let node = Node2D::new("n");
+        let identity = Mat3::IDENTITY;
+        let wp = node.world_position(&identity);
+        assert_eq!(wp, node.position());
+    }
+
+    #[test]
+    fn test_node2d_world_position_with_parent() {
+        let mut node = Node2D::new("child");
+        node.set_position(Vec2::new(1.0, 0.0));
+        // 父节点在世界 (5,3)
+        let parent_mat = Mat3::new(
+            1.0, 0.0, 0.0,
+            0.0, 1.0, 0.0,
+            5.0, 3.0, 1.0,
+        );
+        let wp = node.world_position(&parent_mat);
+        assert!((wp.x - 6.0).abs() < 1e-4);
+        assert!((wp.y - 3.0).abs() < 1e-4);
+    }
+
+    #[test]
+    fn test_node2d_world_rotation() {
+        let mut node = Node2D::new("n");
+        node.set_rotation(std::f32::consts::FRAC_PI_4);
+        let wr = node.world_rotation(std::f32::consts::FRAC_PI_4);
+        assert!((wr - std::f32::consts::FRAC_PI_2).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_node2d_world_scale() {
+        let mut node = Node2D::new("n");
+        node.set_scale(Vec2::new(2.0, 3.0));
+        let ws = node.world_scale(Vec2::new(2.0, 2.0));
+        assert_eq!(ws, Vec2::new(4.0, 6.0));
+    }
+
+    #[test]
+    fn test_node2d_world_matrix_identity_parent() {
+        let mut node = Node2D::new("n");
+        node.set_position(Vec2::new(5.0, 3.0));
+        let identity = Mat3::IDENTITY;
+        let wm = node.world_matrix(&identity);
+        assert!((wm.cols[2][0] - 5.0).abs() < 1e-4);
+        assert!((wm.cols[2][1] - 3.0).abs() < 1e-4);
+    }
+
+    #[test]
+    fn test_node2d_set_world_position() {
+        let mut node = Node2D::new("n");
+        let parent_mat = Mat3::new(
+            1.0, 0.0, 0.0,
+            0.0, 1.0, 0.0,
+            5.0, 3.0, 1.0,
+        );
+        node.set_world_position(Vec2::new(6.0, 3.0), &parent_mat);
+        assert!((node.position().x - 1.0).abs() < 1e-4);
+        assert!((node.position().y - 0.0).abs() < 1e-4);
+    }
+
+    #[test]
+    fn test_node2d_local_matrix_rotation() {
+        let mut node = Node2D::new("n");
+        node.set_rotation(std::f32::consts::FRAC_PI_2);
+        let m = node.local_matrix();
+        // cos(90°) ≈ 0, sin(90°) ≈ 1
+        assert!(m.cols[0][0].abs() < 1e-5);
+        assert!((m.cols[0][1] - 1.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_node2d_world_matrix_chained() {
+        let mut parent_node = Node2D::new("parent");
+        parent_node.set_position(Vec2::new(10.0, 5.0));
+        let mut child_node = Node2D::new("child");
+        child_node.set_position(Vec2::new(2.0, 3.0));
+        let parent_mat = parent_node.local_matrix();
+        let child_world = child_node.world_position(&parent_mat);
+        assert!((child_world.x - 12.0).abs() < 1e-4);
+        assert!((child_world.y - 8.0).abs() < 1e-4);
     }
 }

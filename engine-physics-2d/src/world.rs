@@ -235,9 +235,6 @@ impl PhysicsWorld2D {
 
                 // 关节约束
                 self.solve_joints();
-
-                // 位置修正
-                self.correct_positions();
             }
 
             self.accumulator -= step_dt;
@@ -245,12 +242,28 @@ impl PhysicsWorld2D {
         }
     }
 
+    /// 执行物理步进（自定义迭代次数）
+    pub fn step_with_iterations(
+        &mut self,
+        dt: f32,
+        velocity_iterations: usize,
+        position_iterations: usize,
+    ) {
+        let orig_vi = self.config.velocity_iterations;
+        let orig_pi = self.config.position_iterations;
+        self.config.velocity_iterations = velocity_iterations;
+        self.config.position_iterations = position_iterations;
+        self.step(dt);
+        self.config.velocity_iterations = orig_vi;
+        self.config.position_iterations = orig_pi;
+    }
+
     /// 应用重力
     fn apply_gravity(&mut self) {
         let gravity = self.config.gravity;
         for body in &mut self.bodies {
-            if body.body_type() == RigidBodyType::Dynamic {
-                body.apply_force(gravity * body.mass());
+            if body.body_type() == RigidBodyType::Dynamic && !body.sleeping() {
+                body.apply_force(gravity * body.mass() * body.gravity_scale());
             }
         }
     }
@@ -258,7 +271,7 @@ impl PhysicsWorld2D {
     /// 更新速度
     fn update_velocities(&mut self, dt: f32) {
         for body in &mut self.bodies {
-            if body.body_type() == RigidBodyType::Dynamic {
+            if body.body_type() == RigidBodyType::Dynamic && !body.sleeping() {
                 body.update_velocity(dt);
             }
         }
@@ -267,7 +280,7 @@ impl PhysicsWorld2D {
     /// 更新位置
     fn update_positions(&mut self, dt: f32) {
         for body in &mut self.bodies {
-            if body.body_type() == RigidBodyType::Dynamic {
+            if body.body_type() == RigidBodyType::Dynamic && !body.sleeping() {
                 body.update_position(dt);
             }
         }
@@ -593,13 +606,110 @@ impl PhysicsWorld2D {
 
     /// 碰撞响应
     fn resolve_collisions(&mut self) {
-        // 简化的碰撞响应实现
-        // 实际实现需要考虑弹性、摩擦等因素
-        let _ = self;
-    }
+        let default_restitution = self.config.default_restitution;
+        let default_friction = self.config.default_friction;
 
-    #[allow(dead_code)]
-    fn resolve_contact(&self, _contact: &Contact) {}
+        // 收集需要处理的流形数据
+        let manifold_data: Vec<(usize, usize, Vec2, f32, Vec<Contact>)> = self
+            .manifolds
+            .values()
+            .map(|m| (m.body_a, m.body_b, m.normal, m.penetration, m.contacts.clone()))
+            .collect();
+
+        for (body_a_idx, body_b_idx, normal, penetration, contacts) in manifold_data {
+            // 跳过无效的刚体
+            if body_a_idx >= self.bodies.len() || body_b_idx >= self.bodies.len() {
+                continue;
+            }
+
+            // 获取质量和逆质量
+            let inv_mass_a = self.bodies[body_a_idx].inverse_mass();
+            let inv_mass_b = self.bodies[body_b_idx].inverse_mass();
+            let inv_inertia_a = self.bodies[body_a_idx].inverse_inertia();
+            let inv_inertia_b = self.bodies[body_b_idx].inverse_inertia();
+
+            let total_inv_mass = inv_mass_a + inv_mass_b;
+            if total_inv_mass == 0.0 {
+                continue;
+            }
+
+            // 位置修正（Baumgarte stabilization）
+            let slop = 0.005;
+            let baumgarte = 0.2;
+            let correction_magnitude = (penetration - slop).max(0.0) * baumgarte / total_inv_mass;
+            let correction = normal * correction_magnitude;
+
+            let pos_a = self.bodies[body_a_idx].position();
+            let pos_b = self.bodies[body_b_idx].position();
+            self.bodies[body_a_idx].set_position(pos_a - correction * inv_mass_a);
+            self.bodies[body_b_idx].set_position(pos_b + correction * inv_mass_b);
+
+            // 速度响应（冲量法）
+            for contact in &contacts {
+                let r_a = contact.position - self.bodies[body_a_idx].position();
+                let r_b = contact.position - self.bodies[body_b_idx].position();
+
+                let vel_a = self.bodies[body_a_idx].linear_velocity()
+                    + Vec2::new(
+                        -self.bodies[body_a_idx].angular_velocity() * r_a.y,
+                        self.bodies[body_a_idx].angular_velocity() * r_a.x,
+                    );
+                let vel_b = self.bodies[body_b_idx].linear_velocity()
+                    + Vec2::new(
+                        -self.bodies[body_b_idx].angular_velocity() * r_b.y,
+                        self.bodies[body_b_idx].angular_velocity() * r_b.x,
+                    );
+
+                let rel_vel = vel_b - vel_a;
+                let vel_along_normal = rel_vel.dot(normal);
+
+                // 如果物体正在分离，不处理
+                if vel_along_normal > 0.0 {
+                    continue;
+                }
+
+                // 计算冲量
+                let r_a_cross_n = r_a.x * normal.y - r_a.y * normal.x;
+                let r_b_cross_n = r_b.x * normal.y - r_b.y * normal.x;
+
+                let inv_mass_sum = total_inv_mass
+                    + r_a_cross_n * r_a_cross_n * inv_inertia_a
+                    + r_b_cross_n * r_b_cross_n * inv_inertia_b;
+
+                if inv_mass_sum == 0.0 {
+                    continue;
+                }
+
+                let restitution = default_restitution;
+                let j = -(1.0 + restitution) * vel_along_normal / inv_mass_sum;
+
+                let impulse = normal * j;
+                self.bodies[body_a_idx].apply_impulse(-impulse);
+                self.bodies[body_b_idx].apply_impulse(impulse);
+
+                // 摩擦冲量
+                let rel_vel_after = {
+                    let vel_a2 = self.bodies[body_a_idx].linear_velocity();
+                    let vel_b2 = self.bodies[body_b_idx].linear_velocity();
+                    vel_b2 - vel_a2
+                };
+                let tangent = rel_vel_after - normal * rel_vel_after.dot(normal);
+                let tangent_len = tangent.length();
+                if tangent_len > f32::EPSILON {
+                    let tangent = tangent / tangent_len;
+                    let jt = -rel_vel_after.dot(tangent) / inv_mass_sum;
+                    let friction = default_friction;
+                    let friction_impulse = if jt.abs() < j * friction {
+                        tangent * jt
+                    } else {
+                        tangent * (-j) * friction
+                    };
+                    self.bodies[body_a_idx].apply_impulse(-friction_impulse);
+                    self.bodies[body_b_idx].apply_impulse(friction_impulse);
+                }
+            }
+        }
+    }
 
     /// 关节约束求解
     fn solve_joints(&mut self) {
@@ -611,21 +721,6 @@ impl PhysicsWorld2D {
     /// 应用关节约束
     fn apply_joint_constraint(&self, _joint: &Joint2D) {
         // 简化的关节实现
-    }
-
-    /// 位置修正
-    fn correct_positions(&mut self) {
-        let slop = 0.005;
-        let baumgarte = 0.2;
-
-        for manifold in self.manifolds.values_mut() {
-            for contact in &mut manifold.contacts {
-                let correction = contact.normal * contact.penetration * baumgarte;
-                if correction.length() > slop {
-                    // 位置修正
-                }
-            }
-        }
     }
 
     /// 获取碰撞事件
@@ -676,6 +771,11 @@ impl PhysicsWorld2D {
     /// 启用/禁用物理仿真
     pub fn set_simulation(&mut self, enabled: bool) {
         self.simulation_enabled = enabled;
+    }
+
+    /// 设置物理暂停状态
+    pub fn set_paused(&mut self, paused: bool) {
+        self.simulation_enabled = !paused;
     }
 
     /// 清空世界
@@ -865,6 +965,106 @@ impl PhysicsWorld2D {
         results
     }
 
+    /// 获取所有接触信息
+    pub fn contacts(&self) -> Vec<crate::Contact> {
+        self.manifolds
+            .values()
+            .flat_map(|m| m.contacts.iter().cloned())
+            .collect()
+    }
+
+    /// 射线检测
+    ///
+    /// 从 origin 沿 dir 方向投射射线，返回第一个命中结果。
+    pub fn ray_cast(
+        &self,
+        origin: Vec2,
+        dir: Vec2,
+        max_toi: f32,
+        filter: &QueryFilter,
+    ) -> Option<crate::RayCastHit2D> {
+        let ray = crate::query::RayCast2D::new(origin, dir, max_toi);
+        let mut closest_hit: Option<crate::RayCastHit2D> = None;
+        let mut closest_t = max_toi;
+
+        for (i, collider) in self.colliders.iter().enumerate() {
+            if !collider.is_enabled() {
+                continue;
+            }
+
+            // 检查是否在跳过列表中
+            if filter.skip_bodies.contains(&i) {
+                continue;
+            }
+
+            // 检查传感器
+            if !filter.include_sensors && collider.is_sensor() {
+                continue;
+            }
+
+            // 获取碰撞体世界坐标
+            if let Some(body) = self.bodies.get(i) {
+                let world_pos = collider.world_position(body.position(), body.rotation());
+                if let Some(hit) = crate::query::ray_intersects_shape(
+                    &ray,
+                    world_pos,
+                    collider.world_rotation(body.rotation()),
+                    collider.shape(),
+                ) {
+                    let t = hit.time * max_toi;
+                    if t < closest_t {
+                        closest_t = t;
+                        closest_hit = Some(crate::RayCastHit2D {
+                            point: hit.point,
+                            normal: hit.normal,
+                            time: hit.time,
+                            collider: i as u64,
+                            face_index: hit.face_index,
+                        });
+                    }
+                }
+            }
+        }
+
+        closest_hit
+    }
+
+    /// 点重叠查询
+    ///
+    /// 返回包含该点的所有碰撞体索引。
+    pub fn point_overlap(&self, point: Vec2, filter: &QueryFilter) -> Vec<usize> {
+        let mut results = Vec::new();
+
+        for (i, collider) in self.colliders.iter().enumerate() {
+            if !collider.is_enabled() {
+                continue;
+            }
+
+            if filter.skip_bodies.contains(&i) {
+                continue;
+            }
+
+            if !filter.include_sensors && collider.is_sensor() {
+                continue;
+            }
+
+            if let Some(body) = self.bodies.get(i) {
+                let world_pos = collider.world_position(body.position(), body.rotation());
+                let world_rot = collider.world_rotation(body.rotation());
+                if crate::query::point_in_shape_with_pos_rot(
+                    point,
+                    collider.shape(),
+                    world_pos,
+                    world_rot,
+                ) {
+                    results.push(i);
+                }
+            }
+        }
+
+        results
+    }
+
     /// 获取接触流形迭代器
     pub fn contact_manifolds(&self) -> impl Iterator<Item = &Manifold> {
         self.manifolds.values()
@@ -889,6 +1089,8 @@ impl PhysicsWorld2D {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Collider2DBuilder;
+    use crate::RigidBody2DBuilder;
 
     #[test]
     fn test_physics_world_creation() {
@@ -986,5 +1188,97 @@ mod tests {
         assert!(body.is_some());
         // 原来的索引 1 应该变成 0
         assert_eq!(body.unwrap().collider_indices(), &[0]);
+    }
+
+    #[test]
+    fn test_contacts_empty() {
+        let world = PhysicsWorld2D::with_default_config();
+        assert!(world.contacts().is_empty());
+    }
+
+    #[test]
+    fn test_ray_cast_circle_hit() {
+        let mut world = PhysicsWorld2D::with_default_config();
+        let body = RigidBody2DBuilder::dynamic()
+            .with_position(Vec2::new(5.0, 0.0))
+            .build();
+        let body_idx = world.add_body(body);
+        let collider = Collider2DBuilder::circle(1.0).build();
+        world.add_collider(collider, body_idx);
+
+        let filter = QueryFilter::new();
+        let hit = world.ray_cast(Vec2::new(0.0, 0.0), Vec2::new(1.0, 0.0), 10.0, &filter);
+        assert!(hit.is_some());
+        let hit = hit.unwrap();
+        assert!((hit.point.x - 4.0).abs() < 0.1);
+    }
+
+    #[test]
+    fn test_ray_cast_miss() {
+        let mut world = PhysicsWorld2D::with_default_config();
+        let body = RigidBody2DBuilder::dynamic()
+            .with_position(Vec2::new(5.0, 5.0))
+            .build();
+        let body_idx = world.add_body(body);
+        let collider = Collider2DBuilder::circle(1.0).build();
+        world.add_collider(collider, body_idx);
+
+        let filter = QueryFilter::new();
+        let hit = world.ray_cast(Vec2::new(0.0, 0.0), Vec2::new(1.0, 0.0), 10.0, &filter);
+        assert!(hit.is_none());
+    }
+
+    #[test]
+    fn test_point_overlap_circle() {
+        let mut world = PhysicsWorld2D::with_default_config();
+        let body = RigidBody2DBuilder::dynamic()
+            .with_position(Vec2::new(5.0, 0.0))
+            .build();
+        let body_idx = world.add_body(body);
+        let collider = Collider2DBuilder::circle(2.0).build();
+        world.add_collider(collider, body_idx);
+
+        let filter = QueryFilter::new();
+        let results = world.point_overlap(Vec2::new(5.0, 0.0), &filter);
+        assert!(!results.is_empty());
+    }
+
+    #[test]
+    fn test_point_overlap_miss() {
+        let mut world = PhysicsWorld2D::with_default_config();
+        let body = RigidBody2DBuilder::dynamic()
+            .with_position(Vec2::new(5.0, 0.0))
+            .build();
+        let body_idx = world.add_body(body);
+        let collider = Collider2DBuilder::circle(1.0).build();
+        world.add_collider(collider, body_idx);
+
+        let filter = QueryFilter::new();
+        let results = world.point_overlap(Vec2::new(0.0, 0.0), &filter);
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn test_set_paused() {
+        let mut world = PhysicsWorld2D::with_default_config();
+        let body = RigidBody2DBuilder::dynamic()
+            .with_position(Vec2::new(0.0, 10.0))
+            .build();
+        world.add_body(body);
+
+        world.set_paused(true);
+        world.step(1.0 / 60.0);
+        // Paused world should not update positions
+        let pos = world.get_body(0).unwrap().position();
+        assert_eq!(pos, Vec2::new(0.0, 10.0));
+    }
+
+    #[test]
+    fn test_step_with_iterations() {
+        let mut world = PhysicsWorld2D::with_default_config();
+        let body = RigidBody2DBuilder::dynamic().build();
+        world.add_body(body);
+        world.step_with_iterations(1.0 / 60.0, 4, 2);
+        assert!(world.simulation_time() > 0.0);
     }
 }

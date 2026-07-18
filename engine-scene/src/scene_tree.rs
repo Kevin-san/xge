@@ -53,18 +53,20 @@ impl SceneTree {
 
     /// 添加子节点到父节点
     pub fn add_child(&mut self, parent: NodeHandle, child: NodeHandle) {
-        if parent == self.root || parent.index() as usize >= self.nodes.len() {
+        if parent.index() as usize >= self.nodes.len()
+            || child.index() as usize >= self.nodes.len()
+        {
             return;
         }
 
         // 更新子节点的父节点
-        if let Some(child_entry) = self.nodes.get_mut(parent.index() as usize) {
+        if let Some(child_entry) = self.nodes.get_mut(child.index() as usize) {
             child_entry.node.set_parent(Some(parent));
+        }
 
-            // 更新父节点的子节点列表
-            if let Some(parent_entry) = self.nodes.get_mut(parent.index() as usize) {
-                parent_entry.node.add_child(child);
-            }
+        // 更新父节点的子节点列表
+        if let Some(parent_entry) = self.nodes.get_mut(parent.index() as usize) {
+            parent_entry.node.add_child(child);
         }
     }
 
@@ -257,6 +259,40 @@ impl SceneTree {
             .map(|e| e.node.as_mut())
             .unwrap()
     }
+
+    /// 获取节点迭代器（深度优先遍历）
+    pub fn node_iter(&self) -> SceneTreeIter<'_> {
+        SceneTreeIter {
+            tree: self,
+            stack: vec![self.root],
+        }
+    }
+
+    /// 获取所有节点句柄（深度优先遍历）
+    pub fn iter(&self) -> Vec<NodeHandle> {
+        self.node_iter().collect()
+    }
+}
+
+/// 场景树深度优先迭代器
+pub struct SceneTreeIter<'a> {
+    tree: &'a SceneTree,
+    stack: Vec<NodeHandle>,
+}
+
+impl<'a> Iterator for SceneTreeIter<'a> {
+    type Item = NodeHandle;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let handle = self.stack.pop()?;
+        if let Some(entry) = self.tree.nodes.get(handle.index() as usize) {
+            // Push children in reverse order so first child is visited first
+            for child in entry.node.children().iter().rev() {
+                self.stack.push(*child);
+            }
+        }
+        Some(handle)
+    }
 }
 
 impl Default for SceneTree {
@@ -389,5 +425,33 @@ mod tests {
     fn test_scene_tree_root_index() {
         let tree = SceneTree::new();
         assert_eq!(tree.root().index(), 0);
+    }
+
+    #[test]
+    fn test_scene_tree_iter_dfs() {
+        let mut tree = SceneTree::new();
+        let c1 = tree.add_2d_node(tree.root(), "c1");
+        let c2 = tree.add_2d_node(tree.root(), "c2");
+        let _c3 = tree.add_2d_node(c1, "c3");
+
+        let handles: Vec<NodeHandle> = tree.iter();
+        assert!(handles.len() >= 4); // root + c1 + c2 + c3
+    }
+
+    #[test]
+    fn test_scene_tree_node_iter() {
+        let mut tree = SceneTree::new();
+        let _c1 = tree.add_2d_node(tree.root(), "c1");
+        let _c2 = tree.add_2d_node(tree.root(), "c2");
+
+        let count = tree.node_iter().count();
+        assert_eq!(count, 3); // root + 2 children
+    }
+
+    #[test]
+    fn test_scene_tree_iter_empty_tree() {
+        let tree = SceneTree::new();
+        let handles: Vec<NodeHandle> = tree.iter();
+        assert_eq!(handles.len(), 1); // only root
     }
 }

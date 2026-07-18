@@ -31,6 +31,32 @@ impl SceneLoader {
         let content = std::fs::read_to_string(path)?;
         Self::from_json(&content)
     }
+
+    /// 将场景序列化为二进制
+    pub fn to_binary(scene: &SceneTree) -> Result<Vec<u8>, anyhow::Error> {
+        let data = SceneData::from(scene);
+        let json = serde_json::to_vec(&data)?;
+        Ok(json)
+    }
+
+    /// 从二进制加载场景
+    pub fn from_binary(data: &[u8]) -> Result<SceneTree, anyhow::Error> {
+        let scene_data: SceneData = serde_json::from_slice(data)?;
+        Ok(scene_data.into())
+    }
+
+    /// 保存场景到二进制文件
+    pub fn save_binary(scene: &SceneTree, path: &std::path::Path) -> Result<(), anyhow::Error> {
+        let data = Self::to_binary(scene)?;
+        std::fs::write(path, data)?;
+        Ok(())
+    }
+
+    /// 从二进制文件加载场景
+    pub fn load_binary(path: &std::path::Path) -> Result<SceneTree, anyhow::Error> {
+        let data = std::fs::read(path)?;
+        Self::from_binary(&data)
+    }
 }
 
 /// 场景数据结构（用于序列化）
@@ -177,5 +203,39 @@ mod tests {
         assert!(SceneLoader::from_json("").is_err());
         assert!(SceneLoader::from_json("null").is_err());
         assert!(SceneLoader::from_json("{invalid").is_err());
+    }
+
+    #[test]
+    fn test_scene_loader_to_binary() {
+        let scene = SceneTree::new();
+        let data = SceneLoader::to_binary(&scene).unwrap();
+        assert!(!data.is_empty());
+    }
+
+    #[test]
+    fn test_scene_loader_from_binary_roundtrip() {
+        let scene = SceneTree::new();
+        let data = SceneLoader::to_binary(&scene).unwrap();
+        let loaded = SceneLoader::from_binary(&data).unwrap();
+        assert_eq!(loaded.node_count(), scene.node_count());
+    }
+
+    #[test]
+    fn test_scene_loader_save_load_binary() {
+        let scene = SceneTree::new();
+        let temp_dir = std::env::temp_dir();
+        let path = temp_dir.join("test_scene.scene.bin");
+
+        SceneLoader::save_binary(&scene, &path).unwrap();
+        let loaded = SceneLoader::load_binary(&path).unwrap();
+        assert_eq!(loaded.node_count(), scene.node_count());
+
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn test_scene_loader_from_binary_invalid() {
+        let result = SceneLoader::from_binary(&[0xFF, 0xFE, 0xFD]);
+        assert!(result.is_err());
     }
 }

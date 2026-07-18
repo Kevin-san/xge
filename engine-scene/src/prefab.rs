@@ -2,13 +2,36 @@
 
 use crate::{Node, NodeHandle, SceneTree};
 
+/// 预制体序列化数据
+#[derive(serde::Serialize, serde::Deserialize)]
+struct PrefabData {
+    name: String,
+    root_index: u32,
+    node_count: usize,
+}
+
 /// 预制体
 pub struct Prefab {
+    name: String,
     root: NodeHandle,
     nodes: Vec<Box<dyn Node>>,
 }
 
 impl Prefab {
+    /// 创建新的预制体
+    pub fn new(name: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            root: NodeHandle::new(0),
+            nodes: Vec::new(),
+        }
+    }
+
+    /// 获取预制体名称
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
     /// 从场景创建预制体
     pub fn from_scene(scene: &SceneTree, root: NodeHandle) -> Self {
         let mut nodes = Vec::new();
@@ -16,7 +39,16 @@ impl Prefab {
         // 收集所有节点（从根开始）
         Self::collect_nodes(scene, root, &mut nodes);
 
-        Self { root, nodes }
+        let name = scene
+            .get_node(root)
+            .map(|n| n.name().to_string())
+            .unwrap_or_default();
+
+        Self {
+            name,
+            root,
+            nodes,
+        }
     }
 
     /// 递归收集节点
@@ -72,7 +104,34 @@ impl Prefab {
         let _node_count = json["node_count"].as_u64().unwrap_or(0) as usize;
 
         Ok(Self {
+            name: String::new(),
             root: NodeHandle::new(root_index),
+            nodes: Vec::new(),
+        })
+    }
+
+    /// 在指定场景树中实例化
+    pub fn instantiate_in(&self, tree: &mut crate::SceneTree, parent: crate::NodeHandle) -> crate::NodeHandle {
+        tree.add_2d_node(parent, &self.name)
+    }
+
+    /// 保存预制件到二进制数据
+    pub fn save_bin(&self) -> Result<Vec<u8>, anyhow::Error> {
+        let data = PrefabData {
+            name: self.name.clone(),
+            root_index: self.root.index(),
+            node_count: self.nodes.len(),
+        };
+        let json = serde_json::to_vec(&data)?;
+        Ok(json)
+    }
+
+    /// 从二进制数据加载预制件
+    pub fn load_bin(data: &[u8]) -> Result<Self, anyhow::Error> {
+        let prefab_data: PrefabData = serde_json::from_slice(data)?;
+        Ok(Self {
+            name: prefab_data.name,
+            root: NodeHandle::new(prefab_data.root_index),
             nodes: Vec::new(),
         })
     }
@@ -166,5 +225,22 @@ mod tests {
         let (_root, nodes) = prefab.instantiate();
         // 至少验证返回的节点列表不为空
         assert!(!nodes.is_empty());
+    }
+
+    #[test]
+    fn test_prefab_instantiate_in() {
+        let mut tree = crate::SceneTree::new();
+        let root = tree.root();
+        let prefab = Prefab::new("test_prefab");
+        let handle = prefab.instantiate_in(&mut tree, root);
+        assert!(tree.get_node(handle).is_some());
+    }
+
+    #[test]
+    fn test_prefab_save_bin_load_bin() {
+        let prefab = Prefab::new("test_binary");
+        let data = prefab.save_bin().unwrap();
+        let loaded = Prefab::load_bin(&data).unwrap();
+        assert_eq!(loaded.name(), "test_binary");
     }
 }

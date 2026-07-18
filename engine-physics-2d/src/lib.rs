@@ -11,9 +11,11 @@ pub mod debug_renderer;
 pub mod joint;
 pub mod query;
 pub mod rigidbody;
+pub mod physics_material;
 pub mod world;
 
 pub use collider::{Collider2D, Collider2DBuilder, ColliderShape};
+pub use physics_material::PhysicsMaterial;
 pub use collision::{CollisionEvent, Contact, Manifold};
 pub use collision_group::CollisionGroup;
 pub use debug_renderer::PhysicsDebugRenderer;

@@ -68,6 +68,10 @@ pub struct RigidBody2D {
     collider_indices: Vec<usize>,
     /// 变换是否需要更新
     transform_dirty: bool,
+    /// 是否可休眠
+    can_sleep: bool,
+    /// 是否正在休眠
+    sleeping: bool,
 }
 
 impl RigidBody2D {
@@ -102,6 +106,8 @@ impl RigidBody2D {
             enabled: true,
             collider_indices: Vec::new(),
             transform_dirty: true,
+            can_sleep: true,
+            sleeping: false,
         }
     }
 
@@ -300,6 +306,37 @@ impl RigidBody2D {
         self.enabled = enabled;
     }
 
+    /// 获取是否可休眠
+    pub fn can_sleep(&self) -> bool {
+        self.can_sleep
+    }
+
+    /// 设置是否可休眠
+    pub fn set_can_sleep(&mut self, can_sleep: bool) {
+        self.can_sleep = can_sleep;
+    }
+
+    /// 获取是否正在休眠
+    pub fn sleeping(&self) -> bool {
+        self.sleeping
+    }
+
+    /// 唤醒刚体
+    pub fn wake_up(&mut self) {
+        self.sleeping = false;
+    }
+
+    /// 强制休眠
+    pub fn sleep(&mut self) {
+        if self.can_sleep {
+            self.sleeping = true;
+            self.force = Vec2::ZERO;
+            self.torque = 0.0;
+            self.linear_velocity = Vec2::ZERO;
+            self.angular_velocity = 0.0;
+        }
+    }
+
     /// 获取变换矩阵 (cos, sin, tx, -sin, cos, ty)
     /// 返回 6 个元素的元组 (a, b, c, d, e, f) 表示 2D 变换矩阵
     pub fn transform_matrix(&self) -> (f32, f32, f32, f32, f32, f32) {
@@ -463,6 +500,12 @@ impl RigidBody2DBuilder {
     /// 设置重力缩放
     pub fn with_gravity_scale(mut self, scale: f32) -> Self {
         self.body.gravity_scale = scale;
+        self
+    }
+
+    /// 设置是否可休眠
+    pub fn can_sleep(mut self, can_sleep: bool) -> Self {
+        self.body.can_sleep = can_sleep;
         self
     }
 
@@ -837,5 +880,54 @@ mod tests {
         });
         assert_eq!(body.position(), Vec2::new(5.0, 6.0));
         assert_eq!(body.linear_velocity(), Vec2::ZERO);
+    }
+
+    #[test]
+    fn test_can_sleep_default() {
+        let body = RigidBody2D::new(RigidBodyType::Dynamic);
+        assert!(body.can_sleep());
+        assert!(!body.sleeping());
+    }
+
+    #[test]
+    fn test_set_can_sleep() {
+        let mut body = RigidBody2D::new(RigidBodyType::Dynamic);
+        body.set_can_sleep(false);
+        assert!(!body.can_sleep());
+    }
+
+    #[test]
+    fn test_wake_up() {
+        let mut body = RigidBody2D::new(RigidBodyType::Dynamic);
+        body.sleep();
+        assert!(body.sleeping());
+        body.wake_up();
+        assert!(!body.sleeping());
+    }
+
+    #[test]
+    fn test_sleep_clears_forces() {
+        let mut body = RigidBody2D::new(RigidBodyType::Dynamic);
+        body.apply_force(Vec2::new(10.0, 0.0));
+        body.sleep();
+        assert!(body.sleeping());
+        assert_eq!(body.force(), Vec2::ZERO);
+        assert_eq!(body.linear_velocity(), Vec2::ZERO);
+    }
+
+    #[test]
+    fn test_cannot_sleep_when_disabled() {
+        let mut body = RigidBody2D::new(RigidBodyType::Dynamic);
+        body.set_can_sleep(false);
+        body.sleep();
+        assert!(!body.sleeping());
+    }
+
+    #[test]
+    fn test_builder_can_sleep() {
+        let body = RigidBody2DBuilder::dynamic()
+            .can_sleep(false)
+            .build();
+        assert!(!body.can_sleep());
     }
 }
