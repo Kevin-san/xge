@@ -7,6 +7,8 @@ extern crate alloc;
 
 mod aabb;
 mod euler;
+mod mat2;
+mod mat3;
 mod mat4;
 mod quat;
 mod rect;
@@ -17,6 +19,8 @@ mod vec4;
 
 pub use aabb::AABB;
 pub use euler::Euler;
+pub use mat2::Mat2;
+pub use mat3::Mat3;
 pub use mat4::Mat4;
 pub use quat::Quat;
 pub use rect::Rect;
