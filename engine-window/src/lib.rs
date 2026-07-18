@@ -4,8 +4,10 @@
 
 pub mod action_binding;
 pub mod clipboard;
+pub mod event_loop;
 pub mod input_event;
 pub mod key_code;
+pub mod monitor;
 pub mod window_state;
 
 use engine_math::Vec2;
@@ -38,6 +40,12 @@ pub use crate::clipboard::ClipboardError;
 
 // 动作绑定
 pub use action_binding::{ActionBindings, InputSource};
+
+// 事件循环
+pub use event_loop::{EngineEventLoop, EventLoopConfig};
+
+// 显示器
+pub use monitor::{MonitorInfo, MonitorManager, VideoModeInfo};
 
 // ===== 引擎级窗口 API（屏蔽 winit 依赖）=====
 
@@ -96,6 +104,8 @@ pub trait WindowExt {
     fn set_engine_cursor_grab(&self, mode: CursorGrabMode) -> Result<(), String>;
     fn set_engine_cursor_icon(&self, icon: CursorIcon);
     fn set_engine_cursor_position(&self, x: f64, y: f64) -> Result<(), String>;
+    /// 切换窗口模式
+    fn set_mode(&self, mode: crate::WindowMode);
 }
 
 impl WindowExt for Window {
@@ -111,6 +121,28 @@ impl WindowExt for Window {
     fn set_engine_cursor_position(&self, x: f64, y: f64) -> Result<(), String> {
         self.set_cursor_position(PhysicalPosition { x, y })
             .map_err(|e| format!("设置光标位置失败: {}", e))
+    }
+
+    fn set_mode(&self, mode: crate::WindowMode) {
+        match mode {
+            crate::WindowMode::Windowed => {
+                self.set_fullscreen(None);
+            }
+            crate::WindowMode::Fullscreen => {
+                let monitor = self.current_monitor().unwrap_or_else(|| {
+                    // Fallback to primary monitor
+                    panic!("No monitor available")
+                });
+                let video_mode = monitor
+                    .video_modes()
+                    .next()
+                    .unwrap_or_else(|| panic!("No video mode available for monitor"));
+                self.set_fullscreen(Some(crate::Fullscreen::Exclusive(video_mode)));
+            }
+            crate::WindowMode::Borderless => {
+                self.set_fullscreen(Some(crate::Fullscreen::Borderless(None)));
+            }
+        }
     }
 }
 
