@@ -1,5 +1,5 @@
+use crate::{Mat4, Quat, Vec3};
 use core::fmt;
-use crate::{Vec3, Quat, Mat4};
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Transform {
@@ -59,18 +59,30 @@ impl Transform {
         let scale_mat = Mat4::from_scale(self.scale);
         let rotation_mat = Mat4::from_quat(self.rotation);
         let translation_mat = Mat4::from_translation(self.translation);
-        
+
         translation_mat * rotation_mat * scale_mat
     }
 
     pub fn inverse(self) -> Self {
         let inv_rotation = self.rotation.inverse();
         let inv_scale = Vec3::new(
-            if self.scale.x != 0.0 { 1.0 / self.scale.x } else { 0.0 },
-            if self.scale.y != 0.0 { 1.0 / self.scale.y } else { 0.0 },
-            if self.scale.z != 0.0 { 1.0 / self.scale.z } else { 0.0 },
+            if self.scale.x != 0.0 {
+                1.0 / self.scale.x
+            } else {
+                0.0
+            },
+            if self.scale.y != 0.0 {
+                1.0 / self.scale.y
+            } else {
+                0.0
+            },
+            if self.scale.z != 0.0 {
+                1.0 / self.scale.z
+            } else {
+                0.0
+            },
         );
-        
+
         Self {
             translation: inv_rotation * (-self.translation) * inv_scale,
             rotation: inv_rotation,
@@ -131,7 +143,7 @@ mod tests {
         let t = Transform::from_translation(Vec3::new(1.0, 2.0, 3.0));
         let inv = t.inverse();
         let identity = t * inv;
-        
+
         assert!((identity.translation - Vec3::ZERO).length() < 1e-6);
     }
 
@@ -165,7 +177,7 @@ mod tests {
         let t1 = Transform::from_translation(Vec3::new(1.0, 0.0, 0.0));
         let t2 = Transform::from_translation(Vec3::new(2.0, 0.0, 0.0));
         let combined = t1 * t2;
-        
+
         // t1 applies translation to t2's translation
         assert_eq!(combined.translation, Vec3::new(3.0, 0.0, 0.0));
     }
@@ -175,7 +187,7 @@ mod tests {
         let t1 = Transform::from_scale(Vec3::new(2.0, 2.0, 2.0));
         let t2 = Transform::from_scale(Vec3::new(3.0, 3.0, 3.0));
         let combined = t1 * t2;
-        
+
         assert_eq!(combined.scale, Vec3::new(6.0, 6.0, 6.0));
     }
 
@@ -186,7 +198,7 @@ mod tests {
         let t1 = Transform::from_rotation(r1);
         let t2 = Transform::from_rotation(r2);
         let combined = t1 * t2;
-        
+
         // Two 45 degree rotations = 90 degree
         let v = Vec3::Y;
         let result = combined.rotation * v;
@@ -198,7 +210,7 @@ mod tests {
         let q = Quat::from_rotation_y(std::f32::consts::FRAC_PI_2);
         let t = Transform::from_rotation(q);
         let inv = t.inverse();
-        
+
         let combined = t * inv;
         assert!((combined.rotation.x - 0.0).abs() < 1e-6);
         assert!((combined.rotation.w - 1.0).abs() < 1e-6);
@@ -208,7 +220,7 @@ mod tests {
     fn test_inverse_with_scale() {
         let t = Transform::from_scale(Vec3::new(2.0, 4.0, 8.0));
         let inv = t.inverse();
-        
+
         assert_eq!(inv.scale.x, 0.5);
         assert_eq!(inv.scale.y, 0.25);
         assert_eq!(inv.scale.z, 0.125);
@@ -218,7 +230,7 @@ mod tests {
     fn test_inverse_zero_scale() {
         let t = Transform::from_scale(Vec3::new(0.0, 1.0, 1.0));
         let inv = t.inverse();
-        
+
         // Zero scale should result in zero inverse scale
         assert_eq!(inv.scale.x, 0.0);
     }
@@ -231,7 +243,7 @@ mod tests {
             Vec3::new(2.0, 2.0, 2.0),
         );
         let m = t.matrix();
-        
+
         // Matrix should be valid (non-zero determinant)
         assert!(m.inverse().is_some());
     }
@@ -240,10 +252,10 @@ mod tests {
     fn test_identity_multiplication() {
         let t = Transform::from_translation(Vec3::new(5.0, 10.0, 15.0));
         let identity = Transform::default();
-        
+
         let result1 = identity * t;
         assert_eq!(result1.translation, t.translation);
-        
+
         let result2 = t * identity;
         assert_eq!(result2.translation, t.translation);
     }
@@ -253,9 +265,9 @@ mod tests {
         let t1 = Transform::from_translation(Vec3::new(1.0, 0.0, 0.0));
         let t2 = Transform::from_scale(Vec3::new(2.0, 2.0, 2.0));
         let t3 = Transform::from_rotation(Quat::from_rotation_z(std::f32::consts::FRAC_PI_2));
-        
+
         let combined = t1 * t2 * t3;
-        
+
         // Verify the combined transform produces a valid matrix
         let m = combined.matrix();
         assert!(m.inverse().is_some());

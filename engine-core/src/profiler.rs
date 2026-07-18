@@ -62,7 +62,9 @@ impl Profiler {
 
     /// 获取指定作用域的总耗时
     pub fn scope_total_ms(&self, name: &str) -> Option<f64> {
-        self.scopes.get(name).map(|r| r.total_duration.as_secs_f64() * 1000.0)
+        self.scopes
+            .get(name)
+            .map(|r| r.total_duration.as_secs_f64() * 1000.0)
     }
 
     /// 获取指定作用域的平均耗时
@@ -77,7 +79,9 @@ impl Profiler {
     }
 
     fn end_current_scope(&mut self) {
-        if let (Some(start), Some(name)) = (self.current_scope.take(), self.current_scope_name.take()) {
+        if let (Some(start), Some(name)) =
+            (self.current_scope.take(), self.current_scope_name.take())
+        {
             let elapsed = start.elapsed();
             let entry = self.scopes.entry(name).or_insert(ScopeRecord {
                 total_duration: Duration::ZERO,

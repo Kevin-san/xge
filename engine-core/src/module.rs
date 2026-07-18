@@ -77,7 +77,9 @@ impl ModuleRegistry {
     pub fn get_by_name_mut(&self, name: &str) -> Option<std::cell::RefMut<'_, dyn Module>> {
         if self.modules.borrow().contains_key(name) {
             Some(std::cell::RefMut::map(self.modules.borrow_mut(), |m| {
-                m.get_mut(name).map(|b| b.as_mut() as &mut dyn Module).unwrap()
+                m.get_mut(name)
+                    .map(|b| b.as_mut() as &mut dyn Module)
+                    .unwrap()
             }))
         } else {
             None
@@ -289,13 +291,21 @@ mod tests {
         // Create a cycle: a -> b -> a
         struct ModA;
         impl Module for ModA {
-            fn name(&self) -> &str { "a" }
-            fn dependencies(&self) -> Vec<&str> { vec!["b"] }
+            fn name(&self) -> &str {
+                "a"
+            }
+            fn dependencies(&self) -> Vec<&str> {
+                vec!["b"]
+            }
         }
         struct ModB;
         impl Module for ModB {
-            fn name(&self) -> &str { "b" }
-            fn dependencies(&self) -> Vec<&str> { vec!["a"] }
+            fn name(&self) -> &str {
+                "b"
+            }
+            fn dependencies(&self) -> Vec<&str> {
+                vec!["a"]
+            }
         }
 
         registry.register(Box::new(ModA));

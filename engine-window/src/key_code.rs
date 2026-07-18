@@ -5,35 +5,126 @@
 #[repr(u32)]
 pub enum KeyCode {
     // ===== 字母键 =====
-    A, B, C, D, E, F, G, H, I, J, K, L, M,
-    N, O, P, Q, R, S, T, U, V, W, X, Y, Z,
+    A,
+    B,
+    C,
+    D,
+    E,
+    F,
+    G,
+    H,
+    I,
+    J,
+    K,
+    L,
+    M,
+    N,
+    O,
+    P,
+    Q,
+    R,
+    S,
+    T,
+    U,
+    V,
+    W,
+    X,
+    Y,
+    Z,
 
     // ===== 数字键 =====
-    Digit0, Digit1, Digit2, Digit3, Digit4,
-    Digit5, Digit6, Digit7, Digit8, Digit9,
+    Digit0,
+    Digit1,
+    Digit2,
+    Digit3,
+    Digit4,
+    Digit5,
+    Digit6,
+    Digit7,
+    Digit8,
+    Digit9,
 
     // ===== 功能键 =====
-    F1, F2, F3, F4, F5, F6, F7, F8, F9, F10,
-    F11, F12, F13, F14, F15, F16, F17, F18, F19, F20,
+    F1,
+    F2,
+    F3,
+    F4,
+    F5,
+    F6,
+    F7,
+    F8,
+    F9,
+    F10,
+    F11,
+    F12,
+    F13,
+    F14,
+    F15,
+    F16,
+    F17,
+    F18,
+    F19,
+    F20,
 
     // ===== 控制键 =====
-    Escape, Enter, Space, Backspace, Tab, CapsLock,
-    ShiftLeft, ShiftRight, ControlLeft, ControlRight,
-    AltLeft, AltRight, SuperLeft, SuperRight,
-    Insert, Delete, Home, End, PageUp, PageDown,
+    Escape,
+    Enter,
+    Space,
+    Backspace,
+    Tab,
+    CapsLock,
+    ShiftLeft,
+    ShiftRight,
+    ControlLeft,
+    ControlRight,
+    AltLeft,
+    AltRight,
+    SuperLeft,
+    SuperRight,
+    Insert,
+    Delete,
+    Home,
+    End,
+    PageUp,
+    PageDown,
 
     // ===== 方向键 =====
-    ArrowUp, ArrowDown, ArrowLeft, ArrowRight,
+    ArrowUp,
+    ArrowDown,
+    ArrowLeft,
+    ArrowRight,
 
     // ===== 小键盘 =====
-    Numpad0, Numpad1, Numpad2, Numpad3, Numpad4,
-    Numpad5, Numpad6, Numpad7, Numpad8, Numpad9,
-    NumpadAdd, NumpadSubtract, NumpadMultiply, NumpadDivide,
-    NumpadDecimal, NumpadEnter, NumLock,
+    Numpad0,
+    Numpad1,
+    Numpad2,
+    Numpad3,
+    Numpad4,
+    Numpad5,
+    Numpad6,
+    Numpad7,
+    Numpad8,
+    Numpad9,
+    NumpadAdd,
+    NumpadSubtract,
+    NumpadMultiply,
+    NumpadDivide,
+    NumpadDecimal,
+    NumpadEnter,
+    NumLock,
 
     // ===== 标点符号 =====
-    Grave, Minus, Equal, BracketLeft, BracketRight, Backslash,
-    Semicolon, Apostrophe, Comma, Period, Slash,
+    Grave,
+    Minus,
+    Equal,
+    BracketLeft,
+    BracketRight,
+    Backslash,
+    Semicolon,
+    Apostrophe,
+    Comma,
+    Period,
+    Slash,
 
     // ===== 未知 =====
     #[default]
@@ -42,44 +133,97 @@ pub enum KeyCode {
 
 impl KeyCode {
     pub fn is_alphabetic(&self) -> bool {
-        matches!(self,
-            KeyCode::A | KeyCode::B | KeyCode::C | KeyCode::D | KeyCode::E | KeyCode::F |
-            KeyCode::G | KeyCode::H | KeyCode::I | KeyCode::J | KeyCode::K | KeyCode::L |
-            KeyCode::M | KeyCode::N | KeyCode::O | KeyCode::P | KeyCode::Q | KeyCode::R |
-            KeyCode::S | KeyCode::T | KeyCode::U | KeyCode::V | KeyCode::W | KeyCode::X |
-            KeyCode::Y | KeyCode::Z
+        matches!(
+            self,
+            KeyCode::A
+                | KeyCode::B
+                | KeyCode::C
+                | KeyCode::D
+                | KeyCode::E
+                | KeyCode::F
+                | KeyCode::G
+                | KeyCode::H
+                | KeyCode::I
+                | KeyCode::J
+                | KeyCode::K
+                | KeyCode::L
+                | KeyCode::M
+                | KeyCode::N
+                | KeyCode::O
+                | KeyCode::P
+                | KeyCode::Q
+                | KeyCode::R
+                | KeyCode::S
+                | KeyCode::T
+                | KeyCode::U
+                | KeyCode::V
+                | KeyCode::W
+                | KeyCode::X
+                | KeyCode::Y
+                | KeyCode::Z
         )
     }
 
     pub fn is_numeric(&self) -> bool {
-        matches!(self,
-            KeyCode::Digit0 | KeyCode::Digit1 | KeyCode::Digit2 | KeyCode::Digit3 |
-            KeyCode::Digit4 | KeyCode::Digit5 | KeyCode::Digit6 | KeyCode::Digit7 |
-            KeyCode::Digit8 | KeyCode::Digit9
+        matches!(
+            self,
+            KeyCode::Digit0
+                | KeyCode::Digit1
+                | KeyCode::Digit2
+                | KeyCode::Digit3
+                | KeyCode::Digit4
+                | KeyCode::Digit5
+                | KeyCode::Digit6
+                | KeyCode::Digit7
+                | KeyCode::Digit8
+                | KeyCode::Digit9
         )
     }
 
     pub fn is_function(&self) -> bool {
-        matches!(self,
-            KeyCode::F1 | KeyCode::F2 | KeyCode::F3 | KeyCode::F4 | KeyCode::F5 |
-            KeyCode::F6 | KeyCode::F7 | KeyCode::F8 | KeyCode::F9 | KeyCode::F10 |
-            KeyCode::F11 | KeyCode::F12 | KeyCode::F13 | KeyCode::F14 | KeyCode::F15 |
-            KeyCode::F16 | KeyCode::F17 | KeyCode::F18 | KeyCode::F19 | KeyCode::F20
+        matches!(
+            self,
+            KeyCode::F1
+                | KeyCode::F2
+                | KeyCode::F3
+                | KeyCode::F4
+                | KeyCode::F5
+                | KeyCode::F6
+                | KeyCode::F7
+                | KeyCode::F8
+                | KeyCode::F9
+                | KeyCode::F10
+                | KeyCode::F11
+                | KeyCode::F12
+                | KeyCode::F13
+                | KeyCode::F14
+                | KeyCode::F15
+                | KeyCode::F16
+                | KeyCode::F17
+                | KeyCode::F18
+                | KeyCode::F19
+                | KeyCode::F20
         )
     }
 
     pub fn is_arrow(&self) -> bool {
-        matches!(self,
+        matches!(
+            self,
             KeyCode::ArrowUp | KeyCode::ArrowDown | KeyCode::ArrowLeft | KeyCode::ArrowRight
         )
     }
 
     pub fn is_modifier(&self) -> bool {
-        matches!(self,
-            KeyCode::ShiftLeft | KeyCode::ShiftRight |
-            KeyCode::ControlLeft | KeyCode::ControlRight |
-            KeyCode::AltLeft | KeyCode::AltRight |
-            KeyCode::SuperLeft | KeyCode::SuperRight
+        matches!(
+            self,
+            KeyCode::ShiftLeft
+                | KeyCode::ShiftRight
+                | KeyCode::ControlLeft
+                | KeyCode::ControlRight
+                | KeyCode::AltLeft
+                | KeyCode::AltRight
+                | KeyCode::SuperLeft
+                | KeyCode::SuperRight
         )
     }
 }
@@ -132,23 +276,41 @@ impl ModifiersState {
     }
 
     pub fn set_shift(&mut self, on: bool) {
-        if on { self.bits |= Self::SHIFT } else { self.bits &= !Self::SHIFT }
+        if on {
+            self.bits |= Self::SHIFT
+        } else {
+            self.bits &= !Self::SHIFT
+        }
     }
 
     pub fn set_control(&mut self, on: bool) {
-        if on { self.bits |= Self::CONTROL } else { self.bits &= !Self::CONTROL }
+        if on {
+            self.bits |= Self::CONTROL
+        } else {
+            self.bits &= !Self::CONTROL
+        }
     }
 
     pub fn set_alt(&mut self, on: bool) {
-        if on { self.bits |= Self::ALT } else { self.bits &= !Self::ALT }
+        if on {
+            self.bits |= Self::ALT
+        } else {
+            self.bits &= !Self::ALT
+        }
     }
 
     pub fn set_super(&mut self, on: bool) {
-        if on { self.bits |= Self::SUPER } else { self.bits &= !Self::SUPER }
+        if on {
+            self.bits |= Self::SUPER
+        } else {
+            self.bits &= !Self::SUPER
+        }
     }
 
     pub fn or(&self, other: Self) -> Self {
-        Self { bits: self.bits | other.bits }
+        Self {
+            bits: self.bits | other.bits,
+        }
     }
 }
 
@@ -173,16 +335,26 @@ pub fn map_named_key_to_keycode(named: &winit::keyboard::NamedKey) -> Option<Key
         N::Backspace => KeyCode::Backspace,
         N::Delete => KeyCode::Delete,
         N::Insert => KeyCode::Insert,
-        N::F1 => KeyCode::F1, N::F2 => KeyCode::F2,
-        N::F3 => KeyCode::F3, N::F4 => KeyCode::F4,
-        N::F5 => KeyCode::F5, N::F6 => KeyCode::F6,
-        N::F7 => KeyCode::F7, N::F8 => KeyCode::F8,
-        N::F9 => KeyCode::F9, N::F10 => KeyCode::F10,
-        N::F11 => KeyCode::F11, N::F12 => KeyCode::F12,
-        N::F13 => KeyCode::F13, N::F14 => KeyCode::F14,
-        N::F15 => KeyCode::F15, N::F16 => KeyCode::F16,
-        N::F17 => KeyCode::F17, N::F18 => KeyCode::F18,
-        N::F19 => KeyCode::F19, N::F20 => KeyCode::F20,
+        N::F1 => KeyCode::F1,
+        N::F2 => KeyCode::F2,
+        N::F3 => KeyCode::F3,
+        N::F4 => KeyCode::F4,
+        N::F5 => KeyCode::F5,
+        N::F6 => KeyCode::F6,
+        N::F7 => KeyCode::F7,
+        N::F8 => KeyCode::F8,
+        N::F9 => KeyCode::F9,
+        N::F10 => KeyCode::F10,
+        N::F11 => KeyCode::F11,
+        N::F12 => KeyCode::F12,
+        N::F13 => KeyCode::F13,
+        N::F14 => KeyCode::F14,
+        N::F15 => KeyCode::F15,
+        N::F16 => KeyCode::F16,
+        N::F17 => KeyCode::F17,
+        N::F18 => KeyCode::F18,
+        N::F19 => KeyCode::F19,
+        N::F20 => KeyCode::F20,
         N::CapsLock => KeyCode::CapsLock,
         N::Shift => KeyCode::ShiftLeft,
         N::Control => KeyCode::ControlLeft,
@@ -197,66 +369,126 @@ pub fn map_keycode_to_keycode(winit_code: winit::keyboard::KeyCode) -> KeyCode {
     use winit::keyboard::KeyCode as W;
     match winit_code {
         // 字母
-        W::KeyA => KeyCode::A, W::KeyB => KeyCode::B, W::KeyC => KeyCode::C,
-        W::KeyD => KeyCode::D, W::KeyE => KeyCode::E, W::KeyF => KeyCode::F,
-        W::KeyG => KeyCode::G, W::KeyH => KeyCode::H, W::KeyI => KeyCode::I,
-        W::KeyJ => KeyCode::J, W::KeyK => KeyCode::K, W::KeyL => KeyCode::L,
-        W::KeyM => KeyCode::M, W::KeyN => KeyCode::N, W::KeyO => KeyCode::O,
-        W::KeyP => KeyCode::P, W::KeyQ => KeyCode::Q, W::KeyR => KeyCode::R,
-        W::KeyS => KeyCode::S, W::KeyT => KeyCode::T, W::KeyU => KeyCode::U,
-        W::KeyV => KeyCode::V, W::KeyW => KeyCode::W, W::KeyX => KeyCode::X,
-        W::KeyY => KeyCode::Y, W::KeyZ => KeyCode::Z,
+        W::KeyA => KeyCode::A,
+        W::KeyB => KeyCode::B,
+        W::KeyC => KeyCode::C,
+        W::KeyD => KeyCode::D,
+        W::KeyE => KeyCode::E,
+        W::KeyF => KeyCode::F,
+        W::KeyG => KeyCode::G,
+        W::KeyH => KeyCode::H,
+        W::KeyI => KeyCode::I,
+        W::KeyJ => KeyCode::J,
+        W::KeyK => KeyCode::K,
+        W::KeyL => KeyCode::L,
+        W::KeyM => KeyCode::M,
+        W::KeyN => KeyCode::N,
+        W::KeyO => KeyCode::O,
+        W::KeyP => KeyCode::P,
+        W::KeyQ => KeyCode::Q,
+        W::KeyR => KeyCode::R,
+        W::KeyS => KeyCode::S,
+        W::KeyT => KeyCode::T,
+        W::KeyU => KeyCode::U,
+        W::KeyV => KeyCode::V,
+        W::KeyW => KeyCode::W,
+        W::KeyX => KeyCode::X,
+        W::KeyY => KeyCode::Y,
+        W::KeyZ => KeyCode::Z,
 
         // 数字
-        W::Digit0 => KeyCode::Digit0, W::Digit1 => KeyCode::Digit1,
-        W::Digit2 => KeyCode::Digit2, W::Digit3 => KeyCode::Digit3,
-        W::Digit4 => KeyCode::Digit4, W::Digit5 => KeyCode::Digit5,
-        W::Digit6 => KeyCode::Digit6, W::Digit7 => KeyCode::Digit7,
-        W::Digit8 => KeyCode::Digit8, W::Digit9 => KeyCode::Digit9,
+        W::Digit0 => KeyCode::Digit0,
+        W::Digit1 => KeyCode::Digit1,
+        W::Digit2 => KeyCode::Digit2,
+        W::Digit3 => KeyCode::Digit3,
+        W::Digit4 => KeyCode::Digit4,
+        W::Digit5 => KeyCode::Digit5,
+        W::Digit6 => KeyCode::Digit6,
+        W::Digit7 => KeyCode::Digit7,
+        W::Digit8 => KeyCode::Digit8,
+        W::Digit9 => KeyCode::Digit9,
 
         // 控制
-        W::Escape => KeyCode::Escape, W::Enter => KeyCode::Enter,
-        W::Space => KeyCode::Space, W::Backspace => KeyCode::Backspace,
-        W::Tab => KeyCode::Tab, W::CapsLock => KeyCode::CapsLock,
-        W::ShiftLeft => KeyCode::ShiftLeft, W::ShiftRight => KeyCode::ShiftRight,
-        W::ControlLeft => KeyCode::ControlLeft, W::ControlRight => KeyCode::ControlRight,
-        W::AltLeft => KeyCode::AltLeft, W::AltRight => KeyCode::AltRight,
-        W::SuperLeft => KeyCode::SuperLeft, W::SuperRight => KeyCode::SuperRight,
-        W::Insert => KeyCode::Insert, W::Delete => KeyCode::Delete,
-        W::Home => KeyCode::Home, W::End => KeyCode::End,
-        W::PageUp => KeyCode::PageUp, W::PageDown => KeyCode::PageDown,
+        W::Escape => KeyCode::Escape,
+        W::Enter => KeyCode::Enter,
+        W::Space => KeyCode::Space,
+        W::Backspace => KeyCode::Backspace,
+        W::Tab => KeyCode::Tab,
+        W::CapsLock => KeyCode::CapsLock,
+        W::ShiftLeft => KeyCode::ShiftLeft,
+        W::ShiftRight => KeyCode::ShiftRight,
+        W::ControlLeft => KeyCode::ControlLeft,
+        W::ControlRight => KeyCode::ControlRight,
+        W::AltLeft => KeyCode::AltLeft,
+        W::AltRight => KeyCode::AltRight,
+        W::SuperLeft => KeyCode::SuperLeft,
+        W::SuperRight => KeyCode::SuperRight,
+        W::Insert => KeyCode::Insert,
+        W::Delete => KeyCode::Delete,
+        W::Home => KeyCode::Home,
+        W::End => KeyCode::End,
+        W::PageUp => KeyCode::PageUp,
+        W::PageDown => KeyCode::PageDown,
 
         // 方向
-        W::ArrowUp => KeyCode::ArrowUp, W::ArrowDown => KeyCode::ArrowDown,
-        W::ArrowLeft => KeyCode::ArrowLeft, W::ArrowRight => KeyCode::ArrowRight,
+        W::ArrowUp => KeyCode::ArrowUp,
+        W::ArrowDown => KeyCode::ArrowDown,
+        W::ArrowLeft => KeyCode::ArrowLeft,
+        W::ArrowRight => KeyCode::ArrowRight,
 
         // 小键盘
-        W::Numpad0 => KeyCode::Numpad0, W::Numpad1 => KeyCode::Numpad1,
-        W::Numpad2 => KeyCode::Numpad2, W::Numpad3 => KeyCode::Numpad3,
-        W::Numpad4 => KeyCode::Numpad4, W::Numpad5 => KeyCode::Numpad5,
-        W::Numpad6 => KeyCode::Numpad6, W::Numpad7 => KeyCode::Numpad7,
-        W::Numpad8 => KeyCode::Numpad8, W::Numpad9 => KeyCode::Numpad9,
-        W::NumpadAdd => KeyCode::NumpadAdd, W::NumpadSubtract => KeyCode::NumpadSubtract,
-        W::NumpadMultiply => KeyCode::NumpadMultiply, W::NumpadDivide => KeyCode::NumpadDivide,
-        W::NumpadDecimal => KeyCode::NumpadDecimal, W::NumpadEnter => KeyCode::NumpadEnter,
+        W::Numpad0 => KeyCode::Numpad0,
+        W::Numpad1 => KeyCode::Numpad1,
+        W::Numpad2 => KeyCode::Numpad2,
+        W::Numpad3 => KeyCode::Numpad3,
+        W::Numpad4 => KeyCode::Numpad4,
+        W::Numpad5 => KeyCode::Numpad5,
+        W::Numpad6 => KeyCode::Numpad6,
+        W::Numpad7 => KeyCode::Numpad7,
+        W::Numpad8 => KeyCode::Numpad8,
+        W::Numpad9 => KeyCode::Numpad9,
+        W::NumpadAdd => KeyCode::NumpadAdd,
+        W::NumpadSubtract => KeyCode::NumpadSubtract,
+        W::NumpadMultiply => KeyCode::NumpadMultiply,
+        W::NumpadDivide => KeyCode::NumpadDivide,
+        W::NumpadDecimal => KeyCode::NumpadDecimal,
+        W::NumpadEnter => KeyCode::NumpadEnter,
         W::NumLock => KeyCode::NumLock,
 
         // 标点
-        W::Backquote => KeyCode::Grave, W::Minus => KeyCode::Minus,
-        W::Equal => KeyCode::Equal, W::BracketLeft => KeyCode::BracketLeft,
-        W::BracketRight => KeyCode::BracketRight, W::Backslash => KeyCode::Backslash,
-        W::Semicolon => KeyCode::Semicolon, W::Quote => KeyCode::Apostrophe,
-        W::Comma => KeyCode::Comma, W::Period => KeyCode::Period,
+        W::Backquote => KeyCode::Grave,
+        W::Minus => KeyCode::Minus,
+        W::Equal => KeyCode::Equal,
+        W::BracketLeft => KeyCode::BracketLeft,
+        W::BracketRight => KeyCode::BracketRight,
+        W::Backslash => KeyCode::Backslash,
+        W::Semicolon => KeyCode::Semicolon,
+        W::Quote => KeyCode::Apostrophe,
+        W::Comma => KeyCode::Comma,
+        W::Period => KeyCode::Period,
         W::Slash => KeyCode::Slash,
 
         // 其他
-        W::F1 => KeyCode::F1, W::F2 => KeyCode::F2, W::F3 => KeyCode::F3,
-        W::F4 => KeyCode::F4, W::F5 => KeyCode::F5, W::F6 => KeyCode::F6,
-        W::F7 => KeyCode::F7, W::F8 => KeyCode::F8, W::F9 => KeyCode::F9,
-        W::F10 => KeyCode::F10, W::F11 => KeyCode::F11, W::F12 => KeyCode::F12,
-        W::F13 => KeyCode::F13, W::F14 => KeyCode::F14, W::F15 => KeyCode::F15,
-        W::F16 => KeyCode::F16, W::F17 => KeyCode::F17, W::F18 => KeyCode::F18,
-        W::F19 => KeyCode::F19, W::F20 => KeyCode::F20,
+        W::F1 => KeyCode::F1,
+        W::F2 => KeyCode::F2,
+        W::F3 => KeyCode::F3,
+        W::F4 => KeyCode::F4,
+        W::F5 => KeyCode::F5,
+        W::F6 => KeyCode::F6,
+        W::F7 => KeyCode::F7,
+        W::F8 => KeyCode::F8,
+        W::F9 => KeyCode::F9,
+        W::F10 => KeyCode::F10,
+        W::F11 => KeyCode::F11,
+        W::F12 => KeyCode::F12,
+        W::F13 => KeyCode::F13,
+        W::F14 => KeyCode::F14,
+        W::F15 => KeyCode::F15,
+        W::F16 => KeyCode::F16,
+        W::F17 => KeyCode::F17,
+        W::F18 => KeyCode::F18,
+        W::F19 => KeyCode::F19,
+        W::F20 => KeyCode::F20,
 
         _ => KeyCode::Unknown,
     }
@@ -279,10 +511,18 @@ pub fn map_modifiers(modifiers: winit::event::Modifiers) -> ModifiersState {
     let mut state = ModifiersState::empty();
     let ms = modifiers.state();
     let raw: u32 = ms.bits();
-    if raw & 0b0001 != 0 { state.bits |= ModifiersState::SHIFT; }
-    if raw & 0b0010 != 0 { state.bits |= ModifiersState::CONTROL; }
-    if raw & 0b0100 != 0 { state.bits |= ModifiersState::ALT; }
-    if raw & 0b1000 != 0 { state.bits |= ModifiersState::SUPER; }
+    if raw & 0b0001 != 0 {
+        state.bits |= ModifiersState::SHIFT;
+    }
+    if raw & 0b0010 != 0 {
+        state.bits |= ModifiersState::CONTROL;
+    }
+    if raw & 0b0100 != 0 {
+        state.bits |= ModifiersState::ALT;
+    }
+    if raw & 0b1000 != 0 {
+        state.bits |= ModifiersState::SUPER;
+    }
     state
 }
 
@@ -334,21 +574,42 @@ mod tests {
 
     #[test]
     fn test_map_keycode_letters() {
-        assert_eq!(map_keycode_to_keycode(winit::keyboard::KeyCode::KeyA), KeyCode::A);
-        assert_eq!(map_keycode_to_keycode(winit::keyboard::KeyCode::KeyZ), KeyCode::Z);
+        assert_eq!(
+            map_keycode_to_keycode(winit::keyboard::KeyCode::KeyA),
+            KeyCode::A
+        );
+        assert_eq!(
+            map_keycode_to_keycode(winit::keyboard::KeyCode::KeyZ),
+            KeyCode::Z
+        );
     }
 
     #[test]
     fn test_map_keycode_digits_and_arrows() {
-        assert_eq!(map_keycode_to_keycode(winit::keyboard::KeyCode::Digit0), KeyCode::Digit0);
-        assert_eq!(map_keycode_to_keycode(winit::keyboard::KeyCode::ArrowUp), KeyCode::ArrowUp);
+        assert_eq!(
+            map_keycode_to_keycode(winit::keyboard::KeyCode::Digit0),
+            KeyCode::Digit0
+        );
+        assert_eq!(
+            map_keycode_to_keycode(winit::keyboard::KeyCode::ArrowUp),
+            KeyCode::ArrowUp
+        );
     }
 
     #[test]
     fn test_map_mouse_button() {
-        assert_eq!(map_mouse_button(winit::event::MouseButton::Left), MouseButton::Left);
-        assert_eq!(map_mouse_button(winit::event::MouseButton::Right), MouseButton::Right);
-        assert_eq!(map_mouse_button(winit::event::MouseButton::Middle), MouseButton::Middle);
+        assert_eq!(
+            map_mouse_button(winit::event::MouseButton::Left),
+            MouseButton::Left
+        );
+        assert_eq!(
+            map_mouse_button(winit::event::MouseButton::Right),
+            MouseButton::Right
+        );
+        assert_eq!(
+            map_mouse_button(winit::event::MouseButton::Middle),
+            MouseButton::Middle
+        );
     }
 
     #[test]

@@ -617,7 +617,11 @@ impl Slider {
     }
 
     /// 根据鼠标位置（相对滑块矩形）设置值
-    pub fn set_value_from_position(&mut self, pos: engine_math::Vec2, slider_rect: engine_math::Rect) {
+    pub fn set_value_from_position(
+        &mut self,
+        pos: engine_math::Vec2,
+        slider_rect: engine_math::Rect,
+    ) {
         let ratio = match self.direction {
             SliderDirection::Horizontal => {
                 if slider_rect.w > 0.0 {
@@ -914,8 +918,12 @@ impl Grid {
 
         let cell_w = self.cell_width.unwrap_or(0.0);
         let cell_h = self.cell_height.unwrap_or(0.0);
-        let total_w = cols as f32 * cell_w + self.spacing * cols.saturating_sub(1) as f32 + self.padding.x * 2.0;
-        let total_h = rows as f32 * cell_h + self.spacing * rows.saturating_sub(1) as f32 + self.padding.y * 2.0;
+        let total_w = cols as f32 * cell_w
+            + self.spacing * cols.saturating_sub(1) as f32
+            + self.padding.x * 2.0;
+        let total_h = rows as f32 * cell_h
+            + self.spacing * rows.saturating_sub(1) as f32
+            + self.padding.y * 2.0;
 
         engine_math::Vec2::new(total_w, total_h)
     }

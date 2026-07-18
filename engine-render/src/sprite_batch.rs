@@ -48,12 +48,7 @@ impl SpriteBatch {
         self.add_ex(sprite, position, DrawParams::default())
     }
 
-    pub fn add_ex(
-        &mut self,
-        sprite: &Sprite,
-        position: Vec2,
-        params: DrawParams,
-    ) -> usize {
+    pub fn add_ex(&mut self, sprite: &Sprite, position: Vec2, params: DrawParams) -> usize {
         if self.len >= self.max_count {
             self.grow();
         }
@@ -89,20 +84,15 @@ impl SpriteBatch {
         // UV 顺序: (u0,v0), (u1,v0), (u0,v1), (u1,v1)
         self.vertices.extend_from_slice(&[
             // TL
-            x0, y0, z, u0, v0, color.r, color.g, color.b, color.a,
-            // TR
-            x1, y0, z, u1, v0, color.r, color.g, color.b, color.a,
-            // BL
-            x0, y1, z, u0, v1, color.r, color.g, color.b, color.a,
-            // BR
+            x0, y0, z, u0, v0, color.r, color.g, color.b, color.a, // TR
+            x1, y0, z, u1, v0, color.r, color.g, color.b, color.a, // BL
+            x0, y1, z, u0, v1, color.r, color.g, color.b, color.a, // BR
             x1, y1, z, u1, v1, color.r, color.g, color.b, color.a,
         ]);
 
         let base = index as u32 * 4;
-        self.indices.extend_from_slice(&[
-            base, base + 1, base + 2,
-            base + 1, base + 3, base + 2,
-        ]);
+        self.indices
+            .extend_from_slice(&[base, base + 1, base + 2, base + 1, base + 3, base + 2]);
 
         self.len += 1;
         index
@@ -110,8 +100,10 @@ impl SpriteBatch {
 
     fn grow(&mut self) {
         self.max_count *= 2;
-        self.vertices.reserve(self.max_count * 4 * STRIDE_FLOATS - self.vertices.capacity());
-        self.indices.reserve(self.max_count * 6 - self.indices.capacity());
+        self.vertices
+            .reserve(self.max_count * 4 * STRIDE_FLOATS - self.vertices.capacity());
+        self.indices
+            .reserve(self.max_count * 6 - self.indices.capacity());
     }
 
     pub fn set(&mut self, _index: usize, _sprite: &Sprite, _position: Vec2) {
@@ -320,7 +312,8 @@ mod tests {
     #[test]
     fn test_sprite_batch_add() {
         let h = Handle::<Texture2D>::null();
-        let sprite = Sprite::from_texture(h.clone()).with_source_rect(Rect::new(0.0, 0.0, 32.0, 32.0));
+        let sprite =
+            Sprite::from_texture(h.clone()).with_source_rect(Rect::new(0.0, 0.0, 32.0, 32.0));
         let mut batch = SpriteBatch::with_capacity(h, 128);
         batch.add(&sprite, Vec2::new(10.0, 20.0));
         assert_eq!(batch.len(), 1);
@@ -331,7 +324,8 @@ mod tests {
     #[test]
     fn test_sprite_batch_multiple() {
         let h = Handle::<Texture2D>::null();
-        let sprite = Sprite::from_texture(h.clone()).with_source_rect(Rect::new(0.0, 0.0, 32.0, 32.0));
+        let sprite =
+            Sprite::from_texture(h.clone()).with_source_rect(Rect::new(0.0, 0.0, 32.0, 32.0));
         let mut batch = SpriteBatch::with_capacity(h, 1000);
         for i in 0..10 {
             batch.add(&sprite, Vec2::new(i as f32, i as f32));
@@ -352,7 +346,8 @@ mod tests {
     #[test]
     fn test_sprite_batch_draw_at() {
         let h = Handle::<Texture2D>::null();
-        let sprite = Sprite::from_texture(h.clone()).with_source_rect(Rect::new(0.0, 0.0, 32.0, 32.0));
+        let sprite =
+            Sprite::from_texture(h.clone()).with_source_rect(Rect::new(0.0, 0.0, 32.0, 32.0));
         let mut batch = SpriteBatch::with_capacity(h, 100);
         batch.add(&sprite, Vec2::new(10.0, 20.0));
         let ctx = crate::RenderContext::new();
@@ -362,7 +357,8 @@ mod tests {
     #[test]
     fn test_sprite_batch_grow() {
         let h = Handle::<Texture2D>::null();
-        let sprite = Sprite::from_texture(h.clone()).with_source_rect(Rect::new(0.0, 0.0, 1.0, 1.0));
+        let sprite =
+            Sprite::from_texture(h.clone()).with_source_rect(Rect::new(0.0, 0.0, 1.0, 1.0));
         let mut batch = SpriteBatch::with_capacity(h, 2);
         for _ in 0..100 {
             batch.add(&sprite, Vec2::ZERO);
@@ -380,7 +376,8 @@ mod tests {
     #[test]
     fn test_batch_renderer_draw_and_count() {
         let h = Handle::<Texture2D>::null();
-        let sprite = Sprite::from_texture(h.clone()).with_source_rect(Rect::new(0.0, 0.0, 1.0, 1.0));
+        let sprite =
+            Sprite::from_texture(h.clone()).with_source_rect(Rect::new(0.0, 0.0, 1.0, 1.0));
         let mut renderer = BatchRenderer::new();
         renderer.begin();
         for i in 0..10 {
@@ -392,7 +389,8 @@ mod tests {
     #[test]
     fn test_batch_renderer_end() {
         let h = Handle::<Texture2D>::null();
-        let sprite = Sprite::from_texture(h.clone()).with_source_rect(Rect::new(0.0, 0.0, 1.0, 1.0));
+        let sprite =
+            Sprite::from_texture(h.clone()).with_source_rect(Rect::new(0.0, 0.0, 1.0, 1.0));
         let mut renderer = BatchRenderer::new();
         renderer.begin();
         for _ in 0..10 {
@@ -425,7 +423,8 @@ mod tests {
     #[test]
     fn test_sprite_batch_clear() {
         let h = Handle::<Texture2D>::null();
-        let sprite = Sprite::from_texture(h.clone()).with_source_rect(Rect::new(0.0, 0.0, 32.0, 32.0));
+        let sprite =
+            Sprite::from_texture(h.clone()).with_source_rect(Rect::new(0.0, 0.0, 32.0, 32.0));
         let mut batch = SpriteBatch::with_capacity(h, 100);
         batch.add(&sprite, Vec2::ZERO);
         batch.clear();
@@ -435,7 +434,8 @@ mod tests {
     #[test]
     fn test_batch_renderer_begin_clears() {
         let h = Handle::<Texture2D>::null();
-        let sprite = Sprite::from_texture(h.clone()).with_source_rect(Rect::new(0.0, 0.0, 1.0, 1.0));
+        let sprite =
+            Sprite::from_texture(h.clone()).with_source_rect(Rect::new(0.0, 0.0, 1.0, 1.0));
         let mut renderer = BatchRenderer::new();
         renderer.draw_sprite(&sprite, Vec2::ZERO);
         renderer.begin(); // 清空所有批次 — draw 调用重置
@@ -457,7 +457,8 @@ mod tests {
     #[test]
     fn test_sprite_batch_indices_correct_count() {
         let h = Handle::<Texture2D>::null();
-        let sprite = Sprite::from_texture(h.clone()).with_source_rect(Rect::new(0.0, 0.0, 1.0, 1.0));
+        let sprite =
+            Sprite::from_texture(h.clone()).with_source_rect(Rect::new(0.0, 0.0, 1.0, 1.0));
         let mut batch = SpriteBatch::with_capacity(h, 100);
         for _ in 0..5 {
             batch.add(&sprite, Vec2::ZERO);
@@ -469,7 +470,9 @@ mod tests {
     #[test]
     fn test_sprite_batch_flip_x() {
         let h = Handle::<Texture2D>::null();
-        let sprite = Sprite::from_texture(h.clone()).with_source_rect(Rect::new(0.0, 0.0, 1.0, 1.0)).with_flip_x(true);
+        let sprite = Sprite::from_texture(h.clone())
+            .with_source_rect(Rect::new(0.0, 0.0, 1.0, 1.0))
+            .with_flip_x(true);
         let mut batch = SpriteBatch::with_capacity(h, 100);
         batch.add(&sprite, Vec2::ZERO);
         assert_eq!(batch.len(), 1);
@@ -478,7 +481,9 @@ mod tests {
     #[test]
     fn test_sprite_batch_flip_y() {
         let h = Handle::<Texture2D>::null();
-        let sprite = Sprite::from_texture(h.clone()).with_source_rect(Rect::new(0.0, 0.0, 1.0, 1.0)).with_flip_x(false);
+        let sprite = Sprite::from_texture(h.clone())
+            .with_source_rect(Rect::new(0.0, 0.0, 1.0, 1.0))
+            .with_flip_x(false);
         let mut batch = SpriteBatch::with_capacity(h, 100);
         batch.add(&sprite, Vec2::ZERO);
         assert_eq!(batch.len(), 1);

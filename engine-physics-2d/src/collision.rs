@@ -359,7 +359,11 @@ mod tests {
     fn test_manifold_add_multiple_contacts() {
         let mut manifold = Manifold::new(0, 1);
         manifold.add_contact(Contact::new(Vec2::new(1.0, 0.0), Vec2::new(-1.0, 0.0), 0.1));
-        manifold.add_contact(Contact::new(Vec2::new(2.0, 0.0), Vec2::new(-1.0, 0.0), 0.05));
+        manifold.add_contact(Contact::new(
+            Vec2::new(2.0, 0.0),
+            Vec2::new(-1.0, 0.0),
+            0.05,
+        ));
         assert_eq!(manifold.contact_count(), 2);
     }
 

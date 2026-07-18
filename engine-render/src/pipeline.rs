@@ -115,12 +115,21 @@ impl ColorWriteMask {
     };
 
     pub fn new(red: bool, green: bool, blue: bool, alpha: bool) -> Self {
-        Self { red, green, blue, alpha }
+        Self {
+            red,
+            green,
+            blue,
+            alpha,
+        }
     }
 
-    pub fn all() -> Self { Self::ALL }
+    pub fn all() -> Self {
+        Self::ALL
+    }
 
-    pub fn none() -> Self { Self::NONE }
+    pub fn none() -> Self {
+        Self::NONE
+    }
 }
 
 /// 混合状态
@@ -215,7 +224,11 @@ pub struct BindingEntry {
 
 impl BindingEntry {
     pub fn new(slot: u32, kind: BindingType) -> Self {
-        Self { slot, kind, writable: false }
+        Self {
+            slot,
+            kind,
+            writable: false,
+        }
     }
 }
 
@@ -227,7 +240,9 @@ pub struct BindGroupLayout {
 
 impl BindGroupLayout {
     pub fn new() -> Self {
-        Self { entries: Vec::new() }
+        Self {
+            entries: Vec::new(),
+        }
     }
 
     pub fn with_entries(entries: Vec<BindingEntry>) -> Self {
@@ -501,9 +516,8 @@ mod tests {
 
     #[test]
     fn test_bind_group() {
-        let layout = BindGroupLayout::with_entries(vec![
-            BindingEntry::new(0, BindingType::SampledTexture),
-        ]);
+        let layout =
+            BindGroupLayout::with_entries(vec![BindingEntry::new(0, BindingType::SampledTexture)]);
         let mut bg = BindGroup::new(layout);
         bg.bind_handle(0, 42);
         assert!(bg.has_binding(0));
@@ -582,6 +596,9 @@ mod tests {
 
     #[test]
     fn test_primitive_topology_default() {
-        assert_eq!(PrimitiveTopology::default(), PrimitiveTopology::TriangleList);
+        assert_eq!(
+            PrimitiveTopology::default(),
+            PrimitiveTopology::TriangleList
+        );
     }
 }

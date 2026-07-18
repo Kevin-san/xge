@@ -10,7 +10,11 @@ pub const TARGET_OS: &str = {
     {
         "linux"
     }
-    #[cfg(all(not(target_os = "windows"), not(target_os = "linux"), target_os = "macos"))]
+    #[cfg(all(
+        not(target_os = "windows"),
+        not(target_os = "linux"),
+        target_os = "macos"
+    ))]
     {
         "macos"
     }

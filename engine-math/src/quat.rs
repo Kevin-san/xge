@@ -529,14 +529,29 @@ mod tests {
         let q2 = Quat::IDENTITY;
         assert!((q1.dot(q2) - 1.0).abs() < 1e-6);
 
-        let q1 = Quat { x: 1.0, y: 0.0, z: 0.0, w: 0.0 };
-        let q2 = Quat { x: 0.0, y: 1.0, z: 0.0, w: 0.0 };
+        let q1 = Quat {
+            x: 1.0,
+            y: 0.0,
+            z: 0.0,
+            w: 0.0,
+        };
+        let q2 = Quat {
+            x: 0.0,
+            y: 1.0,
+            z: 0.0,
+            w: 0.0,
+        };
         assert!((q1.dot(q2) - 0.0).abs() < 1e-6);
     }
 
     #[test]
     fn test_neg() {
-        let q = Quat { x: 1.0, y: 2.0, z: 3.0, w: 4.0 };
+        let q = Quat {
+            x: 1.0,
+            y: 2.0,
+            z: 3.0,
+            w: 4.0,
+        };
         let neg_q = -q;
         assert_eq!(neg_q.x, -1.0);
         assert_eq!(neg_q.y, -2.0);

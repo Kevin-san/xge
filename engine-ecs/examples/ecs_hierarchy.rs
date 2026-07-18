@@ -2,10 +2,7 @@
 //!
 //! 演示如何使用 Parent/Children 组件构建实体层级。
 
-use engine_ecs::{
-    hierarchy::WorldHierarchyExt,
-    Component, World,
-};
+use engine_ecs::{hierarchy::WorldHierarchyExt, Component, World};
 
 /// 变换组件（简化版）
 #[derive(Debug, Clone)]

@@ -81,24 +81,17 @@ impl EngineConfig {
                 let key = key_part.trim().trim_matches('"');
                 let value = value_part.trim();
                 match key {
-                    "window_title" => {
-                        config.window_title = value.trim_matches('"').to_string()
-                    }
+                    "window_title" => config.window_title = value.trim_matches('"').to_string(),
                     "window_width" => {
-                        config.window_width =
-                            value.parse::<u32>().map_err(|e| e.to_string())?
+                        config.window_width = value.parse::<u32>().map_err(|e| e.to_string())?
                     }
                     "window_height" => {
-                        config.window_height =
-                            value.parse::<u32>().map_err(|e| e.to_string())?
+                        config.window_height = value.parse::<u32>().map_err(|e| e.to_string())?
                     }
                     "target_fps" => {
-                        config.target_fps =
-                            value.parse::<u32>().map_err(|e| e.to_string())?
+                        config.target_fps = value.parse::<u32>().map_err(|e| e.to_string())?
                     }
-                    "log_level" => {
-                        config.log_level = value.trim_matches('"').to_string()
-                    }
+                    "log_level" => config.log_level = value.trim_matches('"').to_string(),
                     _ => {} // 忽略未知字段
                 }
             }

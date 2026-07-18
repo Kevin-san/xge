@@ -404,13 +404,8 @@ impl UiNode {
                 let offset = child_node.anchor_offset;
                 let pivot = child_node.pivot_layout;
                 let custom_size = child_node.custom_size;
-                let new_rect = AnchorLayoutEngine::compute(
-                    parent_rect,
-                    anchor,
-                    offset,
-                    pivot,
-                    custom_size,
-                );
+                let new_rect =
+                    AnchorLayoutEngine::compute(parent_rect, anchor, offset, pivot, custom_size);
                 child_node.rect = new_rect;
             }
         }
@@ -522,9 +517,9 @@ impl UiRoot {
 
     /// Flex 布局（UiRoot 递归调用入口）
     fn layout_children_flex_internal(&self, world: &mut World, entity: Entity) {
-        let snapshot = world.get_component::<UiNode>(entity).map(|node| {
-            (node.rect, node.flex_container, node.children().to_vec())
-        });
+        let snapshot = world
+            .get_component::<UiNode>(entity)
+            .map(|node| (node.rect, node.flex_container, node.children().to_vec()));
 
         if let Some((container_rect, container, children)) = snapshot {
             let child_data: Vec<(Entity, FlexItem, f32, f32)> = children
@@ -564,9 +559,9 @@ impl UiRoot {
 
     /// Anchor 布局（UiRoot 递归调用入口）
     fn layout_children_anchor_internal(&self, world: &mut World, entity: Entity) {
-        let snapshot = world.get_component::<UiNode>(entity).map(|node| {
-            (node.rect, node.children().to_vec())
-        });
+        let snapshot = world
+            .get_component::<UiNode>(entity)
+            .map(|node| (node.rect, node.children().to_vec()));
 
         if let Some((parent_rect, children)) = snapshot {
             for &child in &children {
