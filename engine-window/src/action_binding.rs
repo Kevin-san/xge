@@ -1,6 +1,6 @@
 //! 动作绑定系统 — 将物理输入映射到逻辑动作
 
-use crate::{Input, KeyCode, MouseButton};
+use crate::{GamepadButton, Input, KeyCode, MouseButton};
 use std::collections::HashMap;
 
 /// 动作绑定错误
@@ -22,6 +22,7 @@ impl std::fmt::Display for BindingError {
 pub enum InputSource {
     Key(KeyCode),
     MouseButton(MouseButton),
+    GamepadButton(GamepadButton),
 }
 
 /// 动作绑定映射
@@ -69,6 +70,7 @@ impl ActionBindings {
                 sources.iter().any(|source| match source {
                     InputSource::Key(code) => input.key_pressed(*code),
                     InputSource::MouseButton(btn) => input.mouse_button_pressed(*btn),
+                    InputSource::GamepadButton(_) => false, // TODO: Sprint 05
                 })
             })
             .unwrap_or(false)
@@ -82,6 +84,7 @@ impl ActionBindings {
                 sources.iter().any(|source| match source {
                     InputSource::Key(code) => input.key_just_pressed(*code),
                     InputSource::MouseButton(btn) => input.mouse_button_just_pressed(*btn),
+                    InputSource::GamepadButton(_) => false, // TODO: Sprint 05
                 })
             })
             .unwrap_or(false)
@@ -95,6 +98,7 @@ impl ActionBindings {
                 sources.iter().any(|source| match source {
                     InputSource::Key(code) => input.key_just_released(*code),
                     InputSource::MouseButton(btn) => input.mouse_button_just_released(*btn),
+                    InputSource::GamepadButton(_) => false, // TODO: Sprint 05
                 })
             })
             .unwrap_or(false)

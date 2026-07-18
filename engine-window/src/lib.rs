@@ -5,6 +5,7 @@
 pub mod action_binding;
 pub mod clipboard;
 pub mod event_loop;
+pub mod gamepad;
 pub mod input_event;
 pub mod key_code;
 pub mod monitor;
@@ -37,6 +38,9 @@ pub use window_state::{WindowSize, WindowState};
 
 // 剪贴板错误
 pub use crate::clipboard::ClipboardError;
+
+// 游戏手柄
+pub use gamepad::{GamepadAxis, GamepadButton, GamepadEvent, GamepadState};
 
 // 动作绑定
 pub use action_binding::{ActionBindings, InputSource};
@@ -106,6 +110,14 @@ pub trait WindowExt {
     fn set_engine_cursor_position(&self, x: f64, y: f64) -> Result<(), String>;
     /// 切换窗口模式
     fn set_mode(&self, mode: crate::WindowMode);
+    /// 设置窗口位置
+    fn set_engine_position(&self, x: i32, y: i32);
+    /// 获取窗口位置
+    fn engine_position(&self) -> Option<(i32, i32)>;
+    /// 设置窗口图标（传入 RGBA 像素数据）
+    fn set_engine_icon(&self, rgba: &[u8], width: u32, height: u32);
+    /// 获取窗口缩放因子
+    fn engine_scale_factor(&self) -> f64;
 }
 
 impl WindowExt for Window {
@@ -143,6 +155,25 @@ impl WindowExt for Window {
                 self.set_fullscreen(Some(crate::Fullscreen::Borderless(None)));
             }
         }
+    }
+
+    fn set_engine_position(&self, x: i32, y: i32) {
+        self.set_outer_position(PhysicalPosition::new(x, y));
+    }
+
+    fn engine_position(&self) -> Option<(i32, i32)> {
+        self.outer_position().ok().map(|p| (p.x, p.y))
+    }
+
+    fn set_engine_icon(&self, rgba: &[u8], width: u32, height: u32) {
+        let icon = crate::Icon::from_rgba(rgba.to_vec(), width, height);
+        if let Ok(icon) = icon {
+            self.set_window_icon(Some(icon));
+        }
+    }
+
+    fn engine_scale_factor(&self) -> f64 {
+        self.scale_factor()
     }
 }
 
