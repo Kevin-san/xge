@@ -287,6 +287,62 @@ impl Mat4 {
         Some(result)
     }
 
+    /// Right-handed look-at matrix (eye looking at target, up direction)
+    #[inline]
+    pub fn look_at_rh(eye: Vec3, target: Vec3, up: Vec3) -> Self {
+        let f = (target - eye).normalize();
+        let s = f.cross(up).normalize();
+        let u = s.cross(f);
+
+        Self {
+            cols: [
+                [s.x, u.x, -f.x, 0.0],
+                [s.y, u.y, -f.y, 0.0],
+                [s.z, u.z, -f.z, 0.0],
+                [-eye.dot(s), -eye.dot(u), eye.dot(f), 1.0],
+            ],
+        }
+    }
+
+    /// Right-handed perspective projection matrix
+    #[inline]
+    pub fn perspective_rh(fovy: f32, aspect: f32, near: f32, far: f32) -> Self {
+        let tan_half_fovy = (fovy / 2.0).tan();
+        Self {
+            cols: [
+                [1.0 / (aspect * tan_half_fovy), 0.0, 0.0, 0.0],
+                [0.0, 1.0 / tan_half_fovy, 0.0, 0.0],
+                [0.0, 0.0, -(far + near) / (far - near), -1.0],
+                [0.0, 0.0, -(2.0 * far * near) / (far - near), 0.0],
+            ],
+        }
+    }
+
+    /// Right-handed orthographic projection matrix
+    #[inline]
+    pub fn orthographic_rh(
+        left: f32,
+        right: f32,
+        bottom: f32,
+        top: f32,
+        near: f32,
+        far: f32,
+    ) -> Self {
+        Self {
+            cols: [
+                [2.0 / (right - left), 0.0, 0.0, 0.0],
+                [0.0, 2.0 / (top - bottom), 0.0, 0.0],
+                [0.0, 0.0, -2.0 / (far - near), 0.0],
+                [
+                    -(right + left) / (right - left),
+                    -(top + bottom) / (top - bottom),
+                    -(far + near) / (far - near),
+                    1.0,
+                ],
+            ],
+        }
+    }
+
     #[inline]
     pub fn to_cols_array(&self) -> [f32; 16] {
         [
@@ -498,5 +554,56 @@ mod tests {
         let v = Vec4::new(1.0, 2.0, 3.0, 4.0);
         let result = m.mul_vec4(v);
         assert_eq!(result, Vec4::ZERO);
+    }
+
+    #[test]
+    fn test_look_at_rh() {
+        let eye = Vec3::new(0.0, 0.0, 5.0);
+        let target = Vec3::ZERO;
+        let up = Vec3::Y;
+        let m = Mat4::look_at_rh(eye, target, up);
+
+        // The look-at matrix should be invertible
+        assert!(m.inverse().is_some());
+
+        // Transform eye position: should map to origin in view space
+        let eye_v = Vec4::new(0.0, 0.0, 5.0, 1.0);
+        let result = m.mul_vec4(eye_v);
+        assert!((result.x - 0.0).abs() < 1e-5);
+        assert!((result.y - 0.0).abs() < 1e-5);
+        // z should be negative for right-handed (looking down -z)
+        assert!((result.z - 0.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_perspective_rh() {
+        let fovy = std::f32::consts::FRAC_PI_4;
+        let aspect = 16.0 / 9.0;
+        let near = 0.1;
+        let far = 100.0;
+        let m = Mat4::perspective_rh(fovy, aspect, near, far);
+
+        // Perspective matrix should be invertible
+        assert!(m.inverse().is_some());
+
+        // The [2][3] element should be -1 for perspective
+        assert!((m.cols[2][3] - (-1.0)).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_orthographic_rh() {
+        let m = Mat4::orthographic_rh(-10.0, 10.0, -10.0, 10.0, 0.1, 100.0);
+
+        // Orthographic matrix should be invertible
+        assert!(m.inverse().is_some());
+
+        // The [2][3] element should be 0 for orthographic
+        assert!((m.cols[2][3] - 0.0).abs() < 1e-6);
+
+        // Center of ortho box should map to origin
+        let v = Vec4::new(0.0, 0.0, -50.05, 1.0);
+        let result = m.mul_vec4(v);
+        assert!((result.x - 0.0).abs() < 1e-4);
+        assert!((result.y - 0.0).abs() < 1e-4);
     }
 }

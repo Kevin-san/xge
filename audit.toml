@@ -1,0 +1,10 @@
+[advisories]
+# Sprint 01 已知豁免项 — 后续 sprint 逐步修复
+ignore = [
+    "RUSTSEC-2025-0141", # bincode unmaintained — Sprint 02 迁移
+    "RUSTSEC-2024-0436", # paste unmaintained — Sprint 03 替换
+    "RUSTSEC-2025-0134", # rustls-pemfile unmaintained — Sprint 02 升级
+    "RUSTSEC-2026-0192", # ttf-parser unmaintained — Sprint 05 替换
+    "RUSTSEC-2026-0194", # xml-rs quadratic attr — Sprint 04 升级 quick-xml
+    "RUSTSEC-2026-0195", # xml-rs unbounded ns — Sprint 04 升级 quick-xml
+]
