@@ -62,6 +62,33 @@ impl ModuleRegistry {
         self.modules.borrow().is_empty()
     }
 
+    /// 按名称获取模块引用
+    pub fn get_by_name(&self, name: &str) -> Option<std::cell::Ref<'_, dyn Module>> {
+        if self.modules.borrow().contains_key(name) {
+            Some(std::cell::Ref::map(self.modules.borrow(), |m| {
+                m.get(name).map(|b| b.as_ref() as &dyn Module).unwrap()
+            }))
+        } else {
+            None
+        }
+    }
+
+    /// 按名称获取模块可变引用
+    pub fn get_by_name_mut(&self, name: &str) -> Option<std::cell::RefMut<'_, dyn Module>> {
+        if self.modules.borrow().contains_key(name) {
+            Some(std::cell::RefMut::map(self.modules.borrow_mut(), |m| {
+                m.get_mut(name).map(|b| b.as_mut() as &mut dyn Module).unwrap()
+            }))
+        } else {
+            None
+        }
+    }
+
+    /// 检查是否包含指定名称的模块
+    pub fn contains(&self, name: &str) -> bool {
+        self.modules.borrow().contains_key(name)
+    }
+
     pub fn initialize_all(&self) -> Result<(), CycleError> {
         let sorted = topological_sort(&mut self.modules.borrow_mut())?;
 
@@ -169,3 +196,125 @@ impl std::fmt::Display for CycleError {
 }
 
 impl std::error::Error for CycleError {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct TestModule {
+        name: String,
+        deps: Vec<String>,
+        init_called: bool,
+        shutdown_called: bool,
+    }
+
+    impl TestModule {
+        fn new(name: &str) -> Self {
+            Self {
+                name: name.to_string(),
+                deps: Vec::new(),
+                init_called: false,
+                shutdown_called: false,
+            }
+        }
+
+        fn with_dep(name: &str, dep: &str) -> Self {
+            Self {
+                name: name.to_string(),
+                deps: vec![dep.to_string()],
+                init_called: false,
+                shutdown_called: false,
+            }
+        }
+    }
+
+    impl Module for TestModule {
+        fn name(&self) -> &str {
+            &self.name
+        }
+
+        fn dependencies(&self) -> Vec<&str> {
+            self.deps.iter().map(|s| s.as_str()).collect()
+        }
+
+        fn on_init(&mut self) {
+            self.init_called = true;
+        }
+
+        fn on_shutdown(&mut self) {
+            self.shutdown_called = true;
+        }
+    }
+
+    #[test]
+    fn test_register_and_len() {
+        let registry = ModuleRegistry::new();
+        assert!(registry.is_empty());
+
+        registry.register(Box::new(TestModule::new("mod_a")));
+        assert_eq!(registry.len(), 1);
+        assert!(registry.contains("mod_a"));
+        assert!(!registry.contains("mod_b"));
+    }
+
+    #[test]
+    fn test_get_by_name() {
+        let registry = ModuleRegistry::new();
+        registry.register(Box::new(TestModule::new("test_mod")));
+
+        let module = registry.get_by_name("test_mod");
+        assert!(module.is_some());
+        assert_eq!(module.unwrap().name(), "test_mod");
+
+        assert!(registry.get_by_name("nonexistent").is_none());
+    }
+
+    #[test]
+    fn test_initialize_all_order() {
+        let registry = ModuleRegistry::new();
+        // mod_b depends on mod_a, so mod_a should be initialized first
+        registry.register(Box::new(TestModule::with_dep("mod_b", "mod_a")));
+        registry.register(Box::new(TestModule::new("mod_a")));
+
+        registry.initialize_all().unwrap();
+
+        // Both should be initialized
+        let mod_a = registry.get_by_name("mod_a").unwrap();
+        assert_eq!(mod_a.name(), "mod_a");
+    }
+
+    #[test]
+    fn test_cycle_detection() {
+        let registry = ModuleRegistry::new();
+        // Create a cycle: a -> b -> a
+        struct ModA;
+        impl Module for ModA {
+            fn name(&self) -> &str { "a" }
+            fn dependencies(&self) -> Vec<&str> { vec!["b"] }
+        }
+        struct ModB;
+        impl Module for ModB {
+            fn name(&self) -> &str { "b" }
+            fn dependencies(&self) -> Vec<&str> { vec!["a"] }
+        }
+
+        registry.register(Box::new(ModA));
+        registry.register(Box::new(ModB));
+
+        let result = registry.initialize_all();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_shutdown_all() {
+        let registry = ModuleRegistry::new();
+        registry.register(Box::new(TestModule::new("mod_a")));
+        registry.register(Box::new(TestModule::new("mod_b")));
+
+        registry.initialize_all().unwrap();
+        registry.shutdown_all();
+
+        // After shutdown, modules are removed
+        assert!(registry.is_empty());
+    }
+}

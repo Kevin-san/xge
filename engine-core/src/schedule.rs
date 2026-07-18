@@ -31,6 +31,7 @@ struct Stage {
 pub struct Schedule {
     stages: HashMap<String, Stage>,
     stage_order: Vec<String>,
+    run_criteria: Option<Box<dyn Fn() -> bool + Send + Sync + 'static>>,
 }
 
 impl Default for Schedule {
@@ -45,6 +46,7 @@ impl Schedule {
         let mut schedule = Self {
             stages: HashMap::new(),
             stage_order: Vec::new(),
+            run_criteria: None,
         };
 
         // 添加默认阶段
@@ -92,8 +94,28 @@ impl Schedule {
         }
     }
 
+    /// 获取所有阶段名称（已废弃，请使用 stage_names）
+    pub fn stage_order(&self) -> &[String] {
+        &self.stage_order
+    }
+
+    /// 设置运行条件（留接口，本 Sprint 仅线性执行）
+    /// `criteria` 为一个返回布尔值的闭包，决定调度器是否执行
+    pub fn set_run_criteria<F>(&mut self, criteria: F)
+    where
+        F: Fn() -> bool + Send + Sync + 'static,
+    {
+        self.run_criteria = Some(Box::new(criteria));
+    }
+
     /// 执行所有已注册的阶段
     pub fn run(&mut self) {
+        if let Some(ref criteria) = self.run_criteria {
+            if !criteria() {
+                return;
+            }
+        }
+
         let stage_order = self.stage_order.clone();
         for stage_name in &stage_order {
             self.run_stage(stage_name);
@@ -199,5 +221,37 @@ mod tests {
         schedule.clear_stage(UPDATE);
         schedule.run_stage(UPDATE);
         assert_eq!(counter.load(Ordering::SeqCst), 0);
+    }
+
+    #[test]
+    fn test_stage_order() {
+        let schedule = Schedule::new();
+        let order = schedule.stage_order();
+        assert_eq!(order.len(), 4);
+        assert_eq!(order[0], "Startup");
+        assert_eq!(order[1], "Update");
+        assert_eq!(order[2], "Render");
+        assert_eq!(order[3], "Shutdown");
+    }
+
+    #[test]
+    fn test_run_criteria() {
+        let mut schedule = Schedule::new();
+        let counter = Arc::new(AtomicUsize::new(0));
+
+        let c = counter.clone();
+        schedule.add_system_to_stage(UPDATE, move || {
+            c.fetch_add(1, Ordering::SeqCst);
+        });
+
+        // Set criteria that returns false
+        schedule.set_run_criteria(|| false);
+        schedule.run();
+        assert_eq!(counter.load(Ordering::SeqCst), 0);
+
+        // Set criteria that returns true
+        schedule.set_run_criteria(|| true);
+        schedule.run();
+        assert_eq!(counter.load(Ordering::SeqCst), 1);
     }
 }
