@@ -26,6 +26,87 @@ impl Default for EngineConfig {
     }
 }
 
+impl EngineConfig {
+    /// 从 TOML 字符串解析 EngineConfig（简易手动解析，不支持嵌套表）
+    ///
+    /// 支持的字段: window_title, window_width, window_height, target_fps, log_level
+    pub fn from_toml(toml_str: &str) -> Result<Self, String> {
+        let mut config = Self::default();
+        for line in toml_str.lines() {
+            let line = line.trim();
+            if line.is_empty() || line.starts_with('#') || line.starts_with('[') {
+                continue;
+            }
+            if let Some((key, value)) = line.split_once('=') {
+                let key = key.trim();
+                let value = value.trim();
+                match key {
+                    "window_title" => config.window_title = value.trim_matches('"').to_string(),
+                    "window_width" => {
+                        config.window_width = value.parse::<u32>().map_err(|e| e.to_string())?
+                    }
+                    "window_height" => {
+                        config.window_height = value.parse::<u32>().map_err(|e| e.to_string())?
+                    }
+                    "target_fps" => {
+                        config.target_fps = value.parse::<u32>().map_err(|e| e.to_string())?
+                    }
+                    "log_level" => config.log_level = value.trim_matches('"').to_string(),
+                    _ => {} // 忽略未知字段
+                }
+            }
+        }
+        Ok(config)
+    }
+
+    /// 从 JSON 字符串解析 EngineConfig（简易手动解析，仅支持扁平对象）
+    ///
+    /// 支持的字段: window_title, window_width, window_height, target_fps, log_level
+    pub fn from_json(json_str: &str) -> Result<Self, String> {
+        let mut config = Self::default();
+        let trimmed = json_str.trim();
+        if !trimmed.starts_with('{') || !trimmed.ends_with('}') {
+            return Err("JSON 必须以 { 开始并以 } 结束".to_string());
+        }
+        let inner = trimmed[1..trimmed.len() - 1].trim();
+        if inner.is_empty() {
+            return Ok(config);
+        }
+        for pair in inner.split(',') {
+            let pair = pair.trim();
+            if pair.is_empty() {
+                continue;
+            }
+            if let Some((key_part, value_part)) = pair.split_once(':') {
+                let key = key_part.trim().trim_matches('"');
+                let value = value_part.trim();
+                match key {
+                    "window_title" => {
+                        config.window_title = value.trim_matches('"').to_string()
+                    }
+                    "window_width" => {
+                        config.window_width =
+                            value.parse::<u32>().map_err(|e| e.to_string())?
+                    }
+                    "window_height" => {
+                        config.window_height =
+                            value.parse::<u32>().map_err(|e| e.to_string())?
+                    }
+                    "target_fps" => {
+                        config.target_fps =
+                            value.parse::<u32>().map_err(|e| e.to_string())?
+                    }
+                    "log_level" => {
+                        config.log_level = value.trim_matches('"').to_string()
+                    }
+                    _ => {} // 忽略未知字段
+                }
+            }
+        }
+        Ok(config)
+    }
+}
+
 pub struct Engine {
     config: EngineConfig,
     modules: ModuleRegistry,
@@ -34,6 +115,9 @@ pub struct Engine {
     input_module: Arc<Mutex<InputModule>>,
     window_state: WindowState,
     quit_flag: Option<Arc<std::sync::atomic::AtomicBool>>,
+    running: bool,
+    paused: bool,
+    filesystem: Option<Box<dyn crate::filesystem::FileSystem>>,
 }
 
 impl Default for Engine {
@@ -52,6 +136,9 @@ impl Engine {
             input_module: Arc::new(Mutex::new(InputModule::new())),
             window_state: WindowState::new(),
             quit_flag: None,
+            running: false,
+            paused: false,
+            filesystem: None,
         }
     }
 
@@ -81,6 +168,53 @@ impl Engine {
     pub fn modules(&self) -> &ModuleRegistry {
         &self.modules
     }
+
+    // ===== 运行状态 =====
+
+    /// 引擎是否正在运行
+    pub fn is_running(&self) -> bool {
+        self.running
+    }
+
+    /// 暂停引擎（暂停后主循环跳过 update/render）
+    pub fn pause(&mut self) {
+        self.paused = true;
+    }
+
+    /// 恢复引擎
+    pub fn resume(&mut self) {
+        self.paused = false;
+    }
+
+    /// 引擎是否处于暂停状态
+    pub fn is_paused(&self) -> bool {
+        self.paused
+    }
+
+    // ===== 文件系统 =====
+
+    /// 获取文件系统引用
+    pub fn filesystem(&self) -> Option<&dyn crate::filesystem::FileSystem> {
+        self.filesystem.as_deref()
+    }
+
+    /// 设置文件系统
+    pub fn set_filesystem(&mut self, fs: Box<dyn crate::filesystem::FileSystem>) {
+        self.filesystem = Some(fs);
+    }
+
+    // ===== 任务派发 =====
+
+    /// 在独立线程中派发任务
+    pub fn spawn_task<F: FnOnce() + Send + 'static>(&self, f: F) {
+        std::thread::spawn(f);
+    }
+
+    // ===== 模块类型查找 =====
+
+    // TODO: 实现 module<T>() 和 module_mut<T>() — 需要 ModuleRegistry 支持类型查找
+    // pub fn module<T: 'static>(&self) -> Option<&T> { ... }
+    // pub fn module_mut<T: 'static>(&mut self) -> Option<&mut T> { ... }
 
     // ===== 窗口访问 =====
 
@@ -193,9 +327,12 @@ impl Engine {
 
     /// 启动主循环（阻塞运行直到 quit_flag 被设置为 true）
     pub fn run(&mut self) {
+        self.running = true;
+
         // 初始化所有模块
         if let Err(e) = self.modules.initialize_all() {
             eprintln!("模块初始化失败: {}", e);
+            self.running = false;
             return;
         }
 
@@ -209,6 +346,12 @@ impl Engine {
                 if flag.load(std::sync::atomic::Ordering::SeqCst) {
                     break;
                 }
+            }
+
+            // 暂停时跳过 update/render
+            if self.paused {
+                std::thread::sleep(std::time::Duration::from_millis(1));
+                continue;
             }
 
             // 更新时间
@@ -227,6 +370,7 @@ impl Engine {
 
         // 清理所有模块
         self.modules.shutdown_all();
+        self.running = false;
     }
 }
 
@@ -335,5 +479,104 @@ mod tests {
         // 应仍处于默认状态
         assert!(engine.is_focused());
         assert!(!engine.is_minimized());
+    }
+
+    #[test]
+    fn test_is_running() {
+        let mut engine = Engine::default();
+        assert!(!engine.is_running());
+        // run() 会设置 running = true，但因为会阻塞所以我们通过直接测试字段逻辑
+        // 验证初始状态为 false
+        engine.running = true;
+        assert!(engine.is_running());
+        engine.running = false;
+        assert!(!engine.is_running());
+    }
+
+    #[test]
+    fn test_pause_resume() {
+        let mut engine = Engine::default();
+        assert!(!engine.is_paused());
+        engine.pause();
+        assert!(engine.is_paused());
+        engine.resume();
+        assert!(!engine.is_paused());
+        // 多次调用应保持幂等
+        engine.resume();
+        assert!(!engine.is_paused());
+        engine.pause();
+        engine.pause();
+        assert!(engine.is_paused());
+    }
+
+    #[test]
+    fn test_filesystem_accessor() {
+        use crate::filesystem::StdFileSystem;
+        let mut engine = Engine::default();
+        assert!(engine.filesystem().is_none());
+        engine.set_filesystem(Box::new(StdFileSystem));
+        assert!(engine.filesystem().is_some());
+    }
+
+    #[test]
+    fn test_engine_config_from_json() {
+        let json = r#"{"window_title":"My Game","window_width":1920,"window_height":1080,"target_fps":120,"log_level":"debug"}"#;
+        let config = EngineConfig::from_json(json).unwrap();
+        assert_eq!(config.window_title, "My Game");
+        assert_eq!(config.window_width, 1920);
+        assert_eq!(config.window_height, 1080);
+        assert_eq!(config.target_fps, 120);
+        assert_eq!(config.log_level, "debug");
+
+        // 部分字段
+        let json_partial = r#"{"window_title":"Partial"}"#;
+        let config_partial = EngineConfig::from_json(json_partial).unwrap();
+        assert_eq!(config_partial.window_title, "Partial");
+        assert_eq!(config_partial.window_width, 1280); // 默认值
+
+        // 空对象
+        let json_empty = "{}";
+        let config_empty = EngineConfig::from_json(json_empty).unwrap();
+        assert_eq!(config_empty.window_title, "Game Engine");
+
+        // 非法格式
+        let json_bad = "not json";
+        assert!(EngineConfig::from_json(json_bad).is_err());
+    }
+
+    #[test]
+    fn test_engine_config_from_toml() {
+        let toml = r#"
+window_title = "My Game"
+window_width = 1920
+window_height = 1080
+target_fps = 120
+log_level = "debug"
+"#;
+        let config = EngineConfig::from_toml(toml).unwrap();
+        assert_eq!(config.window_title, "My Game");
+        assert_eq!(config.window_width, 1920);
+        assert_eq!(config.window_height, 1080);
+        assert_eq!(config.target_fps, 120);
+        assert_eq!(config.log_level, "debug");
+
+        // 部分字段
+        let toml_partial = r#"window_title = "Partial""#;
+        let config_partial = EngineConfig::from_toml(toml_partial).unwrap();
+        assert_eq!(config_partial.window_title, "Partial");
+        assert_eq!(config_partial.window_width, 1280); // 默认值
+
+        // 注释和表头应被忽略
+        let toml_with_comments = r#"
+# This is a comment
+[section]
+window_title = "Commented"
+"#;
+        let config_comments = EngineConfig::from_toml(toml_with_comments).unwrap();
+        assert_eq!(config_comments.window_title, "Commented");
+
+        // 非法数字
+        let toml_bad = r#"window_width = "not_a_number""#;
+        assert!(EngineConfig::from_toml(toml_bad).is_err());
     }
 }

@@ -59,6 +59,22 @@ impl ThreadPool {
     pub fn pending_tasks(&self) -> usize {
         self.task_queue.lock().unwrap().len()
     }
+
+    /// Block on a task - runs on current thread
+    pub fn block_on<F: FnOnce() -> R + Send, R: Send>(&self, f: F) -> R {
+        // Simple implementation: just run it on the current thread
+        f()
+    }
+
+    /// Shutdown the thread pool - stop accepting new tasks
+    pub fn shutdown(&mut self) {
+        self.workers.clear();
+    }
+
+    /// Get the number of active workers
+    pub fn active_count(&self) -> usize {
+        self.workers.len()
+    }
 }
 
 impl Worker {
@@ -120,5 +136,38 @@ mod tests {
     fn test_num_threads() {
         let pool = ThreadPool::new_with_threads(4);
         assert_eq!(pool.num_threads(), 4);
+    }
+
+    #[test]
+    fn test_block_on() {
+        let pool = ThreadPool::new_with_threads(2);
+        let result = pool.block_on(|| 42);
+        assert_eq!(result, 42);
+
+        let result = pool.block_on(|| {
+            let mut sum = 0;
+            for i in 0..10 {
+                sum += i;
+            }
+            sum
+        });
+        assert_eq!(result, 45);
+    }
+
+    #[test]
+    fn test_shutdown() {
+        let mut pool = ThreadPool::new_with_threads(4);
+        assert_eq!(pool.active_count(), 4);
+        pool.shutdown();
+        assert_eq!(pool.active_count(), 0);
+    }
+
+    #[test]
+    fn test_active_count() {
+        let pool = ThreadPool::new_with_threads(3);
+        assert_eq!(pool.active_count(), 3);
+
+        let pool = ThreadPool::new_with_threads(1);
+        assert_eq!(pool.active_count(), 1);
     }
 }

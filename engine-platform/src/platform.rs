@@ -66,6 +66,30 @@ impl Platform {
     pub fn is_web(&self) -> bool {
         matches!(self, Platform::Web)
     }
+
+    pub fn is_windows(&self) -> bool {
+        *self == Platform::Windows
+    }
+
+    pub fn is_macos(&self) -> bool {
+        *self == Platform::MacOS
+    }
+
+    pub fn is_linux(&self) -> bool {
+        *self == Platform::Linux
+    }
+
+    pub fn name(&self) -> &'static str {
+        match self {
+            Platform::Windows => "windows",
+            Platform::Linux => "linux",
+            Platform::MacOS => "macos",
+            Platform::Android => "android",
+            Platform::IOS => "ios",
+            Platform::Web => "web",
+            Platform::Unknown => "unknown",
+        }
+    }
 }
 
 /// 特性开关
@@ -94,6 +118,25 @@ impl Feature {
 
     pub fn disable(&mut self) {
         self.enabled = false;
+    }
+
+    /// Check if a feature with given name is enabled from a feature list
+    pub fn enabled(name: &str, features: &[Feature]) -> bool {
+        features.iter().any(|f| f.name == name && f.enabled)
+    }
+
+    /// List all feature names
+    pub fn list(features: &[Feature]) -> Vec<&'static str> {
+        features.iter().map(|f| f.name).collect()
+    }
+
+    /// Get render backend from feature list
+    pub fn render_backend(features: &[Feature]) -> &'static str {
+        features
+            .iter()
+            .find(|f| f.name.starts_with("render-") && f.enabled)
+            .map(|f| f.name)
+            .unwrap_or("render-gl")
     }
 }
 
@@ -131,5 +174,83 @@ mod tests {
 
         f.disable();
         assert!(!f.is_enabled());
+    }
+
+    #[test]
+    fn test_platform_is_specific() {
+        assert!(Platform::Windows.is_windows());
+        assert!(!Platform::Linux.is_windows());
+        assert!(!Platform::MacOS.is_windows());
+
+        assert!(Platform::MacOS.is_macos());
+        assert!(!Platform::Windows.is_macos());
+        assert!(!Platform::Linux.is_macos());
+
+        assert!(Platform::Linux.is_linux());
+        assert!(!Platform::Windows.is_linux());
+        assert!(!Platform::MacOS.is_linux());
+    }
+
+    #[test]
+    fn test_platform_name() {
+        assert_eq!(Platform::Windows.name(), "windows");
+        assert_eq!(Platform::Linux.name(), "linux");
+        assert_eq!(Platform::MacOS.name(), "macos");
+        assert_eq!(Platform::Android.name(), "android");
+        assert_eq!(Platform::IOS.name(), "ios");
+        assert_eq!(Platform::Web.name(), "web");
+        assert_eq!(Platform::Unknown.name(), "unknown");
+    }
+
+    #[test]
+    fn test_feature_enabled() {
+        let features = vec![
+            Feature::new("render-gl", true),
+            Feature::new("audio", false),
+            Feature::new("network", true),
+        ];
+
+        assert!(Feature::enabled("render-gl", &features));
+        assert!(!Feature::enabled("audio", &features));
+        assert!(Feature::enabled("network", &features));
+        assert!(!Feature::enabled("nonexistent", &features));
+    }
+
+    #[test]
+    fn test_feature_list() {
+        let features = vec![
+            Feature::new("render-gl", true),
+            Feature::new("audio", false),
+            Feature::new("network", true),
+        ];
+
+        let names = Feature::list(&features);
+        assert_eq!(names, vec!["render-gl", "audio", "network"]);
+    }
+
+    #[test]
+    fn test_feature_render_backend() {
+        let features = vec![
+            Feature::new("render-gl", true),
+            Feature::new("audio", false),
+        ];
+        assert_eq!(Feature::render_backend(&features), "render-gl");
+
+        let features = vec![
+            Feature::new("render-vulkan", true),
+            Feature::new("render-gl", false),
+        ];
+        assert_eq!(Feature::render_backend(&features), "render-vulkan");
+
+        // No enabled render feature → fallback
+        let features = vec![
+            Feature::new("render-gl", false),
+            Feature::new("audio", true),
+        ];
+        assert_eq!(Feature::render_backend(&features), "render-gl");
+
+        // Empty list → fallback
+        let features: Vec<Feature> = vec![];
+        assert_eq!(Feature::render_backend(&features), "render-gl");
     }
 }

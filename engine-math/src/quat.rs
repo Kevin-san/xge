@@ -1,5 +1,5 @@
 use core::fmt;
-use core::ops::Mul;
+use core::ops::{Mul, Neg};
 
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
 pub struct Quat {
@@ -79,6 +79,12 @@ impl Quat {
         } else {
             Self::IDENTITY
         }
+    }
+
+    /// Dot product between two quaternions
+    #[inline]
+    pub fn dot(self, other: Self) -> f32 {
+        self.x * other.x + self.y * other.y + self.z * other.z + self.w * other.w
     }
 
     #[inline]
@@ -239,6 +245,19 @@ impl Mul<Vec3> for Quat {
         let uv = qv.cross(v);
         let uuv = qv.cross(uv);
         uv * (2.0 * self.w) + uuv * 2.0 + v
+    }
+}
+
+impl Neg for Quat {
+    type Output = Self;
+    #[inline]
+    fn neg(self) -> Self {
+        Self {
+            x: -self.x,
+            y: -self.y,
+            z: -self.z,
+            w: -self.w,
+        }
     }
 }
 
@@ -502,5 +521,69 @@ mod tests {
         assert!((axis.x - axis2.x).abs() < 1e-5);
         assert!((axis.y - axis2.y).abs() < 1e-5);
         assert!((axis.z - axis2.z).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_dot() {
+        let q1 = Quat::IDENTITY;
+        let q2 = Quat::IDENTITY;
+        assert!((q1.dot(q2) - 1.0).abs() < 1e-6);
+
+        let q1 = Quat { x: 1.0, y: 0.0, z: 0.0, w: 0.0 };
+        let q2 = Quat { x: 0.0, y: 1.0, z: 0.0, w: 0.0 };
+        assert!((q1.dot(q2) - 0.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_neg() {
+        let q = Quat { x: 1.0, y: 2.0, z: 3.0, w: 4.0 };
+        let neg_q = -q;
+        assert_eq!(neg_q.x, -1.0);
+        assert_eq!(neg_q.y, -2.0);
+        assert_eq!(neg_q.z, -3.0);
+        assert_eq!(neg_q.w, -4.0);
+    }
+
+    #[test]
+    fn test_slerp_endpoints() {
+        let q1 = Quat::IDENTITY;
+        let q2 = Quat::from_rotation_x(std::f32::consts::FRAC_PI_2);
+
+        // slerp at t=0 should be q1
+        let r0 = q1.slerp(q2, 0.0);
+        assert!((r0.x - q1.x).abs() < 1e-5);
+        assert!((r0.w - q1.w).abs() < 1e-5);
+
+        // slerp at t=1 should be q2
+        let r1 = q1.slerp(q2, 1.0);
+        assert!((r1.x - q2.x).abs() < 1e-5);
+        assert!((r1.w - q2.w).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_nlerp_endpoints() {
+        let q1 = Quat::IDENTITY;
+        let q2 = Quat::from_rotation_x(std::f32::consts::FRAC_PI_2);
+
+        // nlerp at t=0 should be q1
+        let r0 = q1.nlerp(q2, 0.0);
+        assert!((r0.x - q1.x).abs() < 1e-5);
+        assert!((r0.w - q1.w).abs() < 1e-5);
+
+        // nlerp at t=1 should be q2
+        let r1 = q1.nlerp(q2, 1.0);
+        assert!((r1.x - q2.x).abs() < 1e-5);
+        assert!((r1.w - q2.w).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_slerp_vs_nlerp() {
+        // For small angles, slerp and nlerp should be close
+        let q1 = Quat::IDENTITY;
+        let q2 = Quat::from_rotation_x(0.1); // small angle
+        let slerp_result = q1.slerp(q2, 0.5);
+        let nlerp_result = q1.nlerp(q2, 0.5);
+        assert!((slerp_result.x - nlerp_result.x).abs() < 0.01);
+        assert!((slerp_result.w - nlerp_result.w).abs() < 0.01);
     }
 }
