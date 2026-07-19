@@ -1,7 +1,8 @@
 use crate::module::ModuleRegistry;
 use crate::time::Time;
 use engine_window::{
-    CursorGrabMode, CursorIcon, Event, InputModule, Window, WindowExt, WindowState,
+    CursorGrabMode, CursorIcon, Event, EventLoopProxy, Fullscreen, InputModule, PhysicalPosition,
+    PhysicalSize, Window, WindowExt, WindowMode, WindowState,
 };
 use std::sync::{Arc, Mutex};
 
@@ -32,8 +33,9 @@ pub struct Engine {
     time: Time,
     window: Option<Window>,
     input_module: Arc<Mutex<InputModule>>,
-    window_state: WindowState,
-    quit_flag: Option<Arc<std::sync::atomic::AtomicBool>>,
+    window_state: Option<WindowState>,
+    event_loop_proxy: Option<EventLoopProxy<()>>,
+    quit_flag: std::sync::OnceLock<Arc<std::sync::atomic::AtomicBool>>,
 }
 
 impl Default for Engine {
@@ -50,24 +52,21 @@ impl Engine {
             time: Time::new(),
             window: None,
             input_module: Arc::new(Mutex::new(InputModule::new())),
-            window_state: WindowState::new(),
-            quit_flag: None,
+            window_state: None,
+            event_loop_proxy: None,
+            quit_flag: std::sync::OnceLock::new(),
         }
     }
 
     /// 设置退出标志（供 AppBuilder 使用）
-    pub fn set_quit_flag(&mut self, flag: Arc<std::sync::atomic::AtomicBool>) {
-        self.quit_flag = Some(flag);
+    pub fn set_quit_flag(&self, flag: Arc<std::sync::atomic::AtomicBool>) {
+        let _ = self.quit_flag.set(flag);
     }
 
     /// 请求引擎在当前帧结束后退出（设置内部 quit_flag）
-    pub fn request_quit(&mut self) {
-        if self.quit_flag.is_none() {
-            self.quit_flag = Some(Arc::new(std::sync::atomic::AtomicBool::new(false)));
-        }
-        if let Some(flag) = &self.quit_flag {
-            flag.store(true, std::sync::atomic::Ordering::SeqCst);
-        }
+    pub fn request_quit(&self) {
+        let flag = self.quit_flag.get_or_init(|| Arc::new(std::sync::atomic::AtomicBool::new(false)));
+        flag.store(true, std::sync::atomic::Ordering::SeqCst);
     }
 
     /// 检查引擎是否正在运行
@@ -75,7 +74,7 @@ impl Engine {
     /// 如果 `quit_flag` 未设置，视为正在运行；如果已设置且值为 true，则已退出。
     pub fn is_running(&self) -> bool {
         self.quit_flag
-            .as_ref()
+            .get()
             .map_or(true, |f| !f.load(std::sync::atomic::Ordering::SeqCst))
     }
 
@@ -149,35 +148,37 @@ impl Engine {
     /// # 参数
     /// - `event`: 来自事件循环的通用事件（引擎级，已屏蔽 winit 底层类型）
     pub fn process_window_event(&self, event: &Event<()>) {
-        self.window_state.process_event(event);
+        if let Some(ws) = &self.window_state {
+            ws.process_event(event);
+        }
     }
 
     /// 窗口是否拥有键盘焦点
     pub fn is_focused(&self) -> bool {
-        self.window_state.is_focused()
+        self.window_state.as_ref().is_some_and(|ws| ws.is_focused())
     }
 
     /// 窗口是否被最小化
     pub fn is_minimized(&self) -> bool {
-        self.window_state.is_minimized()
+        self.window_state.as_ref().is_some_and(|ws| ws.is_minimized())
     }
 
     /// 窗口是否被最大化
     pub fn is_maximized(&self) -> bool {
-        self.window_state.is_maximized()
+        self.window_state.as_ref().is_some_and(|ws| ws.is_maximized())
     }
 
     /// 窗口是否可见
     pub fn is_visible(&self) -> bool {
-        self.window_state.is_visible()
+        self.window_state.as_ref().map_or(true, |ws| ws.is_visible())
     }
 
     // ===== 光标控制（屏蔽 winit 依赖）=====
 
     /// 设置光标可见性
-    pub fn show_cursor(&self, show: bool) {
+    pub fn show_cursor(&self, visible: bool) {
         if let Some(window) = &self.window {
-            window.set_cursor_visible(show);
+            window.set_cursor_visible(visible);
         }
     }
 
@@ -187,12 +188,11 @@ impl Engine {
     /// - `CursorGrabMode::Confined` — 限制在窗口内
     /// - `CursorGrabMode::Locked` — 完全锁定（鼠标坐标固定）
     pub fn set_cursor_grab(&self, mode: CursorGrabMode) -> Result<(), String> {
-        let window = match &self.window {
-            Some(w) => w,
-            None => return Err("未设置窗口句柄".to_string()),
-        };
-        // 使用 WindowExt trait 的引擎级方法（内部自动映射到 winit）
-        window.set_engine_cursor_grab(mode)
+        if let Some(window) = &self.window {
+            window.set_engine_cursor_grab(mode)
+        } else {
+            Err("未设置窗口句柄".to_string())
+        }
     }
 
     /// 便捷方法：按布尔值切换 Confined/None
@@ -214,11 +214,11 @@ impl Engine {
 
     /// 设置光标位置（相对窗口左上角）
     pub fn set_cursor_position(&self, x: f64, y: f64) -> Result<(), String> {
-        let window = match &self.window {
-            Some(w) => w,
-            None => return Err("未设置窗口句柄".to_string()),
-        };
-        window.set_engine_cursor_position(x, y)
+        if let Some(window) = &self.window {
+            window.set_engine_cursor_position(x, y)
+        } else {
+            Err("未设置窗口句柄".to_string())
+        }
     }
 
     /// 设置 IME（输入法）是否启用
@@ -226,6 +226,60 @@ impl Engine {
         if let Some(window) = &self.window {
             window.set_ime_allowed(allowed);
         }
+    }
+
+    /// 请求关闭窗口/退出
+    pub fn request_close(&self) {
+        self.request_quit();
+    }
+
+    /// 设置 IME 位置
+    pub fn set_ime_position(&self, position: PhysicalPosition<i32>) {
+        if let Some(window) = &self.window {
+            window.set_ime_cursor_area(position, PhysicalSize::new(0, 0));
+        }
+    }
+
+    /// 设置窗口模式
+    pub fn set_window_mode(&self, mode: WindowMode) {
+        if let Some(window) = &self.window {
+            match mode {
+                WindowMode::Windowed => {
+                    window.set_fullscreen(None);
+                }
+                WindowMode::Fullscreen => {
+                    if let Some(monitor) = window.current_monitor() {
+                        window.set_fullscreen(Some(Fullscreen::Exclusive(
+                            monitor.video_modes().next().unwrap_or_else(|| {
+                                panic!("No video mode available")
+                            })
+                        )));
+                    }
+                }
+                WindowMode::Borderless => {
+                    window.set_fullscreen(Some(Fullscreen::Borderless(
+                        window.current_monitor()
+                    )));
+                }
+            }
+        }
+    }
+
+    /// 获取事件循环代理
+    pub fn event_loop_proxy(&self) -> Option<&EventLoopProxy<()>> {
+        self.event_loop_proxy.as_ref()
+    }
+
+    // ===== 窗口状态与事件循环设置 =====
+
+    /// 设置窗口状态
+    pub fn set_window_state(&mut self, state: WindowState) {
+        self.window_state = Some(state);
+    }
+
+    /// 设置事件循环代理
+    pub fn set_event_loop_proxy(&mut self, proxy: EventLoopProxy<()>) {
+        self.event_loop_proxy = Some(proxy);
     }
 
     /// 启动主循环（阻塞运行直到 quit_flag 被设置为 true）
@@ -242,7 +296,7 @@ impl Engine {
         // 主循环
         loop {
             // 检查退出标志
-            if let Some(flag) = &self.quit_flag {
+            if let Some(flag) = self.quit_flag.get() {
                 if flag.load(std::sync::atomic::Ordering::SeqCst) {
                     break;
                 }
@@ -282,9 +336,9 @@ mod tests {
     #[test]
     fn test_engine_default() {
         let engine = Engine::default();
-        assert!(engine.is_focused()); // 默认状态为已聚焦
+        assert!(!engine.is_focused()); // window_state 未设置，默认为 false
         assert!(!engine.is_minimized());
-        assert!(engine.is_visible());
+        assert!(engine.is_visible()); // window_state 未设置，默认为 true
     }
 
     #[test]
@@ -362,14 +416,15 @@ mod tests {
 
     #[test]
     fn test_process_window_event_no_panic() {
-        let engine = Engine::default();
+        let mut engine = Engine::default();
+        engine.set_window_state(WindowState::new());
         // 构造一个空的 Event 来测试
         let event = Event::WindowEvent {
             window_id: unsafe { std::mem::zeroed() },
             event: engine_window::WindowEvent::Focused(true),
         };
         engine.process_window_event(&event);
-        // 应仍处于默认状态
+        // 应仍处于默认状态（Focused(true) 事件不改变已为 true 的焦点状态）
         assert!(engine.is_focused());
         assert!(!engine.is_minimized());
     }
@@ -382,7 +437,7 @@ mod tests {
 
     #[test]
     fn test_engine_is_not_running_after_quit() {
-        let mut engine = Engine::new(EngineConfig::default());
+        let engine = Engine::new(EngineConfig::default());
         engine.request_quit();
         assert!(!engine.is_running());
     }
@@ -397,5 +452,39 @@ mod tests {
         });
         handle.join().unwrap();
         assert_eq!(result.load(std::sync::atomic::Ordering::SeqCst), 42);
+    }
+
+    // ===== Sprint 02: Engine 窗口 API 测试 =====
+
+    #[test]
+    fn test_engine_is_focused_default() {
+        let engine = Engine::new(EngineConfig::default());
+        // No window state set, default should be false
+        assert!(!engine.is_focused());
+    }
+
+    #[test]
+    fn test_engine_is_visible_default() {
+        let engine = Engine::new(EngineConfig::default());
+        // No window state, default should be true
+        assert!(engine.is_visible());
+    }
+
+    #[test]
+    fn test_engine_is_minimized_default() {
+        let engine = Engine::new(EngineConfig::default());
+        assert!(!engine.is_minimized());
+    }
+
+    #[test]
+    fn test_engine_is_maximized_default() {
+        let engine = Engine::new(EngineConfig::default());
+        assert!(!engine.is_maximized());
+    }
+
+    #[test]
+    fn test_engine_event_loop_proxy_default() {
+        let engine = Engine::new(EngineConfig::default());
+        assert!(engine.event_loop_proxy().is_none());
     }
 }

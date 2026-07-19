@@ -3,6 +3,36 @@
 use once_cell::sync::OnceCell;
 use std::sync::Mutex;
 
+/// 剪贴板接口
+#[derive(Default)]
+pub struct Clipboard {
+    inner: Option<Mutex<arboard::Clipboard>>,
+}
+
+impl Clipboard {
+    pub fn new() -> Result<Self, ClipboardError> {
+        let inner = arboard::Clipboard::new()
+            .map_err(|e| ClipboardError::NotInitialized(e.to_string()))?;
+        Ok(Self { inner: Some(Mutex::new(inner)) })
+    }
+
+    /// 获取剪贴板文本
+    pub fn get_text(&self) -> Option<String> {
+        let mut guard = self.inner.as_ref()?.lock().ok()?;
+        guard.get_text().ok()
+    }
+
+    /// 设置剪贴板文本
+    pub fn set_text(&self, text: &str) -> Result<(), ClipboardError> {
+        let mut guard = self.inner.as_ref()
+            .ok_or(ClipboardError::NotInitialized("Clipboard not initialized".to_string()))?
+            .lock()
+            .map_err(|e| ClipboardError::NotInitialized(e.to_string()))?;
+        guard.set_text(text)
+            .map_err(|e| ClipboardError::NotInitialized(e.to_string()))
+    }
+}
+
 /// 剪贴板错误类型
 #[derive(Debug, Clone, thiserror::Error)]
 pub enum ClipboardError {
