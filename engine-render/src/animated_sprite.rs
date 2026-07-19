@@ -39,6 +39,12 @@ pub struct AnimatedSprite {
     color: Color,
     /// 是否已结束（仅 Once 模式有意义）
     finished: bool,
+    /// 水平翻转
+    flip_x: bool,
+    /// 垂直翻转
+    flip_y: bool,
+    /// 锚点
+    anchor: Vec2,
 }
 
 impl AnimatedSprite {
@@ -55,6 +61,9 @@ impl AnimatedSprite {
             direction: 1,
             color: Color::WHITE,
             finished: false,
+            flip_x: false,
+            flip_y: false,
+            anchor: Vec2::new(0.5, 0.5),
         }
     }
 
@@ -294,6 +303,53 @@ impl AnimatedSprite {
 
     pub fn set_color(&mut self, color: Color) {
         self.color = color;
+    }
+
+    /// 获取水平翻转
+    #[inline]
+    pub fn flip_x(&self) -> bool {
+        self.flip_x
+    }
+
+    /// 设置水平翻转
+    #[inline]
+    pub fn set_flip_x(&mut self, flip: bool) {
+        self.flip_x = flip;
+    }
+
+    /// 获取垂直翻转
+    #[inline]
+    pub fn flip_y(&self) -> bool {
+        self.flip_y
+    }
+
+    /// 设置垂直翻转
+    #[inline]
+    pub fn set_flip_y(&mut self, flip: bool) {
+        self.flip_y = flip;
+    }
+
+    /// 获取锚点
+    #[inline]
+    pub fn anchor(&self) -> Vec2 {
+        self.anchor
+    }
+
+    /// 设置锚点
+    #[inline]
+    pub fn set_anchor(&mut self, anchor: Vec2) {
+        self.anchor = anchor;
+    }
+
+    /// 获取当前帧对应的精灵
+    pub fn to_sprite(&self) -> Sprite {
+        let frame_rect = self.frames[self.current_frame];
+        Sprite::from_texture(self.atlas.clone())
+            .with_source_rect(frame_rect)
+            .with_color(self.color)
+            .with_flip_x(self.flip_x)
+            .with_flip_y(self.flip_y)
+            .with_anchor(self.anchor)
     }
 
     pub fn current_frame_rect(&self) -> Option<super::Rect> {
@@ -541,5 +597,41 @@ mod tests {
     #[test]
     fn test_default_anim() {
         let _: AnimatedSprite = Default::default();
+    }
+
+    #[test]
+    fn test_flip_x() {
+        let mut anim = AnimatedSprite::new(Handle::<Texture2D>::null(), 8.0, make_frames());
+        assert!(!anim.flip_x());
+        anim.set_flip_x(true);
+        assert!(anim.flip_x());
+    }
+
+    #[test]
+    fn test_flip_y() {
+        let mut anim = AnimatedSprite::new(Handle::<Texture2D>::null(), 8.0, make_frames());
+        assert!(!anim.flip_y());
+        anim.set_flip_y(true);
+        assert!(anim.flip_y());
+    }
+
+    #[test]
+    fn test_anchor() {
+        let mut anim = AnimatedSprite::new(Handle::<Texture2D>::null(), 8.0, make_frames());
+        assert_eq!(anim.anchor(), Vec2::new(0.5, 0.5));
+        anim.set_anchor(Vec2::new(0.0, 0.0));
+        assert_eq!(anim.anchor(), Vec2::new(0.0, 0.0));
+    }
+
+    #[test]
+    fn test_to_sprite() {
+        let mut anim = AnimatedSprite::new(Handle::<Texture2D>::null(), 8.0, make_frames());
+        anim.set_color(Color::RED);
+        anim.set_flip_x(true);
+        anim.set_anchor(Vec2::ZERO);
+        let sprite = anim.to_sprite();
+        assert_eq!(sprite.color(), Color::RED);
+        assert!(sprite.flip_x());
+        assert_eq!(sprite.anchor(), Vec2::ZERO);
     }
 }

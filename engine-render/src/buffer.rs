@@ -276,6 +276,31 @@ pub type IndexBuffer = Buffer<u32>;
 /// 索引缓冲区 16 位版本（适用于移动端 / 小网格）
 pub type IndexBuffer16 = Buffer<u16>;
 
+/// 顶点格式
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VertexFormat {
+    /// 两个 f32 分量 (8 字节)
+    Float2,
+    /// 三个 f32 分量 (12 字节)
+    Float3,
+    /// 四个 f32 分量 (16 字节)
+    Float4,
+    /// 四个 u8 分量 (4 字节)
+    Byte4,
+}
+
+impl VertexFormat {
+    /// 获取格式的字节大小
+    pub fn size(&self) -> usize {
+        match self {
+            Self::Float2 => 8,
+            Self::Float3 => 12,
+            Self::Float4 => 16,
+            Self::Byte4 => 4,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -433,5 +458,20 @@ mod tests {
         let buf: Buffer<f32> = Default::default();
         assert_eq!(buf.usage(), BufferUsage::Vertex);
         assert!(buf.is_empty());
+    }
+
+    // ===== VertexFormat 测试 =====
+    #[test]
+    fn test_vertex_format_size() {
+        assert_eq!(VertexFormat::Float2.size(), 8);
+        assert_eq!(VertexFormat::Float3.size(), 12);
+        assert_eq!(VertexFormat::Float4.size(), 16);
+        assert_eq!(VertexFormat::Byte4.size(), 4);
+    }
+
+    #[test]
+    fn test_vertex_format_equality() {
+        assert_eq!(VertexFormat::Float2, VertexFormat::Float2);
+        assert_ne!(VertexFormat::Float2, VertexFormat::Float3);
     }
 }
