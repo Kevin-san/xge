@@ -6,6 +6,9 @@ pub mod log;
 pub mod module;
 pub mod schedule;
 pub mod time;
+pub mod profiler;
+pub mod stats;
+pub mod plugin;
 
 pub use app::{App, AppBuilder};
 pub use build_info::{BUILD_COMMIT_HASH, BUILD_TIMESTAMP, ENGINE_VERSION};
@@ -14,5 +17,8 @@ pub use event::EventBus;
 pub use module::{Module, ModuleRegistry};
 pub use schedule::Schedule;
 pub use time::Time;
+pub use profiler::Profiler;
+pub use stats::{EngineStats, FrameStats};
+pub use plugin::{Plugin, PluginApp, PluginGroup, DefaultPlugins};
 
 pub use engine_window as window;

@@ -70,12 +70,49 @@ impl Engine {
         }
     }
 
+    /// 检查引擎是否正在运行
+    ///
+    /// 如果 `quit_flag` 未设置，视为正在运行；如果已设置且值为 true，则已退出。
+    pub fn is_running(&self) -> bool {
+        self.quit_flag
+            .as_ref()
+            .map_or(true, |f| !f.load(std::sync::atomic::Ordering::SeqCst))
+    }
+
+    /// 暂停引擎
+    ///
+    /// 预留接口，后续 Sprint 引入独立暂停标志
+    pub fn pause(&mut self) {
+        // 预留接口，后续引入独立暂停标志
+    }
+
+    /// 恢复引擎运行
+    ///
+    /// 预留接口，与 `pause` 配对
+    pub fn resume(&mut self) {
+        // 预留接口
+    }
+
+    /// 向线程池提交异步任务
+    ///
+    /// 当前使用 `std::thread::spawn` 作为简易实现，后续接入完整线程池
+    pub fn spawn_task<F>(&self, f: F) -> std::thread::JoinHandle<()>
+    where
+        F: FnOnce() + Send + 'static,
+    {
+        std::thread::spawn(f)
+    }
+
     pub fn config(&self) -> &EngineConfig {
         &self.config
     }
 
     pub fn time(&self) -> &Time {
         &self.time
+    }
+
+    pub fn time_mut(&mut self) -> &mut Time {
+        &mut self.time
     }
 
     pub fn modules(&self) -> &ModuleRegistry {
@@ -335,5 +372,30 @@ mod tests {
         // 应仍处于默认状态
         assert!(engine.is_focused());
         assert!(!engine.is_minimized());
+    }
+
+    #[test]
+    fn test_engine_is_running_after_new() {
+        let engine = Engine::new(EngineConfig::default());
+        assert!(engine.is_running());
+    }
+
+    #[test]
+    fn test_engine_is_not_running_after_quit() {
+        let mut engine = Engine::new(EngineConfig::default());
+        engine.request_quit();
+        assert!(!engine.is_running());
+    }
+
+    #[test]
+    fn test_engine_spawn_task() {
+        let engine = Engine::new(EngineConfig::default());
+        let result = std::sync::Arc::new(std::sync::atomic::AtomicI32::new(0));
+        let r = result.clone();
+        let handle = engine.spawn_task(move || {
+            r.store(42, std::sync::atomic::Ordering::SeqCst);
+        });
+        handle.join().unwrap();
+        assert_eq!(result.load(std::sync::atomic::Ordering::SeqCst), 42);
     }
 }

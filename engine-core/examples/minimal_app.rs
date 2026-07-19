@@ -1,4 +1,9 @@
 //! minimal_app - 完整 App trait 实现示例
+//!
+//! 演示内容：
+//! - 实现 App trait（setup / update / render / shutdown）
+//! - 使用 AppBuilder 构建并运行
+//! - 通过共享 quit_flag 在指定帧数后退出
 
 use engine_core::{App, AppBuilder, EngineConfig};
 use std::sync::{
@@ -30,13 +35,15 @@ impl App for MyGame {
     fn update(&mut self, dt: f64) {
         self.frame_count += 1;
         println!(
-            "[MyGame] Update frame {} (dt={:.2}ms)",
+            "[MyGame] Update frame {}/{} (dt={:.2}ms)",
             self.frame_count,
+            self.max_frames,
             dt * 1000.0
         );
 
         // 达到最大帧数后请求退出
         if self.frame_count >= self.max_frames {
+            println!("[MyGame] Max frames reached, requesting quit");
             self.quit_flag.store(true, Ordering::SeqCst);
         }
     }
@@ -51,9 +58,13 @@ impl App for MyGame {
 }
 
 fn main() {
+    println!("=== Minimal App ===\n");
+
     let quit_flag = Arc::new(AtomicBool::new(false));
 
     AppBuilder::new()
         .with_config(EngineConfig::default())
         .run_with_quit_flag(MyGame::new(quit_flag.clone()), quit_flag);
+
+    println!("\nApp exited cleanly");
 }

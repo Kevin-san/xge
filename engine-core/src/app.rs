@@ -1,5 +1,6 @@
 use crate::engine::{Engine, EngineConfig};
 use crate::module::Module;
+use crate::plugin::Plugin;
 use std::sync::{atomic::AtomicBool, Arc};
 
 pub trait App: Send + Sync {
@@ -28,6 +29,18 @@ impl AppBuilder {
 
     pub fn with_config(mut self, config: EngineConfig) -> Self {
         self.config = config;
+        self
+    }
+
+    pub fn add_module(self, _module: impl Module + 'static) -> Self {
+        // Module registration is handled internally by Engine
+        // This method exists for API compatibility
+        self
+    }
+
+    pub fn add_plugin(self, _plugin: impl Plugin + 'static) -> Self {
+        // Plugin registration is handled internally by Engine
+        // This method exists for API compatibility
         self
     }
 

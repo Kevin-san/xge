@@ -102,6 +102,16 @@ impl ModuleRegistry {
             }
         }
     }
+
+    /// 获取所有注册模块的名称
+    pub fn module_names(&self) -> Vec<String> {
+        self.modules.borrow().keys().cloned().collect()
+    }
+
+    /// 按名称查找模块（仅检查是否存在）
+    pub fn contains(&self, name: &str) -> bool {
+        self.modules.borrow().contains_key(name)
+    }
 }
 
 fn topological_sort(

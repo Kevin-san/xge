@@ -1,110 +1,109 @@
 //! module_order - 模块注册与依赖顺序初始化示例
+//!
+//! 演示内容：
+//! - 注册多个具有依赖关系的模块（乱序注册）
+//! - 拓扑排序后按依赖顺序初始化
+//! - 逆序关闭
+//! - 使用 module_names() / contains() 查询
 
-use engine_core::{Engine, EngineConfig, Module, ModuleRegistry};
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc,
-};
+use engine_core::{Module, ModuleRegistry};
 
-// 模块 A：无依赖
-struct ModuleA {
-    name: String,
-    quit_flag: Arc<AtomicBool>,
-}
+// 模块 Transform：无依赖（底层）
+struct TransformModule;
 
-impl ModuleA {
-    fn new(quit_flag: Arc<AtomicBool>) -> Self {
-        Self {
-            name: "ModuleA".into(),
-            quit_flag,
-        }
-    }
-}
-
-impl Module for ModuleA {
+impl Module for TransformModule {
     fn name(&self) -> &str {
-        &self.name
+        "Transform"
     }
     fn dependencies(&self) -> Vec<&str> {
         vec![]
     }
     fn on_init(&mut self) {
-        println!("[{}] Initialized", self.name);
+        println!("  [Transform] on_init");
     }
-    fn on_update(&mut self, _dt: f64) {
-        // 检查外部 quit flag
-        if self.quit_flag.load(Ordering::SeqCst) {
-            println!("[{}] Quit flag set, would request shutdown", self.name);
-        }
+    fn on_update(&mut self, dt: f64) {
+        println!("  [Transform] on_update(dt={:.4}s)", dt);
     }
     fn on_render(&mut self) {}
     fn on_shutdown(&mut self) {
-        println!("[{}] Shutdown", self.name);
-    }
-    fn enabled(&self) -> bool {
-        true
+        println!("  [Transform] on_shutdown");
     }
 }
 
-// 模块 B：依赖 A
-#[allow(dead_code)]
-struct ModuleB {
-    name: String,
-    quit_flag: Arc<AtomicBool>,
-}
+// 模块 Physics：依赖 Transform
+struct PhysicsModule;
 
-impl ModuleB {
-    fn new(quit_flag: Arc<AtomicBool>) -> Self {
-        Self {
-            name: "ModuleB".into(),
-            quit_flag,
-        }
-    }
-}
-
-impl Module for ModuleB {
+impl Module for PhysicsModule {
     fn name(&self) -> &str {
-        &self.name
+        "Physics"
     }
     fn dependencies(&self) -> Vec<&str> {
-        vec!["ModuleA"]
+        vec!["Transform"]
     }
     fn on_init(&mut self) {
-        println!("[{}] Initialized", self.name);
+        println!("  [Physics] on_init");
     }
-    fn on_update(&mut self, _dt: f64) {}
+    fn on_update(&mut self, dt: f64) {
+        println!("  [Physics] on_update(dt={:.4}s)", dt);
+    }
     fn on_render(&mut self) {}
     fn on_shutdown(&mut self) {
-        println!("[{}] Shutdown", self.name);
+        println!("  [Physics] on_shutdown");
     }
-    fn enabled(&self) -> bool {
-        true
+}
+
+// 模块 Render：依赖 Transform
+struct RenderModule;
+
+impl Module for RenderModule {
+    fn name(&self) -> &str {
+        "Render"
+    }
+    fn dependencies(&self) -> Vec<&str> {
+        vec!["Transform"]
+    }
+    fn on_init(&mut self) {
+        println!("  [Render] on_init");
+    }
+    fn on_update(&mut self, dt: f64) {
+        println!("  [Render] on_update(dt={:.4}s)", dt);
+    }
+    fn on_render(&mut self) {}
+    fn on_shutdown(&mut self) {
+        println!("  [Render] on_shutdown");
     }
 }
 
 fn main() {
-    let quit_flag = Arc::new(AtomicBool::new(false));
+    println!("=== Module Order Demo ===\n");
 
     let registry = ModuleRegistry::new();
-    registry.register(Box::new(ModuleB::new(quit_flag.clone()))); // B 先注册
-    registry.register(Box::new(ModuleA::new(quit_flag.clone()))); // A 后注册
 
-    println!("Registered modules: {} modules", registry.len());
+    // 乱序注册：Physics → Render → Transform
+    println!("Registering modules (out of dependency order)...");
+    registry.register(Box::new(PhysicsModule));
+    registry.register(Box::new(RenderModule));
+    registry.register(Box::new(TransformModule));
 
-    // 创建引擎
-    let _engine = Engine::new(EngineConfig::default());
+    println!("Registered: {} modules", registry.len());
+    println!("Module names: {:?}", registry.module_names());
+    println!("Contains 'Physics': {}", registry.contains("Physics"));
+    println!("Contains 'Audio': {}", registry.contains("Audio"));
 
-    println!("\n--- Initializing (A should come before B) ---");
+    // 初始化（应按依赖顺序：Transform → Physics → Render）
+    println!("\n--- Initializing (should follow dependency order) ---");
     if let Err(e) = registry.initialize_all() {
         eprintln!("Initialization error: {}", e);
         return;
     }
 
-    println!("\n--- Running for 1 frame ---");
+    // 更新一帧
+    println!("\n--- Updating all modules (1 frame) ---");
     registry.update_all(0.016);
 
-    println!("\n--- Shutting down (B should come before A) ---");
+    // 关闭（逆序：Render → Physics → Transform）
+    println!("\n--- Shutting down (reverse order) ---");
     registry.shutdown_all();
 
-    println!("\nTest completed successfully!");
+    println!("\nModule order demo completed!");
 }

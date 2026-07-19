@@ -109,6 +109,11 @@ impl Vec3 {
     pub fn abs(self) -> Self {
         Self::new(self.x.abs(), self.y.abs(), self.z.abs())
     }
+
+    #[inline]
+    pub fn zip(self, other: Self, f: impl Fn(f32, f32) -> f32) -> Self {
+        Self::new(f(self.x, other.x), f(self.y, other.y), f(self.z, other.z))
+    }
 }
 
 impl Add for Vec3 {

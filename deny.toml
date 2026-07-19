@@ -1,3 +1,13 @@
+[advisories]
+ignore = [
+    "RUSTSEC-2026-0194",  # quick-xml: 间接依赖 via wayland-scanner/winit，待 winit 升级后解决
+    "RUSTSEC-2026-0195",  # quick-xml: 同上
+    "RUSTSEC-2025-0141",  # bincode: unmaintained，间接依赖
+    "RUSTSEC-2024-0436",  # paste: unmaintained，间接依赖
+    "RUSTSEC-2025-0134",  # rustls-pemfile: unmaintained，间接依赖
+    "RUSTSEC-2026-0192",  # ttf-parser: unmaintained，间接依赖 via arboard/winit
+]
+
 [licenses]
 allow = [
     "MIT",

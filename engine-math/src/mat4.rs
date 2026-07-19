@@ -173,118 +173,110 @@ impl Mat4 {
 
     #[inline]
     pub fn inverse(&self) -> Option<Self> {
-        let m = self.cols;
-        let mut inv = [[0.0; 4]; 4];
+        let m = &self.cols;
+        // Column-major: m[col][row]
+        let a00 = m[0][0]; let a01 = m[0][1]; let a02 = m[0][2]; let a03 = m[0][3];
+        let a10 = m[1][0]; let a11 = m[1][1]; let a12 = m[1][2]; let a13 = m[1][3];
+        let a20 = m[2][0]; let a21 = m[2][1]; let a22 = m[2][2]; let a23 = m[2][3];
+        let a30 = m[3][0]; let a31 = m[3][1]; let a32 = m[3][2]; let a33 = m[3][3];
 
-        inv[0][0] =
-            m[1][1] * m[2][2] * m[3][3] - m[1][1] * m[2][3] * m[3][2] - m[2][1] * m[1][2] * m[3][3]
-                + m[2][1] * m[1][3] * m[3][2]
-                + m[3][1] * m[1][2] * m[2][3]
-                - m[3][1] * m[1][3] * m[2][2];
-        inv[1][0] = -m[1][0] * m[2][2] * m[3][3]
-            + m[1][0] * m[2][3] * m[3][2]
-            + m[2][0] * m[1][2] * m[3][3]
-            - m[2][0] * m[1][3] * m[3][2]
-            - m[3][0] * m[1][2] * m[2][3]
-            + m[3][0] * m[1][3] * m[2][2];
-        inv[2][0] =
-            m[1][0] * m[2][1] * m[3][3] - m[1][0] * m[2][3] * m[3][1] - m[2][0] * m[1][1] * m[3][3]
-                + m[2][0] * m[1][3] * m[3][1]
-                + m[3][0] * m[1][1] * m[2][3]
-                - m[3][0] * m[1][3] * m[2][1];
-        inv[3][0] = -m[1][0] * m[2][1] * m[3][2]
-            + m[1][0] * m[2][2] * m[3][1]
-            + m[2][0] * m[1][1] * m[3][2]
-            - m[2][0] * m[1][2] * m[3][1]
-            - m[3][0] * m[1][1] * m[2][2]
-            + m[3][0] * m[1][2] * m[2][1];
+        let b00 = a00 * a11 - a01 * a10;
+        let b01 = a00 * a12 - a02 * a10;
+        let b02 = a00 * a13 - a03 * a10;
+        let b03 = a01 * a12 - a02 * a11;
+        let b04 = a01 * a13 - a03 * a11;
+        let b05 = a02 * a13 - a03 * a12;
+        let b06 = a20 * a31 - a21 * a30;
+        let b07 = a20 * a32 - a22 * a30;
+        let b08 = a20 * a33 - a23 * a30;
+        let b09 = a21 * a32 - a22 * a31;
+        let b10 = a21 * a33 - a23 * a31;
+        let b11 = a22 * a33 - a23 * a32;
 
-        inv[0][1] = -m[1][1] * m[2][2] * m[3][3]
-            + m[1][1] * m[2][3] * m[3][2]
-            + m[2][1] * m[1][2] * m[3][3]
-            - m[2][1] * m[1][3] * m[3][2]
-            - m[3][1] * m[1][2] * m[2][3]
-            + m[3][1] * m[1][3] * m[2][2];
-        inv[1][1] =
-            m[1][0] * m[2][2] * m[3][3] - m[1][0] * m[2][3] * m[3][2] - m[2][0] * m[1][2] * m[3][3]
-                + m[2][0] * m[1][3] * m[3][2]
-                + m[3][0] * m[1][2] * m[2][3]
-                - m[3][0] * m[1][3] * m[2][2];
-        inv[2][1] = -m[1][0] * m[2][1] * m[3][3]
-            + m[1][0] * m[2][3] * m[3][1]
-            + m[2][0] * m[1][1] * m[3][3]
-            - m[2][0] * m[1][3] * m[3][1]
-            - m[3][0] * m[1][1] * m[2][3]
-            + m[3][0] * m[1][3] * m[2][1];
-        inv[3][1] =
-            m[1][0] * m[2][1] * m[3][2] - m[1][0] * m[2][2] * m[3][1] - m[2][0] * m[1][1] * m[3][2]
-                + m[2][0] * m[1][2] * m[3][1]
-                + m[3][0] * m[1][1] * m[2][2]
-                - m[3][0] * m[1][2] * m[2][1];
-
-        inv[0][2] =
-            m[1][1] * m[2][3] * m[3][0] - m[1][1] * m[2][0] * m[3][3] - m[2][1] * m[1][3] * m[3][0]
-                + m[2][1] * m[1][0] * m[3][3]
-                + m[3][1] * m[1][3] * m[2][0]
-                - m[3][1] * m[1][0] * m[2][3];
-        inv[1][2] = -m[1][0] * m[2][3] * m[3][0]
-            + m[1][0] * m[2][0] * m[3][3]
-            + m[2][0] * m[1][3] * m[3][0]
-            - m[2][0] * m[1][0] * m[3][3]
-            - m[3][0] * m[1][3] * m[2][0]
-            + m[3][0] * m[1][0] * m[2][3];
-        inv[2][2] =
-            m[1][0] * m[2][1] * m[3][3] - m[1][0] * m[2][3] * m[3][1] - m[2][0] * m[1][1] * m[3][3]
-                + m[2][0] * m[1][3] * m[3][1]
-                + m[3][0] * m[1][1] * m[2][3]
-                - m[3][0] * m[1][3] * m[2][1];
-        inv[3][2] = -m[1][0] * m[2][1] * m[3][2]
-            + m[1][0] * m[2][2] * m[3][1]
-            + m[2][0] * m[1][1] * m[3][2]
-            - m[2][0] * m[1][2] * m[3][1]
-            - m[3][0] * m[1][1] * m[2][2]
-            + m[3][0] * m[1][2] * m[2][1];
-
-        inv[0][3] = -m[1][1] * m[2][3] * m[3][1]
-            + m[1][1] * m[2][1] * m[3][3]
-            + m[2][1] * m[1][3] * m[3][1]
-            - m[2][1] * m[1][1] * m[3][3]
-            - m[3][1] * m[1][3] * m[2][1]
-            + m[3][1] * m[1][1] * m[2][3];
-        inv[1][3] =
-            m[1][0] * m[2][3] * m[3][1] - m[1][0] * m[2][1] * m[3][3] - m[2][0] * m[1][3] * m[3][1]
-                + m[2][0] * m[1][1] * m[3][3]
-                + m[3][0] * m[1][3] * m[2][1]
-                - m[3][0] * m[1][1] * m[2][3];
-        inv[2][3] = -m[1][0] * m[2][1] * m[3][3]
-            + m[1][0] * m[2][3] * m[3][1]
-            + m[2][0] * m[1][1] * m[3][3]
-            - m[2][0] * m[1][3] * m[3][1]
-            - m[3][0] * m[1][1] * m[2][3]
-            + m[3][0] * m[1][3] * m[2][1];
-        inv[3][3] =
-            m[1][0] * m[2][1] * m[3][2] - m[1][0] * m[2][2] * m[3][1] - m[2][0] * m[1][1] * m[3][2]
-                + m[2][0] * m[1][2] * m[3][1]
-                + m[3][0] * m[1][1] * m[2][2]
-                - m[3][0] * m[1][2] * m[2][1];
-
-        let mut det =
-            m[0][0] * inv[0][0] + m[0][1] * inv[1][0] + m[0][2] * inv[2][0] + m[0][3] * inv[3][0];
-
+        let det = b00 * b11 - b01 * b10 + b02 * b09 + b03 * b08 - b04 * b07 + b05 * b06;
         if det.abs() < 1e-10 {
             return None;
         }
+        let inv_det = 1.0 / det;
 
-        det = 1.0 / det;
+        Some(Self {
+            cols: [
+                [
+                    (a11 * b11 - a12 * b10 + a13 * b09) * inv_det,
+                    (a02 * b10 - a01 * b11 - a03 * b09) * inv_det,
+                    (a31 * b05 - a32 * b04 + a33 * b03) * inv_det,
+                    (a22 * b04 - a21 * b05 - a23 * b03) * inv_det,
+                ],
+                [
+                    (a12 * b08 - a10 * b11 - a13 * b07) * inv_det,
+                    (a00 * b11 - a02 * b08 + a03 * b07) * inv_det,
+                    (a32 * b02 - a30 * b05 - a33 * b01) * inv_det,
+                    (a20 * b05 - a22 * b02 + a23 * b01) * inv_det,
+                ],
+                [
+                    (a10 * b10 - a11 * b08 + a13 * b06) * inv_det,
+                    (a01 * b08 - a00 * b10 - a03 * b06) * inv_det,
+                    (a30 * b04 - a31 * b02 + a33 * b00) * inv_det,
+                    (a21 * b02 - a20 * b04 - a23 * b00) * inv_det,
+                ],
+                [
+                    (a11 * b07 - a10 * b09 - a12 * b06) * inv_det,
+                    (a00 * b09 - a01 * b07 + a02 * b06) * inv_det,
+                    (a31 * b01 - a30 * b03 - a32 * b00) * inv_det,
+                    (a20 * b03 - a21 * b01 + a22 * b00) * inv_det,
+                ],
+            ],
+        })
+    }
 
-        let mut result = Mat4::ZERO;
-        for (i, inv_row) in inv.iter().enumerate() {
-            for (j, &val) in inv_row.iter().enumerate() {
-                result.cols[i][j] = val * det;
-            }
+    #[inline]
+    pub fn look_at_rh(eye: Vec3, target: Vec3, up: Vec3) -> Self {
+        let forward = (target - eye).normalize();
+        let right = forward.cross(up).normalize();
+        let up = right.cross(forward);
+
+        Self {
+            cols: [
+                [right.x, up.x, -forward.x, 0.0],
+                [right.y, up.y, -forward.y, 0.0],
+                [right.z, up.z, -forward.z, 0.0],
+                [-right.dot(eye), -up.dot(eye), forward.dot(eye), 1.0],
+            ],
         }
+    }
 
-        Some(result)
+    #[inline]
+    pub fn perspective_rh(fovy: f32, aspect: f32, near: f32, far: f32) -> Self {
+        let f = 1.0 / (fovy / 2.0).tan();
+        let range = far - near;
+
+        Self {
+            cols: [
+                [f / aspect, 0.0, 0.0, 0.0],
+                [0.0, f, 0.0, 0.0],
+                [0.0, 0.0, -(far + near) / range, -1.0],
+                [0.0, 0.0, -(2.0 * far * near) / range, 0.0],
+            ],
+        }
+    }
+
+    #[inline]
+    pub fn orthographic_rh(left: f32, right: f32, bottom: f32, top: f32, near: f32, far: f32) -> Self {
+        let x = 2.0 / (right - left);
+        let y = 2.0 / (top - bottom);
+        let z = -2.0 / (far - near);
+        let tx = -(right + left) / (right - left);
+        let ty = -(top + bottom) / (top - bottom);
+        let tz = -(far + near) / (far - near);
+
+        Self {
+            cols: [
+                [x, 0.0, 0.0, 0.0],
+                [0.0, y, 0.0, 0.0],
+                [0.0, 0.0, z, 0.0],
+                [tx, ty, tz, 1.0],
+            ],
+        }
     }
 
     #[inline]
@@ -498,5 +490,143 @@ mod tests {
         let v = Vec4::new(1.0, 2.0, 3.0, 4.0);
         let result = m.mul_vec4(v);
         assert_eq!(result, Vec4::ZERO);
+    }
+
+    fn assert_approx_mat4_identity(m: Mat4, tolerance: f32) {
+        for i in 0..4 {
+            for j in 0..4 {
+                let expected = if i == j { 1.0 } else { 0.0 };
+                assert!(
+                    (m.cols[i][j] - expected).abs() < tolerance,
+                    "col {} row {}: expected {}, got {}",
+                    i, j, expected, m.cols[i][j]
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_inverse_identity_correct() {
+        let m = Mat4::IDENTITY;
+        let inv = m.inverse().unwrap();
+        assert_approx_mat4_identity(inv, 1e-6);
+    }
+
+    #[test]
+    fn test_inverse_translation_roundtrip() {
+        let m = Mat4::from_translation(Vec3::new(5.0, 10.0, 15.0));
+        let inv = m.inverse().unwrap();
+        let result = m * inv;
+        assert_approx_mat4_identity(result, 1e-6);
+    }
+
+    #[test]
+    fn test_inverse_rotation_roundtrip() {
+        let m = Mat4::from_rotation_y(std::f32::consts::FRAC_PI_4);
+        let inv = m.inverse().unwrap();
+        let result = m * inv;
+        assert_approx_mat4_identity(result, 1e-6);
+    }
+
+    #[test]
+    fn test_look_at_rh() {
+        let eye = Vec3::new(0.0, 0.0, 5.0);
+        let target = Vec3::ZERO;
+        let up = Vec3::Y;
+        let m = Mat4::look_at_rh(eye, target, up);
+
+        // The look-at matrix should be invertible
+        assert!(m.inverse().is_some());
+
+        // Transform eye by view matrix should give the eye position in view space
+        let eye_h = Vec4::new(eye.x, eye.y, eye.z, 1.0);
+        let result = m.mul_vec4(eye_h);
+        // Eye at (0,0,5) looking at origin along -Z: view-space eye should be at origin
+        assert!((result.x - 0.0).abs() < 1e-5);
+        assert!((result.y - 0.0).abs() < 1e-5);
+        assert!((result.z - 0.0).abs() < 1e-5);
+        assert!((result.w - 1.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_perspective_rh() {
+        let m = Mat4::perspective_rh(std::f32::consts::FRAC_PI_4, 1.0, 0.1, 100.0);
+
+        // Perspective matrix should be invertible
+        assert!(m.inverse().is_some());
+
+        // The [1][1] element should be 1/tan(fovy/2)
+        let f = 1.0 / (std::f32::consts::FRAC_PI_4 / 2.0).tan();
+        assert!((m.cols[1][1] - f).abs() < 1e-6);
+
+        // The [2][3] element should be -1.0 for RH perspective
+        assert!((m.cols[2][3] - (-1.0)).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_orthographic_rh() {
+        let m = Mat4::orthographic_rh(-1.0, 1.0, -1.0, 1.0, 0.1, 100.0);
+
+        // Orthographic matrix should be invertible
+        assert!(m.inverse().is_some());
+
+        // For symmetric ortho: diagonal should be 2/(right-left)=1, 2/(top-bottom)=1
+        assert!((m.cols[0][0] - 1.0).abs() < 1e-6);
+        assert!((m.cols[1][1] - 1.0).abs() < 1e-6);
+
+        // No perspective component
+        assert!((m.cols[2][3] - 0.0).abs() < 1e-6);
+        assert!((m.cols[3][3] - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_inverse_singular_matrix() {
+        let singular = Mat4 {
+            cols: [
+                [1.0, 2.0, 3.0, 4.0],
+                [1.0, 2.0, 3.0, 4.0],
+                [1.0, 2.0, 3.0, 4.0],
+                [1.0, 2.0, 3.0, 4.0],
+            ],
+        };
+        assert!(singular.inverse().is_none());
+    }
+
+    #[test]
+    fn test_inverse_scale_roundtrip() {
+        let scale = Mat4::from_scale(Vec3::new(2.0, 3.0, 4.0));
+        let inv = scale.inverse().unwrap();
+        let result = scale * inv;
+        assert_approx_mat4_identity(result, 1e-5);
+    }
+
+    #[test]
+    fn test_perspective_near_plane() {
+        let proj = Mat4::perspective_rh(std::f32::consts::FRAC_PI_4, 1.0, 0.1, 100.0);
+        // A point at the near plane should map to z = -1 in NDC
+        let near_point = proj.mul_vec4(Vec4::new(0.0, 0.0, -0.1, 1.0));
+        // Perspective divide
+        let ndc_z = near_point.z / near_point.w;
+        assert!((ndc_z + 1.0).abs() < 0.01, "Near plane should map to NDC z=-1, got {}", ndc_z);
+    }
+
+    #[test]
+    fn test_orthographic_near_plane() {
+        let ortho = Mat4::orthographic_rh(-1.0, 1.0, -1.0, 1.0, 0.1, 100.0);
+        let near_point = ortho.mul_vec4(Vec4::new(0.0, 0.0, -0.1, 1.0));
+        assert!((near_point.z + 1.0).abs() < 0.01, "Near plane should map to z=-1, got {}", near_point.z);
+    }
+
+    #[test]
+    fn test_look_at_direction() {
+        let eye = Vec3::new(0.0, 0.0, 5.0);
+        let target = Vec3::ZERO;
+        let up = Vec3::Y;
+        let view = Mat4::look_at_rh(eye, target, up);
+        // Transform target (origin) through view matrix - should get (0,0,-5) in view space
+        let target_view = view.mul_vec4(Vec4::new(0.0, 0.0, 0.0, 1.0));
+        assert!((target_view.x).abs() < 0.001, "target_view.x should be ~0, got {}", target_view.x);
+        assert!((target_view.y).abs() < 0.001, "target_view.y should be ~0, got {}", target_view.y);
+        assert!((target_view.z + 5.0).abs() < 0.001, "target_view.z should be ~-5, got {}", target_view.z);
     }
 }

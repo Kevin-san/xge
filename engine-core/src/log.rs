@@ -33,7 +33,7 @@ pub fn init(level: Level) {
 }
 
 /// 获取当前日志级别
-fn current_level() -> Level {
+pub fn current_level() -> Level {
     *LOG_LEVEL.lock().unwrap()
 }
 
@@ -54,6 +54,16 @@ fn log_impl(level: Level, target: &str, msg: &str) {
     }
 }
 
+/// 设置日志级别
+pub fn set_level(level: Level) {
+    *LOG_LEVEL.lock().unwrap() = level;
+}
+
+/// 检查指定级别是否启用
+pub fn enabled(level: Level) -> bool {
+    level <= current_level()
+}
+
 pub fn error(target: &str, msg: &str) {
     log_impl(Level::Error, target, msg);
 }
@@ -72,4 +82,30 @@ pub fn debug(target: &str, msg: &str) {
 
 pub fn trace(target: &str, msg: &str) {
     log_impl(Level::Trace, target, msg);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_set_level() {
+        let original = current_level();
+        set_level(Level::Error);
+        assert_eq!(current_level(), Level::Error);
+        assert!(!enabled(Level::Info));
+        assert!(enabled(Level::Error));
+        set_level(original);
+    }
+
+    #[test]
+    fn test_enabled() {
+        let original = current_level();
+        set_level(Level::Warn);
+        assert!(enabled(Level::Error));
+        assert!(enabled(Level::Warn));
+        assert!(!enabled(Level::Info));
+        assert!(!enabled(Level::Trace));
+        set_level(original);
+    }
 }

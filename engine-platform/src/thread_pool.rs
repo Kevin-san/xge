@@ -59,6 +59,27 @@ impl ThreadPool {
     pub fn pending_tasks(&self) -> usize {
         self.task_queue.lock().unwrap().len()
     }
+
+    /// Returns the number of worker threads (alias for `num_threads()`).
+    pub fn active_count(&self) -> usize {
+        self.workers.len()
+    }
+
+    /// Executes the given closure on the current thread.
+    pub fn block_on<F, R>(&self, f: F) -> R
+    where
+        F: FnOnce() -> R,
+    {
+        f()
+    }
+
+    /// Shuts down the thread pool, consuming it.
+    ///
+    /// All workers are dropped, which will clean up threads.
+    pub fn shutdown(self) {
+        // ThreadPool drops all workers, which will clean up threads
+        drop(self);
+    }
 }
 
 impl Worker {

@@ -124,6 +124,19 @@ impl Schedule {
     pub fn stage_names(&self) -> &[String] {
         &self.stage_order
     }
+
+    /// 获取阶段顺序
+    pub fn stage_order(&self) -> &[String] {
+        &self.stage_order
+    }
+
+    /// 设置运行条件（预留接口）
+    pub fn set_run_criteria<F>(&mut self, _criteria: F)
+    where
+        F: Fn() -> bool + Send + Sync + 'static,
+    {
+        // 预留接口，本 Sprint 不实现
+    }
 }
 
 #[cfg(test)]

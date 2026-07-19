@@ -135,6 +135,69 @@ impl Quat {
         };
         result.normalize()
     }
+
+    #[inline]
+    pub fn from_axis_angle(axis: Vec3, angle: f32) -> Self {
+        let half = angle / 2.0;
+        let (s, c) = half.sin_cos();
+        let axis = axis.normalize();
+        Self {
+            x: axis.x * s,
+            y: axis.y * s,
+            z: axis.z * s,
+            w: c,
+        }
+    }
+
+    #[inline]
+    pub fn from_euler(euler: crate::Euler) -> Self {
+        let rad = euler.to_radians();
+        let (sx, cx) = (rad.x * 0.5).sin_cos();
+        let (sy, cy) = (rad.y * 0.5).sin_cos();
+        let (sz, cz) = (rad.z * 0.5).sin_cos();
+
+        Self {
+            x: sx * cy * cz + cx * sy * sz,
+            y: cx * sy * cz - sx * cy * sz,
+            z: cx * cy * sz - sx * sy * cz,
+            w: cx * cy * cz + sx * sy * sz,
+        }
+    }
+
+    #[inline]
+    pub fn to_euler(&self) -> crate::Euler {
+        // ZXY intrinsic convention (matches from_euler)
+        let sin_roll = 2.0 * (self.w * self.x - self.y * self.z);
+        let roll = if sin_roll.abs() >= 1.0 {
+            core::f32::consts::FRAC_PI_2.copysign(sin_roll)
+        } else {
+            sin_roll.asin()
+        };
+
+        let pitch = (2.0 * (self.x * self.z + self.w * self.y))
+            .atan2(1.0 - 2.0 * (self.x * self.x + self.y * self.y));
+        let yaw = (2.0 * (self.x * self.y + self.w * self.z))
+            .atan2(1.0 - 2.0 * (self.x * self.x + self.z * self.z));
+
+        crate::Euler::new(
+            roll * 180.0 / core::f32::consts::PI,
+            pitch * 180.0 / core::f32::consts::PI,
+            yaw * 180.0 / core::f32::consts::PI,
+        )
+    }
+
+    #[inline]
+    pub fn to_axis_angle(&self) -> (Vec3, f32) {
+        let q = self.normalize();
+        let angle = 2.0 * q.w.acos();
+        let s = (1.0 - q.w * q.w).sqrt();
+        let axis = if s < 1e-6 {
+            Vec3::X
+        } else {
+            Vec3::new(q.x / s, q.y / s, q.z / s)
+        };
+        (axis, angle)
+    }
 }
 
 impl Mul for Quat {
@@ -346,5 +409,99 @@ mod tests {
         let v = Vec3::Y;
         let result = q2 * v;
         assert!((result.z - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_from_axis_angle() {
+        // 90 degree rotation around Z axis
+        let q = Quat::from_axis_angle(Vec3::Z, std::f32::consts::FRAC_PI_2);
+        let v = Vec3::X;
+        let result = q * v;
+        assert!((result.x - 0.0).abs() < 1e-6);
+        assert!((result.y - 1.0).abs() < 1e-6);
+        assert!((result.z - 0.0).abs() < 1e-6);
+
+        // 180 degree rotation around Y axis
+        let q2 = Quat::from_axis_angle(Vec3::Y, std::f32::consts::PI);
+        let v2 = Vec3::X;
+        let result2 = q2 * v2;
+        assert!((result2.x + 1.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_from_euler() {
+        use crate::Euler;
+
+        // Zero euler angles should produce identity quaternion
+        let q = Quat::from_euler(Euler::new(0.0, 0.0, 0.0));
+        assert!((q.x - 0.0).abs() < 1e-6);
+        assert!((q.y - 0.0).abs() < 1e-6);
+        assert!((q.z - 0.0).abs() < 1e-6);
+        assert!((q.w - 1.0).abs() < 1e-6);
+
+        // 90 degree rotation around Z
+        let q2 = Quat::from_euler(Euler::new(0.0, 0.0, 90.0));
+        let v = Vec3::X;
+        let result = q2 * v;
+        assert!((result.x - 0.0).abs() < 1e-5);
+        assert!((result.y - 1.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_to_euler() {
+        use crate::Euler;
+
+        // Identity quaternion should give zero euler angles
+        let q = Quat::IDENTITY;
+        let euler = q.to_euler();
+        assert!((euler.x - 0.0).abs() < 1e-5);
+        assert!((euler.y - 0.0).abs() < 1e-5);
+        assert!((euler.z - 0.0).abs() < 1e-5);
+
+        // Roundtrip: euler -> quat -> euler
+        let euler_in = Euler::new(30.0, 45.0, 60.0);
+        let q = Quat::from_euler(euler_in);
+        let euler_out = q.to_euler();
+        assert!((euler_out.x - euler_in.x).abs() < 1e-4);
+        assert!((euler_out.y - euler_in.y).abs() < 1e-4);
+        assert!((euler_out.z - euler_in.z).abs() < 1e-4);
+    }
+
+    #[test]
+    fn test_to_axis_angle() {
+        // Identity quaternion: any axis, zero angle
+        let (_axis, angle) = Quat::IDENTITY.to_axis_angle();
+        assert!((angle - 0.0).abs() < 1e-6);
+
+        // 90 degree rotation around Z
+        let q = Quat::from_axis_angle(Vec3::Z, std::f32::consts::FRAC_PI_2);
+        let (axis, angle) = q.to_axis_angle();
+        assert!((angle - std::f32::consts::FRAC_PI_2).abs() < 1e-5);
+        assert!((axis.z - 1.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_quat_identity_euler() {
+        let q = Quat::IDENTITY;
+        let euler = q.to_euler();
+        assert!((euler.x).abs() < 0.001, "identity roll should be 0");
+        assert!((euler.y).abs() < 0.001, "identity pitch should be 0");
+        assert!((euler.z).abs() < 0.001, "identity yaw should be 0");
+    }
+
+    #[test]
+    fn test_quat_90_degree_rotation() {
+        let q = Quat::from_axis_angle(Vec3::Y, std::f32::consts::FRAC_PI_2);
+        let v = q * Vec3::X;
+        // 90 degree Y rotation of X gives -Z (right-hand rule)
+        assert!((v.z + 1.0).abs() < 0.001, "90 degree Y rotation of X should give -Z, got {:?}", v);
+    }
+
+    #[test]
+    fn test_quat_double_rotation_is_half_angle() {
+        let q = Quat::from_axis_angle(Vec3::Y, std::f32::consts::FRAC_PI_2);
+        let q2 = q * q; // Should be 180 degree rotation around Y
+        let v = q2 * Vec3::X;
+        assert!((v.x + 1.0).abs() < 0.001, "double rotation should give -X, got {:?}", v);
     }
 }
