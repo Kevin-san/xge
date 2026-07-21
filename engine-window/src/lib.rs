@@ -34,6 +34,20 @@ pub use window_state::{WindowSize, WindowState};
 // 剪贴板错误和结构体
 pub use crate::clipboard::{Clipboard, ClipboardError};
 
+/// 构造测试用的窗口事件（仅测试用，使用 dummy window_id）。
+///
+/// # Safety
+/// 此函数仅用于单元测试。它使用零值 window_id，因为测试中的事件处理
+/// 函数只检查事件类型而不读取 window_id 字段。
+#[doc(hidden)]
+pub fn make_test_window_event(event: WindowEvent) -> Event<()> {
+    use winit::window::WindowId;
+    Event::WindowEvent {
+        window_id: unsafe { std::mem::zeroed::<WindowId>() },
+        event,
+    }
+}
+
 // ===== 引擎级窗口 API（屏蔽 winit 依赖）=====
 
 /// 引擎级光标捕获模式 → winit 映射

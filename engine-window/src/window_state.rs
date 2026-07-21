@@ -133,6 +133,24 @@ impl Default for WindowState {
 mod tests {
     use super::*;
     use winit::event::{Event, WindowEvent};
+    use winit::window::WindowId;
+
+    /// 构造测试用的 dummy WindowId。
+    ///
+    /// # Safety
+    /// 此函数仅用于测试目的。`WindowState::process_event` 仅检查事件类型
+    /// 而不读取 `window_id` 字段，因此零值 window_id 不会导致未定义行为。
+    /// 此函数将 unsafe 封装在单一位置，便于审计和维护。
+    fn dummy_window_id() -> WindowId {
+        unsafe { std::mem::zeroed() }
+    }
+
+    fn make_window_event(event: WindowEvent) -> Event<()> {
+        Event::WindowEvent {
+            window_id: dummy_window_id(),
+            event,
+        }
+    }
 
     #[test]
     fn test_initial_state() {
@@ -147,32 +165,22 @@ mod tests {
     fn test_focused_event() {
         let state = WindowState::new();
 
-        let event = Event::WindowEvent {
-            window_id: unsafe { std::mem::zeroed() },
-            event: WindowEvent::Focused(false),
-        };
-        state.process_event(&event);
+        state.process_event(&make_window_event(WindowEvent::Focused(false)));
         assert!(!state.is_focused());
 
-        let event = Event::WindowEvent {
-            window_id: unsafe { std::mem::zeroed() },
-            event: WindowEvent::Focused(true),
-        };
-        state.process_event(&event);
+        state.process_event(&make_window_event(WindowEvent::Focused(true)));
         assert!(state.is_focused());
     }
 
     #[test]
     fn test_minimized_event() {
         let state = WindowState::new();
-        // winit 0.29 没有 Minimized 事件变体，此处仅测试默认值
         assert!(!state.is_minimized());
     }
 
     #[test]
     fn test_maximized_event() {
         let state = WindowState::new();
-        // winit 0.29 没有 Maximized 事件变体，此处仅测试默认值
         assert!(!state.is_maximized());
     }
 
@@ -180,18 +188,10 @@ mod tests {
     fn test_occluded_event() {
         let state = WindowState::new();
 
-        let event = Event::WindowEvent {
-            window_id: unsafe { std::mem::zeroed() },
-            event: WindowEvent::Occluded(true),
-        };
-        state.process_event(&event);
+        state.process_event(&make_window_event(WindowEvent::Occluded(true)));
         assert!(!state.is_visible());
 
-        let event = Event::WindowEvent {
-            window_id: unsafe { std::mem::zeroed() },
-            event: WindowEvent::Occluded(false),
-        };
-        state.process_event(&event);
+        state.process_event(&make_window_event(WindowEvent::Occluded(false)));
         assert!(state.is_visible());
     }
 
@@ -199,14 +199,12 @@ mod tests {
     fn test_resized_event() {
         let state = WindowState::new();
 
-        let event = Event::WindowEvent {
-            window_id: unsafe { std::mem::zeroed() },
-            event: WindowEvent::Resized(winit::dpi::PhysicalSize {
+        state.process_event(&make_window_event(WindowEvent::Resized(
+            winit::dpi::PhysicalSize {
                 width: 1920,
                 height: 1080,
-            }),
-        };
-        state.process_event(&event);
+            },
+        )));
         let size = state.size();
         assert_eq!(size.width, 1920);
         assert_eq!(size.height, 1080);
@@ -216,11 +214,7 @@ mod tests {
     fn test_close_requested_event() {
         let state = WindowState::new();
 
-        let event = Event::WindowEvent {
-            window_id: unsafe { std::mem::zeroed() },
-            event: WindowEvent::CloseRequested,
-        };
-        state.process_event(&event);
+        state.process_event(&make_window_event(WindowEvent::CloseRequested));
         assert!(!state.is_visible());
     }
 

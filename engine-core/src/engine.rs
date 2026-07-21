@@ -418,13 +418,10 @@ mod tests {
     fn test_process_window_event_no_panic() {
         let mut engine = Engine::default();
         engine.set_window_state(WindowState::new());
-        // 构造一个空的 Event 来测试
-        let event = Event::WindowEvent {
-            window_id: unsafe { std::mem::zeroed() },
-            event: engine_window::WindowEvent::Focused(true),
-        };
+        let event = engine_window::make_test_window_event(
+            engine_window::WindowEvent::Focused(true),
+        );
         engine.process_window_event(&event);
-        // 应仍处于默认状态（Focused(true) 事件不改变已为 true 的焦点状态）
         assert!(engine.is_focused());
         assert!(!engine.is_minimized());
     }

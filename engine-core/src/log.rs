@@ -87,9 +87,13 @@ pub fn trace(target: &str, msg: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Mutex;
+
+    static TEST_LOCK: Mutex<()> = Mutex::new(());
 
     #[test]
     fn test_set_level() {
+        let _guard = TEST_LOCK.lock().unwrap();
         let original = current_level();
         set_level(Level::Error);
         assert_eq!(current_level(), Level::Error);
@@ -100,6 +104,7 @@ mod tests {
 
     #[test]
     fn test_enabled() {
+        let _guard = TEST_LOCK.lock().unwrap();
         let original = current_level();
         set_level(Level::Warn);
         assert!(enabled(Level::Error));
