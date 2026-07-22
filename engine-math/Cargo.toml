@@ -12,3 +12,5 @@ default = ["std"]
 std = []
 
 [dependencies]
+bytemuck.workspace = true
+serde.workspace = true

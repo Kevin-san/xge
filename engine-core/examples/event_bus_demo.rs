@@ -1,78 +1,88 @@
-//! event_bus_demo - 事件总线订阅/派发/取消订阅示例
-//!
-//! 演示内容：
-//! - 回调式：subscribe / send / unsubscribe
-//! - 队列式：send / iter / drain_queue
-//! - subscriber_count / len / snapshot
-
 use engine_core::EventBus;
+use std::sync::{Arc, Mutex};
 
-#[derive(Clone, Debug, PartialEq)]
-enum GameEvent {
-    PlayerJoined(String),
-    ScoreChanged(i32),
-    GameOver,
+#[derive(Debug, Clone, PartialEq)]
+struct PlayerEvent {
+    player_id: u32,
+    event_type: PlayerEventType,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+enum PlayerEventType {
+    Spawn,
+    Move { x: f32, y: f32 },
+    Damage { amount: u32 },
+    Despawn,
 }
 
 fn main() {
-    println!("=== EventBus Demo ===\n");
+    println!("=== Event Bus Demo ===\n");
 
-    let bus = EventBus::<GameEvent>::new();
+    let bus = EventBus::<PlayerEvent>::new();
 
-    // ===== 回调式 =====
-    println!("--- Callback mode ---");
-    let handle1 = bus.subscribe(|event| {
-        println!("  [Callback1] {:?}", event);
+    let received_events = Arc::new(Mutex::new(Vec::new()));
+    let received_clone = received_events.clone();
+
+    let _handle1 = bus.subscribe(move |event| {
+        let mut events = received_clone.lock().unwrap();
+        events.push(event.clone());
+        println!("[Subscriber 1] Received: {:?}", event);
     });
 
-    let handle2 = bus.subscribe(|event| {
-        println!("  [Callback2] {:?}", event);
+    let received_clone2 = received_events.clone();
+    let handle2 = bus.subscribe(move |event| {
+        let mut events = received_clone2.lock().unwrap();
+        events.push(event.clone());
+        if let PlayerEventType::Damage { amount } = &event.event_type {
+            println!("[Subscriber 2] Player {} took {} damage", event.player_id, amount);
+        }
     });
 
-    println!("Subscribers: {}", bus.subscriber_count());
+    println!("Sending events...\n");
+    bus.send(PlayerEvent {
+        player_id: 1,
+        event_type: PlayerEventType::Spawn,
+    });
 
-    // 派发事件（回调 + 队列同时生效）
-    println!("\nSending events...");
-    bus.send(GameEvent::PlayerJoined("Alice".to_string()));
-    bus.send(GameEvent::ScoreChanged(100));
-    println!("Queue length: {}", bus.len());
+    bus.send(PlayerEvent {
+        player_id: 1,
+        event_type: PlayerEventType::Move { x: 100.0, y: 200.0 },
+    });
 
-    // 取消订阅
-    println!("\nUnsubscribing handle2...");
-    bus.unsubscribe(handle2);
-    println!("Subscribers: {}", bus.subscriber_count());
+    bus.send(PlayerEvent {
+        player_id: 2,
+        event_type: PlayerEventType::Damage { amount: 25 },
+    });
 
-    // 再派发（只有 handle1 收到回调）
-    println!("\nSending GameOver...");
-    bus.send(GameEvent::GameOver);
+    bus.send(PlayerEvent {
+        player_id: 1,
+        event_type: PlayerEventType::Despawn,
+    });
 
-    // ===== 队列式 =====
-    println!("\n--- Queue mode ---");
-    println!("Snapshot: {:?}", bus.snapshot());
-    println!("Iter:");
+    println!();
+    println!("Queue contains {} events", bus.len());
+
+    println!("\nIterating queue (read-only):");
     for event in bus.iter() {
-        println!("  [Queue] {:?}", event);
+        println!("  {:?}", event);
     }
 
-    // 清空队列
+    println!("\nUnsubscribing subscriber 2...");
+    bus.unsubscribe(handle2);
+
+    bus.send(PlayerEvent {
+        player_id: 1,
+        event_type: PlayerEventType::Spawn,
+    });
+
+    println!();
+    println!("Subscriber count: {}", bus.subscriber_count());
+
+    println!("\nDraining queue...");
     bus.drain_queue();
-    println!("\nAfter drain_queue, length: {}", bus.len());
+    assert!(bus.is_empty());
 
-    // ===== 批量发送 =====
-    println!("\n--- Batch send ---");
-    bus.send_batch(vec![
-        GameEvent::PlayerJoined("Bob".to_string()),
-        GameEvent::ScoreChanged(200),
-    ]);
-    println!("After send_batch, length: {}", bus.len());
-
-    // ===== 完全清空 =====
-    println!("\n--- Full drain ---");
-    bus.drain(); // 清空订阅者 + 队列
-    println!("After drain: {} subscribers, {} events", bus.subscriber_count(), bus.len());
-
-    // 丢弃 handle1（已通过 drain 清空）
-    let _ = handle1;
-
-    println!("\nEventBus demo completed!");
+    println!("\nTotal events received by all subscribers: {}", 
+             received_events.lock().unwrap().len());
+    println!("\nEvent bus demo completed successfully!");
 }

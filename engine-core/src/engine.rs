@@ -75,7 +75,7 @@ impl Engine {
     pub fn is_running(&self) -> bool {
         self.quit_flag
             .get()
-            .map_or(true, |f| !f.load(std::sync::atomic::Ordering::SeqCst))
+            .is_none_or(|f| !f.load(std::sync::atomic::Ordering::SeqCst))
     }
 
     /// 暂停引擎
@@ -170,7 +170,7 @@ impl Engine {
 
     /// 窗口是否可见
     pub fn is_visible(&self) -> bool {
-        self.window_state.as_ref().map_or(true, |ws| ws.is_visible())
+        self.window_state.as_ref().is_none_or(|ws| ws.is_visible())
     }
 
     // ===== 光标控制（屏蔽 winit 依赖）=====

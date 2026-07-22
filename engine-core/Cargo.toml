@@ -9,6 +9,9 @@ rust-version = "1.70"
 [dependencies]
 anyhow.workspace = true
 engine-window = { path = "../engine-window" }
+thiserror.workspace = true
+serde.workspace = true
+ahash.workspace = true
 
 [build-dependencies]
 chrono.workspace = true

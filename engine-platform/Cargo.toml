@@ -8,6 +8,8 @@ license = "MIT OR Apache-2.0"
 description = "Game engine platform abstraction library"
 
 [dependencies]
+futures-lite.workspace = true
+parking_lot.workspace = true
 # 无外部依赖，使用 std::sync 替代 parking_lot
 
 [dev-dependencies]
