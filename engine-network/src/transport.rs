@@ -607,9 +607,45 @@ impl TlsConfig {
             }
         }
 
-        let config = ClientConfig::builder()
-            .with_root_certificates(root_store)
-            .with_no_client_auth();
+        // Honor an mTLS client certificate/key when configured. Previously the
+        // configured paths were silently ignored and `with_no_client_auth()` was
+        // always used, downgrading deployments that rely on mutual TLS to
+        // single-sided authentication.
+        let config = match (&self.client_cert_file, &self.client_key_file) {
+            (Some(cert_path), Some(key_path)) => {
+                let cert_pem = fs::read(cert_path)
+                    .map_err(|e| NetError::Tls(format!("Failed to read client cert: {}", e)))?;
+                let certs: Vec<rustls::pki_types::CertificateDer<'static>> =
+                    rustls_pemfile::certs(&mut cert_pem.as_slice())
+                        .collect::<Result<_, _>>()
+                        .map_err(|e| {
+                            NetError::Tls(format!("Failed to parse client cert: {}", e))
+                        })?;
+
+                let key_pem = fs::read(key_path)
+                    .map_err(|e| NetError::Tls(format!("Failed to read client key: {}", e)))?;
+                let key = rustls_pemfile::private_key(&mut key_pem.as_slice())
+                    .map_err(|e| NetError::Tls(format!("Failed to parse client key: {}", e)))?
+                    .ok_or_else(|| {
+                        NetError::Tls("No client private key found in key file".to_string())
+                    })?;
+
+                if certs.is_empty() {
+                    return Err(NetError::Tls(
+                        "No client certificate found in cert file".to_string(),
+                    ));
+                }
+                ClientConfig::builder()
+                    .with_root_certificates(root_store)
+                    .with_client_auth_cert(certs, key)
+                    .map_err(|e| {
+                        NetError::Tls(format!("Failed to build mTLS client config: {}", e))
+                    })?
+            }
+            _ => ClientConfig::builder()
+                .with_root_certificates(root_store)
+                .with_no_client_auth(),
+        };
 
         Ok(config)
     }
@@ -721,7 +757,15 @@ impl TlsTcpTransport {
             if conn.wants_read() {
                 let mut read_buf = [0u8; 8192];
                 match stream.read(&mut read_buf) {
-                    Ok(0) => break,
+                    Ok(0) => {
+                        // Peer closed the TCP connection mid-handshake. Breaking
+                        // out and returning Ok would let the caller believe a
+                        // secure TLS session (and thus certificate verification)
+                        // had completed when it never did.
+                        return Err(NetError::Tls(
+                            "Connection closed by peer during TLS handshake".to_string(),
+                        ));
+                    }
                     Ok(n) => {
                         conn.read_tls(&mut &read_buf[..n])?;
                     }
@@ -746,7 +790,12 @@ impl TlsTcpTransport {
         if conn.wants_read() {
             let mut buf = [0u8; 16384];
             match stream.read(&mut buf) {
-                Ok(0) => {}
+                Ok(0) => {
+                    // Peer closed the connection. Mark the transport as
+                    // disconnected so is_connected()/recv reflect reality
+                    // instead of silently reporting "no data yet" forever.
+                    self.connected.store(false, Ordering::SeqCst);
+                }
                 Ok(n) => {
                     conn.read_tls(&mut &buf[..n])?;
                 }

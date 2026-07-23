@@ -99,11 +99,13 @@ impl HotUpdate {
         patch: &HotUpdatePatch,
         public_key: Option<&VerifyingKey>,
     ) -> BuildResult<()> {
-        // Verify signature if a public key is provided
+        // Verify signature if a public key is provided. Use `verify` (which
+        // rejects unsigned patches) rather than `verify_opt` (which returns
+        // `None` for unsigned patches and let them through). Otherwise an
+        // attacker-supplied patch with no `signature` field bypasses
+        // verification entirely and its `diff` bytes are written to disk.
         if let Some(key) = public_key {
-            if let Some(result) = patch.verify_opt(key) {
-                result?;
-            }
+            patch.verify(key)?;
         }
 
         let dir = current_dir.as_ref();
@@ -697,6 +699,43 @@ mod tests {
         let (_, wrong_key) = generate_signing_keypair();
         let dir3 = tempdir().unwrap();
         assert!(HotUpdate::apply(dir3.path(), &patch, Some(&wrong_key)).is_err());
+    }
+
+    /// Regression: `apply` previously used `verify_opt`, which returns `None`
+    /// for an unsigned patch and let it through even when a public key was
+    /// supplied. An attacker-supplied patch with no `signature` field would
+    /// bypass verification and write its `diff` bytes to disk. With a public
+    /// key supplied, an unsigned patch must be rejected outright.
+    #[test]
+    fn test_patch_apply_rejects_unsigned_when_key_provided() {
+        let (_, verifying_key) = generate_signing_keypair();
+        let dir = tempdir().unwrap();
+
+        let patch = HotUpdatePatch::new(
+            "1.0.0".to_string(),
+            create_test_manifest("1.0.0", vec![]),
+            vec![FileChange::Modified {
+                path: PathBuf::from("evil.txt"),
+                diff: b"pwned".to_vec(),
+                size: 5,
+            }],
+        );
+        assert!(!patch.is_signed());
+
+        // Supplied a public key → unsigned patch must be rejected.
+        let result = HotUpdate::apply(dir.path(), &patch, Some(&verifying_key));
+        assert!(
+            result.is_err(),
+            "unsigned patch must be rejected when a public key is provided"
+        );
+
+        // And nothing must have been written.
+        assert!(!dir.path().join("evil.txt").exists());
+
+        // Without a key, unsigned patches are still allowed (local dev flow).
+        let dir2 = tempdir().unwrap();
+        HotUpdate::apply(dir2.path(), &patch, None).unwrap();
+        assert!(dir2.path().join("evil.txt").exists());
     }
 
     #[test]

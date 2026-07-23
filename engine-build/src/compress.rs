@@ -7,6 +7,28 @@ use flate2::{read::GzDecoder, write::GzEncoder, Compression};
 use std::io::{Read, Write};
 use zstd::{Decoder, Encoder};
 
+/// Maximum accepted decompressed size (256 MiB). Asset payloads from the asset
+/// store, hot-update patches, or any untrusted compressed input are read through
+/// [`read_bounded`] to prevent a zip-bomb / decompression-bomb from exhausting
+/// memory. Legitimate engine assets are well below this bound.
+const MAX_DECOMPRESSED_SIZE: u64 = 256 * 1024 * 1024;
+
+/// Read the full decompressed stream into a `Vec` but abort with an error once
+/// `max_bytes` is exceeded. This caps memory usage for untrusted compressed
+/// inputs (zstd/gzip bombs can expand a few KB into tens of GB).
+fn read_bounded<R: Read>(reader: &mut R, max_bytes: u64) -> BuildResult<Vec<u8>> {
+    let mut limited = reader.take(max_bytes.saturating_add(1));
+    let mut out = Vec::new();
+    limited.read_to_end(&mut out)?;
+    if (out.len() as u64) > max_bytes {
+        return Err(crate::BuildError::Other(format!(
+            "Decompressed payload exceeds maximum allowed size of {} bytes (possible compression bomb)",
+            max_bytes
+        )));
+    }
+    Ok(out)
+}
+
 /// Compression utilities
 pub struct Compress;
 
@@ -52,15 +74,11 @@ impl Compress {
             crate::AssetCompress::None => Ok(bytes.to_vec()),
             crate::AssetCompress::Zstd => {
                 let mut decoder = Decoder::new(bytes)?;
-                let mut decompressed = Vec::new();
-                decoder.read_to_end(&mut decompressed)?;
-                Ok(decompressed)
+                read_bounded(&mut decoder, MAX_DECOMPRESSED_SIZE)
             }
             crate::AssetCompress::Gzip => {
                 let mut decoder = GzDecoder::new(bytes);
-                let mut decompressed = Vec::new();
-                decoder.read_to_end(&mut decompressed)?;
-                Ok(decompressed)
+                read_bounded(&mut decoder, MAX_DECOMPRESSED_SIZE)
             }
             crate::AssetCompress::Brotli | crate::AssetCompress::LZ4 => {
                 // Fallback to zstd decompression
@@ -306,5 +324,30 @@ mod tests {
         let zstd = Compress::zstd(original, 3).unwrap();
         let decompressed = Compress::decompress(&zstd, crate::AssetCompress::LZ4).unwrap();
         assert_eq!(original.to_vec(), decompressed);
+    }
+
+    /// Regression: `decompress` previously used unbounded `read_to_end`, so a
+    /// small compressed payload (zip-bomb) could expand to tens of GB and OOM
+    /// the process. `read_bounded` must reject anything exceeding its cap.
+    #[test]
+    fn test_read_bounded_rejects_over_limit() {
+        use std::io::Cursor;
+
+        // Under the limit → Ok with full data.
+        let data = vec![1u8; 100];
+        let mut reader = Cursor::new(data.clone());
+        let out = read_bounded(&mut reader, 100).unwrap();
+        assert_eq!(out, data);
+
+        // Exactly at limit → Ok.
+        let mut reader = Cursor::new(vec![2u8; 50]);
+        let out = read_bounded(&mut reader, 50).unwrap();
+        assert_eq!(out.len(), 50);
+
+        // Over limit → Err, and we never allocate the full oversized buffer
+        // (only limit+1 bytes are materialized).
+        let mut reader = Cursor::new(vec![3u8; 1000]);
+        let err = read_bounded(&mut reader, 50).unwrap_err();
+        assert!(err.to_string().contains("compression bomb"));
     }
 }

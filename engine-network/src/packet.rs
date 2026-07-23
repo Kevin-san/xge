@@ -14,8 +14,10 @@ pub struct PacketHeader {
     pub ack: u32,
     /// Flags for packet properties
     pub flags: PacketFlags,
-    /// Payload length
-    pub payload_len: u16,
+    /// Payload length. Stored as `u32` so it can represent the full
+    /// `MAX_PACKET_SIZE` (1 MiB); a `u16` silently truncated any payload
+    /// larger than 64 KiB, desynchronizing the header from the real length.
+    pub payload_len: u32,
 }
 
 #[allow(clippy::derivable_impls)]
@@ -83,7 +85,7 @@ impl Packet {
         Ok(Self {
             header: PacketHeader {
                 message_type,
-                payload_len: payload_len as u16,
+                payload_len: payload_len as u32,
                 ..Default::default()
             },
             payload,
@@ -221,7 +223,7 @@ impl PacketBuilder {
                 sequence: self.sequence,
                 ack: self.ack,
                 flags: self.flags,
-                payload_len: payload_len as u16,
+                payload_len: payload_len as u32,
             },
             payload: self.payload,
         })
@@ -289,5 +291,30 @@ mod tests {
         assert!(packet.is_ordered());
         assert_eq!(packet.header.sequence, 5);
         assert_eq!(packet.header.ack, 3);
+    }
+
+    /// Regression: `payload_len` was stored as `u16`, so any payload larger
+    /// than 64 KiB (but still under `MAX_PACKET_SIZE` = 1 MiB) was silently
+    /// truncated in the header while the real payload kept its full length,
+    /// desynchronizing the wire frame from the actual data.
+    #[test]
+    fn test_packet_large_payload_len_not_truncated() {
+        let size: usize = 70_000; // > u16::MAX, < MAX_PACKET_SIZE
+        let payload = vec![0xABu8; size];
+
+        let packet = Packet::new(42, payload.clone()).unwrap();
+        assert_eq!(packet.header.payload_len as usize, size);
+        assert_eq!(packet.payload.len(), size);
+
+        // Round-trip through bincode to ensure the u32 field serializes
+        // without truncation as well.
+        let serialized = packet.serialize().unwrap();
+        let deserialized = Packet::deserialize(&serialized).unwrap();
+        assert_eq!(deserialized.header.payload_len as usize, size);
+        assert_eq!(deserialized.payload.len(), size);
+
+        // Builder path must behave identically.
+        let built = PacketBuilder::new(7, payload.clone()).build().unwrap();
+        assert_eq!(built.header.payload_len as usize, size);
     }
 }

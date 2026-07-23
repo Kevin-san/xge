@@ -113,9 +113,12 @@ impl Message {
 /// Generate a unique message ID
 pub fn generate_message_id() -> MessageId {
     let mut hasher = DefaultHasher::new();
+    // Fall back to a zero duration if the clock is before UNIX_EPOCH (clock
+    // skew / NTP rollback / container clock not yet synced) instead of
+    // panicking on `unwrap()`. Consistent with `current_timestamp` below.
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
+        .unwrap_or(std::time::Duration::ZERO)
         .hash(&mut hasher);
     std::thread::current().id().hash(&mut hasher);
     hasher.finish()

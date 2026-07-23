@@ -15,8 +15,11 @@ chrono = { version = "0.4", features = ["serde"] }
 parking_lot = "0.12"
 anyhow = "1.0"
 thiserror = "1.0"
-# Sync HTTP client (uses native-tls by default, rustls available via features)
-ureq = { version = "2.9", default-features = false, features = ["json"] }
+# Sync HTTP client. The `tls` feature (rustls + webpki-roots) MUST be enabled so
+# that HTTPS works; without it the default endpoints (`https://...`) fail with
+# "Unknown scheme" and callers are forced onto plain HTTP, exposing API keys
+# and asset data to network eavesdropping/MITM.
+ureq = { version = "2.9", default-features = false, features = ["json", "tls"] }
 
 # 内部依赖
 engine-core = { path = "../engine-core" }

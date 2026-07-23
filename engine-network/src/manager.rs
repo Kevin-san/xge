@@ -396,10 +396,12 @@ impl NetworkServer {
     pub fn shutdown(&self) -> NetResult<()> {
         self.listening.store(false, Ordering::SeqCst);
 
-        // Disconnect all clients
-        let clients = self.clients.lock();
-        for client_id in clients.keys() {
-            self.disconnect_client(*client_id, "Server shutdown".to_string())?;
+        // Disconnect all clients. Collect IDs first and release the lock before
+        // calling disconnect_client, which itself acquires the same lock — holding
+        // the lock here would deadlock (parking_lot::Mutex is non-reentrant).
+        let client_ids: Vec<ClientId> = self.clients.lock().keys().copied().collect();
+        for client_id in client_ids {
+            self.disconnect_client(client_id, "Server shutdown".to_string())?;
         }
 
         self.manager.shutdown()?;
@@ -502,5 +504,31 @@ mod tests {
         let config = NetworkConfig::default();
         assert_eq!(config.max_connections, 100);
         assert!(config.enable_stats);
+    }
+
+    /// Regression: `shutdown()` previously held `clients` lock while calling
+    /// `disconnect_client`, which re-acquires the same non-reentrant lock and
+    /// deadlocked whenever any client was connected. With several clients
+    /// connected, shutdown must complete and drop all of them.
+    #[test]
+    fn test_network_server_shutdown_with_clients_no_deadlock() {
+        let server = NetworkServer::new(NetworkConfig::default());
+        server.bind("127.0.0.1:8081".parse().unwrap()).unwrap();
+
+        // Register several clients on memory channels.
+        for i in 0..5 {
+            let addr: SocketAddr = format!("127.0.0.1:{}", 20000 + i).parse().unwrap();
+            let channel_id = server.manager().add_channel(Arc::new(MemoryChannel::new(
+                i + 1,
+                ChannelConfig::default(),
+            )));
+            server.accept_client(addr, channel_id).unwrap();
+        }
+        assert_eq!(server.client_count(), 5);
+
+        // Must not hang. A deadlock here times out the test runner.
+        server.shutdown().unwrap();
+        assert_eq!(server.client_count(), 0);
+        assert!(!server.is_listening());
     }
 }
