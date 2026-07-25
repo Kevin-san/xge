@@ -125,4 +125,71 @@ mod tests {
         assert!(set.contains(&h2));
         assert!(!set.contains(&h3));
     }
+
+    #[test]
+    fn test_eq_different_index() {
+        let h1 = Handle::<i32>::new(1, 1);
+        let h2 = Handle::<i32>::new(2, 1);
+        assert_ne!(h1, h2);
+    }
+
+    #[test]
+    fn test_eq_different_generation() {
+        let h1 = Handle::<i32>::new(1, 1);
+        let h2 = Handle::<i32>::new(1, 2);
+        assert_ne!(h1, h2);
+    }
+
+    #[test]
+    fn test_eq_same() {
+        let h1 = Handle::<i32>::new(10, 5);
+        let h2 = Handle::<i32>::new(10, 5);
+        assert_eq!(h1, h2);
+    }
+
+    #[test]
+    fn test_default_is_null() {
+        let h: Handle<i32> = Handle::default();
+        assert!(h.is_null());
+    }
+
+    #[test]
+    fn test_clone() {
+        let h1 = Handle::<i32>::new(42, 100);
+        let h2 = h1.clone();
+        assert_eq!(h1, h2);
+        assert_eq!(h1.index(), h2.index());
+        assert_eq!(h1.generation(), h2.generation());
+    }
+
+    #[test]
+    fn test_hash_map() {
+        use std::collections::HashMap;
+
+        let h1 = Handle::<String>::new(1, 1);
+        let h2 = Handle::<String>::new(1, 1);
+        let h3 = Handle::<String>::new(2, 1);
+
+        let mut map = HashMap::new();
+        map.insert(h1, "value1");
+
+        assert_eq!(map.get(&h2), Some(&"value1"));
+        assert!(map.get(&h3).is_none());
+    }
+
+    #[test]
+    fn test_debug_format() {
+        let h = Handle::<i32>::new(42, 7);
+        let s = format!("{:?}", h);
+        assert!(s.contains("42"));
+        assert!(s.contains("7"));
+    }
+
+    #[test]
+    fn test_const_new() {
+        const H: Handle<i32> = Handle::new(10, 5);
+        assert_eq!(H.index(), 10);
+        assert_eq!(H.generation(), 5);
+        assert!(!H.is_null());
+    }
 }

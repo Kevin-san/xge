@@ -1,5 +1,6 @@
 use crate::module::ModuleRegistry;
 use crate::time::Time;
+use engine_platform::{FileSystem, NativeFileSystem};
 use engine_window::{
     CursorGrabMode, CursorIcon, Event, EventLoopProxy, Fullscreen, InputModule, PhysicalPosition,
     PhysicalSize, Window, WindowExt, WindowMode, WindowState,
@@ -36,6 +37,7 @@ pub struct Engine {
     window_state: Option<WindowState>,
     event_loop_proxy: Option<EventLoopProxy<()>>,
     quit_flag: std::sync::OnceLock<Arc<std::sync::atomic::AtomicBool>>,
+    filesystem: NativeFileSystem,
 }
 
 impl Default for Engine {
@@ -55,6 +57,7 @@ impl Engine {
             window_state: None,
             event_loop_proxy: None,
             quit_flag: std::sync::OnceLock::new(),
+            filesystem: NativeFileSystem,
         }
     }
 
@@ -116,6 +119,18 @@ impl Engine {
 
     pub fn modules(&self) -> &ModuleRegistry {
         &self.modules
+    }
+
+    pub fn filesystem(&self) -> &impl FileSystem {
+        &self.filesystem
+    }
+
+    pub fn world(&self) -> Option<&engine_ecs::World> {
+        None
+    }
+
+    pub fn world_mut(&mut self) -> Option<&mut engine_ecs::World> {
+        None
     }
 
     // ===== 窗口访问 =====

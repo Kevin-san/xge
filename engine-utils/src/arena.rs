@@ -219,7 +219,6 @@ mod tests {
         arena.remove(h);
         let h2 = arena.insert(2);
 
-        // 不同 generation，不是同一个对象
         assert!(arena.get(h).is_none());
         assert_eq!(arena.get(h2), Some(&2));
     }
@@ -234,7 +233,6 @@ mod tests {
         arena.remove(h2);
 
         let h4 = arena.insert(4);
-        // 应该复用 freed slot
         assert_eq!(h4.index(), h2.index());
         assert!(arena.get(h4).is_some());
     }
@@ -273,5 +271,99 @@ mod tests {
         arena.retain(|_, v| *v > 1);
         assert!(arena.get(h1).is_none());
         assert_eq!(arena.len(), 2);
+    }
+
+    #[test]
+    fn test_get_mut() {
+        let mut arena = Arena::new();
+        let h = arena.insert(10);
+        if let Some(val) = arena.get_mut(h) {
+            *val = 20;
+        }
+        assert_eq!(arena.get(h), Some(&20));
+    }
+
+    #[test]
+    fn test_clear() {
+        let mut arena = Arena::new();
+        arena.insert(1);
+        arena.insert(2);
+        assert_eq!(arena.len(), 2);
+
+        arena.clear();
+        assert_eq!(arena.len(), 0);
+        assert!(arena.is_empty());
+    }
+
+    #[test]
+    fn test_null_handle() {
+        let mut arena = Arena::new();
+        let h: Handle<i32> = Handle::null();
+        assert!(arena.get(h).is_none());
+        assert!(arena.get_mut(h).is_none());
+        assert!(arena.remove(h).is_none());
+    }
+
+    #[test]
+    fn test_out_of_bounds_handle() {
+        let mut arena = Arena::new();
+        arena.insert(1);
+        let h = Handle::new(100, 0);
+        assert!(arena.get(h).is_none());
+        assert!(arena.get_mut(h).is_none());
+        assert!(arena.remove(h).is_none());
+    }
+
+    #[test]
+    fn test_with_capacity() {
+        let arena = Arena::<i32>::with_capacity(100);
+        assert!(arena.is_empty());
+        assert_eq!(arena.len(), 0);
+    }
+
+    #[test]
+    fn test_multiple_free_and_reuse() {
+        let mut arena = Arena::new();
+        let h1 = arena.insert(1);
+        let h2 = arena.insert(2);
+        let h3 = arena.insert(3);
+
+        arena.remove(h1);
+        arena.remove(h3);
+
+        let h4 = arena.insert(4);
+        let h5 = arena.insert(5);
+
+        assert_eq!(h4.index(), h3.index());
+        assert_eq!(h5.index(), h1.index());
+        assert_eq!(arena.get(h4), Some(&4));
+        assert_eq!(arena.get(h5), Some(&5));
+    }
+
+    #[test]
+    fn test_into_iter() {
+        let mut arena = Arena::new();
+        arena.insert(10);
+        arena.insert(20);
+        arena.insert(30);
+
+        let mut values = Vec::new();
+        for (_, val) in &arena {
+            values.push(*val);
+        }
+        assert_eq!(values, vec![10, 20, 30]);
+    }
+
+    #[test]
+    fn test_remove_preserves_others() {
+        let mut arena = Arena::new();
+        let h1 = arena.insert(1);
+        let h2 = arena.insert(2);
+        let h3 = arena.insert(3);
+
+        arena.remove(h2);
+
+        assert_eq!(arena.get(h1), Some(&1));
+        assert_eq!(arena.get(h3), Some(&3));
     }
 }
