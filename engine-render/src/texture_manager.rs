@@ -2,8 +2,8 @@
 //!
 //! 提供 HashMap 驱动的 TextureManager，支持纹理的注册、查询、卸载和迭代。
 
-use std::collections::HashMap;
 use crate::{Texture2D, TextureHandle};
+use std::collections::HashMap;
 
 /// 纹理管理器 — 集中管理纹理资源的加载、查询和卸载
 pub struct TextureManager {
@@ -68,7 +68,7 @@ impl Default for TextureManager {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{TextureFormat};
+    use crate::TextureFormat;
 
     #[test]
     fn test_texture_manager_new() {

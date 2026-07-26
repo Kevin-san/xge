@@ -392,10 +392,19 @@ mod tests {
 
     #[test]
     fn test_platform_target_triple() {
-        assert_eq!(PlatformTarget::Windows.target_triple(), "x86_64-pc-windows-msvc");
+        assert_eq!(
+            PlatformTarget::Windows.target_triple(),
+            "x86_64-pc-windows-msvc"
+        );
         assert_eq!(PlatformTarget::MacOS.target_triple(), "x86_64-apple-darwin");
-        assert_eq!(PlatformTarget::Linux.target_triple(), "x86_64-unknown-linux-gnu");
-        assert_eq!(PlatformTarget::Web.target_triple(), "wasm32-unknown-unknown");
+        assert_eq!(
+            PlatformTarget::Linux.target_triple(),
+            "x86_64-unknown-linux-gnu"
+        );
+        assert_eq!(
+            PlatformTarget::Web.target_triple(),
+            "wasm32-unknown-unknown"
+        );
     }
 
     #[test]
@@ -506,15 +515,15 @@ mod tests {
             Permission::Bluetooth.to_android_string(),
             "android.permission.BLUETOOTH"
         );
-        assert_eq!(Permission::NFC.to_android_string(), "android.permission.NFC");
+        assert_eq!(
+            Permission::NFC.to_android_string(),
+            "android.permission.NFC"
+        );
     }
 
     #[test]
     fn test_permission_ios() {
-        assert_eq!(
-            Permission::Internet.to_ios_string(),
-            "NSInternetPermission"
-        );
+        assert_eq!(Permission::Internet.to_ios_string(), "NSInternetPermission");
         assert_eq!(
             Permission::Camera.to_ios_string(),
             "NSCameraUsageDescription"

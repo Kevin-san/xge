@@ -227,4 +227,53 @@ mod tests {
         sw.reset();
         assert_eq!(sw.elapsed_secs(), 0.0);
     }
+
+    #[test]
+    fn test_delta_seconds_f32() {
+        let mut time = Time::new();
+        std::thread::sleep(std::time::Duration::from_millis(16));
+        let _ = time.tick();
+        assert!(time.delta_seconds_f32() > 0.0);
+    }
+
+    #[test]
+    fn test_set_fixed_timestep() {
+        let mut time = Time::new();
+        time.set_fixed_timestep(1.0 / 120.0);
+        assert!((time.fixed_timestep() - 1.0 / 120.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_stopwatch_start_stop() {
+        let mut sw = Stopwatch::new();
+        sw.start();
+        assert!(sw.is_running());
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        sw.stop();
+        assert!(!sw.is_running());
+        assert!(sw.elapsed_secs() > 0.0);
+        assert!(sw.elapsed_secs_f32() > 0.0);
+    }
+
+    #[test]
+    fn test_stopwatch_reset() {
+        let mut sw = Stopwatch::new();
+        sw.start();
+        sw.stop();
+        sw.reset();
+        assert!(!sw.is_running());
+        assert_eq!(sw.elapsed_secs(), 0.0);
+    }
+
+    #[test]
+    fn test_time_new_with_fixed_timestep() {
+        let time = Time::new_with_fixed_timestep(1.0 / 30.0);
+        assert!((time.fixed_timestep() - 1.0 / 30.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_time_default() {
+        let time = Time::default();
+        assert_eq!(time.frame_count(), 0);
+    }
 }

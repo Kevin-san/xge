@@ -283,7 +283,10 @@ mod tests {
     #[test]
     fn test_aabb_from_points_empty() {
         let aabb = AABB::from_points(&[]);
-        assert_eq!(aabb.min, Vec3::new(f32::INFINITY, f32::INFINITY, f32::INFINITY));
+        assert_eq!(
+            aabb.min,
+            Vec3::new(f32::INFINITY, f32::INFINITY, f32::INFINITY)
+        );
     }
 
     #[test]

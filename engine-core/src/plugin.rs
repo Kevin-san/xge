@@ -19,7 +19,9 @@ impl Default for PluginApp {
 
 impl PluginApp {
     pub fn new() -> Self {
-        Self { plugins: Vec::new() }
+        Self {
+            plugins: Vec::new(),
+        }
     }
 
     pub fn add_plugin(&mut self, plugin: impl Plugin + 'static) {
@@ -47,7 +49,9 @@ mod tests {
 
     struct TestPlugin;
     impl Plugin for TestPlugin {
-        fn name(&self) -> &str { "TestPlugin" }
+        fn name(&self) -> &str {
+            "TestPlugin"
+        }
         fn build(&self, _app: &mut PluginApp) {}
     }
 

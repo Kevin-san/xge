@@ -335,4 +335,3 @@ mod tests {
         assert_eq!(node.sprite().texture_id, 99);
     }
 }
-

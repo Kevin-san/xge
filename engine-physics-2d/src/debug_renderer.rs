@@ -474,6 +474,9 @@ mod tests {
         let collider = Collider2D::new(ColliderShape::circle(2.0));
         renderer.draw_body(&body, &collider);
         assert_eq!(renderer.circles().len(), 1);
-        assert_eq!(renderer.circles().first().unwrap().center, Vec2::new(3.0, 3.0));
+        assert_eq!(
+            renderer.circles().first().unwrap().center,
+            Vec2::new(3.0, 3.0)
+        );
     }
 }

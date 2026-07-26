@@ -45,4 +45,50 @@ mod tests {
         assert_eq!(stats.dt, 0.016);
         assert_eq!(stats.cpu_time_us, 500);
     }
+
+    #[test]
+    fn test_frame_stats_with_values() {
+        let stats = FrameStats {
+            frame_number: 1,
+            dt: 0.016,
+            cpu_time_us: 100,
+        };
+        assert_eq!(stats.frame_number, 1);
+        assert_eq!(stats.dt, 0.016);
+        assert_eq!(stats.cpu_time_us, 100);
+    }
+
+    #[test]
+    fn test_engine_stats_with_values() {
+        let stats = EngineStats {
+            uptime_seconds: 10.0,
+            total_frames: 600,
+            avg_fps: 60.0,
+        };
+        assert_eq!(stats.uptime_seconds, 10.0);
+        assert_eq!(stats.total_frames, 600);
+        assert_eq!(stats.avg_fps, 60.0);
+    }
+
+    #[test]
+    fn test_frame_stats_clone() {
+        let stats = FrameStats {
+            frame_number: 5,
+            dt: 0.033,
+            cpu_time_us: 200,
+        };
+        let cloned = stats.clone();
+        assert_eq!(cloned.frame_number, 5);
+    }
+
+    #[test]
+    fn test_engine_stats_clone() {
+        let stats = EngineStats {
+            uptime_seconds: 5.0,
+            total_frames: 300,
+            avg_fps: 60.0,
+        };
+        let cloned = stats.clone();
+        assert_eq!(cloned.total_frames, 300);
+    }
 }

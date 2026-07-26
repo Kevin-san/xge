@@ -6,6 +6,8 @@ use std::collections::{HashMap, VecDeque};
 
 use engine_math::Vec3;
 
+#[allow(unused_imports)]
+use crate::rigidbody::{RigidBody3D, RigidBodyHandle, RigidBodyType3D};
 use crate::{
     collider::{Collider3D, ColliderHandle},
     collision::{ContactEvent, ContactForceEvent, ContactPair, IntersectionEvent},
@@ -16,8 +18,6 @@ use crate::{
     joint::{Joint3D, JointHandle},
     query::{Query3D, QueryPipeline},
 };
-#[allow(unused_imports)]
-use crate::rigidbody::{RigidBody3D, RigidBodyHandle, RigidBodyType3D};
 
 /// 物理世界配置
 #[derive(Debug, Clone)]

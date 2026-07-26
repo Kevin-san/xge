@@ -53,6 +53,25 @@ impl Time {
     pub fn frame_count(&self) -> u64 {
         self.frame_count
     }
+
+    /// 获取上一帧的时间增量（Duration）
+    pub fn delta(&self) -> Duration {
+        self.delta_time
+    }
+
+    /// 获取从引擎启动以来的总时间（Duration）
+    pub fn elapsed(&self) -> Duration {
+        self.total_time
+    }
+
+    /// 获取近帧 FPS
+    pub fn fps(&self) -> f32 {
+        if self.delta_time.as_secs_f64() > 0.0 {
+            (1.0 / self.delta_time.as_secs_f64()) as f32
+        } else {
+            0.0
+        }
+    }
 }
 
 #[cfg(test)]
@@ -71,12 +90,12 @@ mod tests {
     #[test]
     fn test_time_update() {
         let mut time = Time::new();
-        
+
         time.update();
         assert_eq!(time.frame_count(), 1);
         assert!(time.delta_time() >= 0.0);
         assert!(time.total_time() >= 0.0);
-        
+
         thread::sleep(Duration::from_millis(10));
         time.update();
         assert_eq!(time.frame_count(), 2);
@@ -86,10 +105,10 @@ mod tests {
     #[test]
     fn test_time_delta_time_ms() {
         let mut time = Time::new();
-        
+
         thread::sleep(Duration::from_millis(50));
         time.update();
-        
+
         assert!(time.delta_time_ms() >= 50.0);
         assert!(time.delta_time_ms() < 100.0);
     }
@@ -97,15 +116,15 @@ mod tests {
     #[test]
     fn test_time_total_time() {
         let mut time = Time::new();
-        
+
         thread::sleep(Duration::from_millis(10));
         time.update();
         let t1 = time.total_time();
-        
+
         thread::sleep(Duration::from_millis(10));
         time.update();
         let t2 = time.total_time();
-        
+
         assert!(t2 > t1);
         assert!(t2 - t1 >= 0.01);
     }
@@ -113,12 +132,42 @@ mod tests {
     #[test]
     fn test_time_multiple_updates() {
         let mut time = Time::new();
-        
+
         for i in 1..=10 {
             time.update();
             assert_eq!(time.frame_count(), i as u64);
         }
-        
+
         assert_eq!(time.frame_count(), 10);
+    }
+
+    #[test]
+    fn test_delta_returns_duration() {
+        let mut time = Time::new();
+        thread::sleep(Duration::from_millis(10));
+        time.update();
+        assert!(time.delta() > Duration::from_secs(0));
+    }
+
+    #[test]
+    fn test_elapsed_returns_duration() {
+        let mut time = Time::new();
+        thread::sleep(Duration::from_millis(10));
+        time.update();
+        assert!(time.elapsed() > Duration::from_secs(0));
+    }
+
+    #[test]
+    fn test_fps_returns_positive() {
+        let mut time = Time::new();
+        thread::sleep(Duration::from_millis(16));
+        time.update();
+        assert!(time.fps() > 0.0);
+    }
+
+    #[test]
+    fn test_default_creates_valid_time() {
+        let time = Time::default();
+        assert_eq!(time.frame_count(), 0);
     }
 }

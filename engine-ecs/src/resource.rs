@@ -147,7 +147,9 @@ mod tests {
     fn test_resources_multiple_different_types() {
         let mut resources = Resources::new();
         resources.insert(Timer { elapsed: 1.0 });
-        resources.insert(Config { name: String::from("test") });
+        resources.insert(Config {
+            name: String::from("test"),
+        });
         assert!(resources.contains::<Timer>());
         assert!(resources.contains::<Config>());
     }

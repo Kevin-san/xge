@@ -69,7 +69,11 @@ fn main() {
     // ===== 完全清空 =====
     println!("\n--- Full drain ---");
     bus.drain(); // 清空订阅者 + 队列
-    println!("After drain: {} subscribers, {} events", bus.subscriber_count(), bus.len());
+    println!(
+        "After drain: {} subscribers, {} events",
+        bus.subscriber_count(),
+        bus.len()
+    );
 
     // 丢弃 handle1（已通过 drain 清空）
     let _ = handle1;

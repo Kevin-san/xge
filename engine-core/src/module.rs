@@ -112,6 +112,24 @@ impl ModuleRegistry {
     pub fn contains(&self, name: &str) -> bool {
         self.modules.borrow().contains_key(name)
     }
+
+    /// 按名称查找模块（仅检查是否存在并返回名称）
+    pub fn get_by_name(&self, name: &str) -> Option<String> {
+        if self.modules.borrow().contains_key(name) {
+            Some(name.to_string())
+        } else {
+            None
+        }
+    }
+
+    /// 按名称对模块执行闭包操作
+    pub fn with_module<F, R>(&self, name: &str, f: F) -> Option<R>
+    where
+        F: FnOnce(&mut dyn Module) -> R,
+    {
+        let mut modules = self.modules.borrow_mut();
+        modules.get_mut(name).map(|module| f(module.as_mut()))
+    }
 }
 
 fn topological_sort(
@@ -179,3 +197,186 @@ impl std::fmt::Display for CycleError {
 }
 
 impl std::error::Error for CycleError {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct MockModule {
+        name: String,
+        deps: Vec<String>,
+        initialized: bool,
+        updated: bool,
+        rendered: bool,
+        shutdown: bool,
+        is_enabled: bool,
+    }
+
+    impl MockModule {
+        fn new(name: &str) -> Self {
+            Self {
+                name: name.to_string(),
+                deps: vec![],
+                initialized: false,
+                updated: false,
+                rendered: false,
+                shutdown: false,
+                is_enabled: true,
+            }
+        }
+
+        fn with_deps(name: &str, deps: Vec<&str>) -> Self {
+            Self {
+                name: name.to_string(),
+                deps: deps.into_iter().map(String::from).collect(),
+                initialized: false,
+                updated: false,
+                rendered: false,
+                shutdown: false,
+                is_enabled: true,
+            }
+        }
+
+        fn disabled(name: &str) -> Self {
+            Self {
+                name: name.to_string(),
+                deps: vec![],
+                initialized: false,
+                updated: false,
+                rendered: false,
+                shutdown: false,
+                is_enabled: false,
+            }
+        }
+    }
+
+    impl Module for MockModule {
+        fn name(&self) -> &str {
+            &self.name
+        }
+        fn dependencies(&self) -> Vec<&str> {
+            self.deps.iter().map(|s| s.as_str()).collect()
+        }
+        fn on_init(&mut self) {
+            self.initialized = true;
+        }
+        fn on_update(&mut self, _dt: f64) {
+            self.updated = true;
+        }
+        fn on_render(&mut self) {
+            self.rendered = true;
+        }
+        fn on_shutdown(&mut self) {
+            self.shutdown = true;
+        }
+        fn enabled(&self) -> bool {
+            self.is_enabled
+        }
+    }
+
+    #[test]
+    fn test_register_and_initialize() {
+        let registry = ModuleRegistry::new();
+        registry.register(Box::new(MockModule::new("test_module")));
+        assert!(registry.initialize_all().is_ok());
+    }
+
+    #[test]
+    fn test_register_multiple_modules() {
+        let registry = ModuleRegistry::new();
+        registry.register(Box::new(MockModule::new("a")));
+        registry.register(Box::new(MockModule::new("b")));
+        registry.register(Box::new(MockModule::new("c")));
+        assert_eq!(registry.len(), 3);
+        assert!(registry.initialize_all().is_ok());
+    }
+
+    #[test]
+    fn test_update_all() {
+        let registry = ModuleRegistry::new();
+        registry.register(Box::new(MockModule::new("a")));
+        registry.initialize_all().unwrap();
+        registry.update_all(0.016);
+    }
+
+    #[test]
+    fn test_render_all() {
+        let registry = ModuleRegistry::new();
+        registry.register(Box::new(MockModule::new("a")));
+        registry.initialize_all().unwrap();
+        registry.render_all();
+    }
+
+    #[test]
+    fn test_shutdown_all() {
+        let registry = ModuleRegistry::new();
+        registry.register(Box::new(MockModule::new("a")));
+        registry.initialize_all().unwrap();
+        registry.shutdown_all();
+    }
+
+    #[test]
+    fn test_dependency_order() {
+        let registry = ModuleRegistry::new();
+        // b depends on a
+        registry.register(Box::new(MockModule::with_deps("b", vec!["a"])));
+        registry.register(Box::new(MockModule::new("a")));
+        assert!(registry.initialize_all().is_ok());
+    }
+
+    #[test]
+    fn test_circular_dependency_detected() {
+        let registry = ModuleRegistry::new();
+        registry.register(Box::new(MockModule::with_deps("a", vec!["b"])));
+        registry.register(Box::new(MockModule::with_deps("b", vec!["a"])));
+        assert!(registry.initialize_all().is_err());
+    }
+
+    #[test]
+    fn test_disabled_module_not_initialized() {
+        let registry = ModuleRegistry::new();
+        registry.register(Box::new(MockModule::disabled("disabled_mod")));
+        assert!(registry.initialize_all().is_ok());
+    }
+
+    #[test]
+    fn test_module_names() {
+        let registry = ModuleRegistry::new();
+        registry.register(Box::new(MockModule::new("alpha")));
+        registry.register(Box::new(MockModule::new("beta")));
+        let names = registry.module_names();
+        assert_eq!(names.len(), 2);
+    }
+
+    #[test]
+    fn test_contains() {
+        let registry = ModuleRegistry::new();
+        registry.register(Box::new(MockModule::new("exists")));
+        assert!(registry.contains("exists"));
+        assert!(!registry.contains("not_exists"));
+    }
+
+    #[test]
+    fn test_get_by_name() {
+        let registry = ModuleRegistry::new();
+        registry.register(Box::new(MockModule::new("findme")));
+        assert!(registry.get_by_name("findme").is_some());
+        assert!(registry.get_by_name("missing").is_none());
+    }
+
+    #[test]
+    fn test_with_module() {
+        let registry = ModuleRegistry::new();
+        registry.register(Box::new(MockModule::new("target")));
+        let result = registry.with_module("target", |m| m.name().to_string());
+        assert_eq!(result, Some("target".to_string()));
+        let missing = registry.with_module("missing", |m| m.name().to_string());
+        assert!(missing.is_none());
+    }
+
+    #[test]
+    fn test_default() {
+        let registry = ModuleRegistry::default();
+        assert!(registry.is_empty());
+    }
+}

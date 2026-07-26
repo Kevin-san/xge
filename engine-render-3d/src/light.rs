@@ -675,14 +675,7 @@ mod tests {
 
     #[test]
     fn test_spot_light_angles() {
-        let light = SpotLight::new(
-            Vec3::ZERO,
-            Vec3::Z,
-            0.3,
-            0.8,
-            Color::WHITE,
-            1.0,
-        );
+        let light = SpotLight::new(Vec3::ZERO, Vec3::Z, 0.3, 0.8, Color::WHITE, 1.0);
         assert_eq!(light.inner_angle(), 0.3);
         assert_eq!(light.outer_angle(), 0.8);
     }
@@ -772,8 +765,18 @@ mod tests {
     #[test]
     fn test_light_manager_sort_distance() {
         let mut manager = LightManager::new();
-        manager.add_point(PointLight::new(Vec3::new(10.0, 0.0, 0.0), Color::WHITE, 1.0, 10.0));
-        manager.add_point(PointLight::new(Vec3::new(1.0, 0.0, 0.0), Color::WHITE, 1.0, 10.0));
+        manager.add_point(PointLight::new(
+            Vec3::new(10.0, 0.0, 0.0),
+            Color::WHITE,
+            1.0,
+            10.0,
+        ));
+        manager.add_point(PointLight::new(
+            Vec3::new(1.0, 0.0, 0.0),
+            Color::WHITE,
+            1.0,
+            10.0,
+        ));
         manager.sort_by_distance(Vec3::ZERO);
         // After sorting, first light should be the closer one
         let points = manager.points();

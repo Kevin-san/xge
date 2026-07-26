@@ -813,10 +813,7 @@ mod tests {
             Vertex::new(Vec3::Z, Vec3::Y, Vec2::Y),
             Vertex::new(-Vec3::X, Vec3::Y, -Vec2::X),
         ];
-        let primitives = vec![
-            Primitive::new(vec![0, 1, 2]),
-            Primitive::new(vec![0, 2, 3]),
-        ];
+        let primitives = vec![Primitive::new(vec![0, 1, 2]), Primitive::new(vec![0, 2, 3])];
         let mesh = Mesh3D::with_primitives(vertices, primitives);
         assert_eq!(mesh.primitive_count(), 2);
         assert_eq!(mesh.vertex_count(), 4);

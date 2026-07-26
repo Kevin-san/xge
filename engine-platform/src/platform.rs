@@ -66,6 +66,30 @@ impl Platform {
     pub fn is_web(&self) -> bool {
         matches!(self, Platform::Web)
     }
+
+    pub fn is_windows(&self) -> bool {
+        matches!(self, Platform::Windows)
+    }
+
+    pub fn is_macos(&self) -> bool {
+        matches!(self, Platform::MacOS)
+    }
+
+    pub fn is_linux(&self) -> bool {
+        matches!(self, Platform::Linux)
+    }
+
+    pub fn name(&self) -> &'static str {
+        match self {
+            Platform::Windows => "Windows",
+            Platform::Linux => "Linux",
+            Platform::MacOS => "macOS",
+            Platform::Android => "Android",
+            Platform::IOS => "iOS",
+            Platform::Web => "Web",
+            Platform::Unknown => "Unknown",
+        }
+    }
 }
 
 /// 特性开关
@@ -95,6 +119,29 @@ impl Feature {
     pub fn disable(&mut self) {
         self.enabled = false;
     }
+}
+
+/// 在运行时按当前平台分发代码
+///
+/// # Example
+/// ```ignore
+/// let value = dispatch_by_platform! {
+///     Windows => 1,
+///     Linux => 2,
+///     MacOS => 3,
+///     _ => 0,
+/// };
+/// ```
+#[macro_export]
+macro_rules! dispatch_by_platform {
+    (Windows => $win:expr, Linux => $linux:expr, MacOS => $mac:expr, _ => $default:expr $(,)?) => {{
+        match $crate::Platform::current() {
+            $crate::Platform::Windows => $win,
+            $crate::Platform::Linux => $linux,
+            $crate::Platform::MacOS => $mac,
+            _ => $default,
+        }
+    }};
 }
 
 #[cfg(test)]
@@ -131,5 +178,37 @@ mod tests {
 
         f.disable();
         assert!(!f.is_enabled());
+    }
+
+    #[test]
+    fn test_platform_name() {
+        let platform = Platform::current();
+        assert!(!platform.name().is_empty());
+    }
+
+    #[test]
+    fn test_platform_convenience_methods() {
+        assert!(Platform::Windows.is_windows());
+        assert!(!Platform::Linux.is_windows());
+        assert!(Platform::Linux.is_linux());
+        assert!(!Platform::Windows.is_linux());
+        assert!(Platform::MacOS.is_macos());
+        assert!(!Platform::Windows.is_macos());
+    }
+
+    #[test]
+    fn test_feature_default_values() {
+        let f = Feature::new("render-gl", true);
+        assert_eq!(f.name(), "render-gl");
+        assert!(f.is_enabled());
+    }
+
+    #[test]
+    fn test_feature_toggle() {
+        let mut f = Feature::new("test", true);
+        f.disable();
+        assert!(!f.is_enabled());
+        f.enable();
+        assert!(f.is_enabled());
     }
 }

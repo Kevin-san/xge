@@ -34,7 +34,12 @@ impl HdrFormat {
 
     /// Check if the format supports alpha channel
     pub fn has_alpha(&self) -> bool {
-        matches!(self, HdrFormat::R16G16B16A16Float | HdrFormat::R32G32B32A32Float | HdrFormat::R10G10B10A2Unorm)
+        matches!(
+            self,
+            HdrFormat::R16G16B16A16Float
+                | HdrFormat::R32G32B32A32Float
+                | HdrFormat::R10G10B10A2Unorm
+        )
     }
 
     /// Check if the format is floating point
@@ -232,7 +237,8 @@ impl HdrFramebuffer {
 
     /// Update auto-exposure (call once per frame)
     pub fn update_auto_exposure(&mut self, avg_luminance: f32, delta_time: f32) {
-        self.exposure.update_auto_exposure(avg_luminance, delta_time);
+        self.exposure
+            .update_auto_exposure(avg_luminance, delta_time);
     }
 }
 

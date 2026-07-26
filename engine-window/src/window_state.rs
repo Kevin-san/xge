@@ -54,12 +54,8 @@ impl WindowState {
                     self.focused.store(*focused, Ordering::SeqCst);
                 }
                 winit::event::WindowEvent::Resized(physical_size) => {
-                    self.size
-                        .0
-                        .store(physical_size.width, Ordering::SeqCst);
-                    self.size
-                        .1
-                        .store(physical_size.height, Ordering::SeqCst);
+                    self.size.0.store(physical_size.width, Ordering::SeqCst);
+                    self.size.1.store(physical_size.height, Ordering::SeqCst);
                 }
                 winit::event::WindowEvent::Occluded(occluded) => {
                     // 窗口被遮挡时视为不可见
@@ -148,14 +144,24 @@ mod tests {
         let state = WindowState::new();
 
         let event = Event::WindowEvent {
-            window_id: unsafe { std::mem::zeroed() },
+            window_id: unsafe {
+                // SAFETY: winit::window::WindowId is a transparent wrapper around a usize.
+                // Zeroed value is valid for testing purposes - the WindowId is not used
+                // in any of these test scenarios (only the event payload matters).
+                std::mem::zeroed()
+            },
             event: WindowEvent::Focused(false),
         };
         state.process_event(&event);
         assert!(!state.is_focused());
 
         let event = Event::WindowEvent {
-            window_id: unsafe { std::mem::zeroed() },
+            window_id: unsafe {
+                // SAFETY: winit::window::WindowId is a transparent wrapper around a usize.
+                // Zeroed value is valid for testing purposes - the WindowId is not used
+                // in any of these test scenarios (only the event payload matters).
+                std::mem::zeroed()
+            },
             event: WindowEvent::Focused(true),
         };
         state.process_event(&event);
@@ -181,14 +187,24 @@ mod tests {
         let state = WindowState::new();
 
         let event = Event::WindowEvent {
-            window_id: unsafe { std::mem::zeroed() },
+            window_id: unsafe {
+                // SAFETY: winit::window::WindowId is a transparent wrapper around a usize.
+                // Zeroed value is valid for testing purposes - the WindowId is not used
+                // in any of these test scenarios (only the event payload matters).
+                std::mem::zeroed()
+            },
             event: WindowEvent::Occluded(true),
         };
         state.process_event(&event);
         assert!(!state.is_visible());
 
         let event = Event::WindowEvent {
-            window_id: unsafe { std::mem::zeroed() },
+            window_id: unsafe {
+                // SAFETY: winit::window::WindowId is a transparent wrapper around a usize.
+                // Zeroed value is valid for testing purposes - the WindowId is not used
+                // in any of these test scenarios (only the event payload matters).
+                std::mem::zeroed()
+            },
             event: WindowEvent::Occluded(false),
         };
         state.process_event(&event);
@@ -200,7 +216,12 @@ mod tests {
         let state = WindowState::new();
 
         let event = Event::WindowEvent {
-            window_id: unsafe { std::mem::zeroed() },
+            window_id: unsafe {
+                // SAFETY: winit::window::WindowId is a transparent wrapper around a usize.
+                // Zeroed value is valid for testing purposes - the WindowId is not used
+                // in any of these test scenarios (only the event payload matters).
+                std::mem::zeroed()
+            },
             event: WindowEvent::Resized(winit::dpi::PhysicalSize {
                 width: 1920,
                 height: 1080,
@@ -217,7 +238,12 @@ mod tests {
         let state = WindowState::new();
 
         let event = Event::WindowEvent {
-            window_id: unsafe { std::mem::zeroed() },
+            window_id: unsafe {
+                // SAFETY: winit::window::WindowId is a transparent wrapper around a usize.
+                // Zeroed value is valid for testing purposes - the WindowId is not used
+                // in any of these test scenarios (only the event payload matters).
+                std::mem::zeroed()
+            },
             event: WindowEvent::CloseRequested,
         };
         state.process_event(&event);

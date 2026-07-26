@@ -33,7 +33,9 @@ pub use message::{Message, MessageId, NetMessage};
 pub use packet::Packet;
 pub use plugin::{Plugin, PluginContext, PluginManager, PluginState};
 pub use stats::NetStats;
-pub use transport::{NetworkTransport, TransportBuilder, TransportType, TlsConfig, TlsTcpTransport};
+pub use transport::{
+    NetworkTransport, TlsConfig, TlsTcpTransport, TransportBuilder, TransportType,
+};
 
 /// Default timeout for RPC operations (5 seconds)
 pub const DEFAULT_RPC_TIMEOUT_MS: u64 = 5_000;

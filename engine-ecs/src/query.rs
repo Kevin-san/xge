@@ -327,7 +327,13 @@ mod tests {
         let mut world = World::new();
         for i in 0..10 {
             let e = world.spawn();
-            world.insert(e, Position { x: i as f32, y: i as f32 });
+            world.insert(
+                e,
+                Position {
+                    x: i as f32,
+                    y: i as f32,
+                },
+            );
         }
         let query = Query::<Position, NoneFilter>::new(&world);
         assert_eq!(query.iter().count(), 10);

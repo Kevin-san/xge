@@ -1,5 +1,5 @@
-use core::ops::{Add, Sub, Mul, Div};
 use core::fmt;
+use core::ops::{Add, Div, Mul, Sub};
 
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
 #[repr(C)]

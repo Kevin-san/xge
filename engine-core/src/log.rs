@@ -84,6 +84,35 @@ pub fn trace(target: &str, msg: &str) {
     log_impl(Level::Trace, target, msg);
 }
 
+/// 日志宏 — 简化调用，自动填充 target 为调用模块
+#[macro_export]
+macro_rules! log_error {
+    ($($arg:tt)*) => {
+        $crate::log::error(module_path!(), &format!($($arg)*))
+    };
+}
+
+#[macro_export]
+macro_rules! log_warn {
+    ($($arg:tt)*) => {
+        $crate::log::warn(module_path!(), &format!($($arg)*))
+    };
+}
+
+#[macro_export]
+macro_rules! log_info {
+    ($($arg:tt)*) => {
+        $crate::log::info(module_path!(), &format!($($arg)*))
+    };
+}
+
+#[macro_export]
+macro_rules! log_debug {
+    ($($arg:tt)*) => {
+        $crate::log::debug(module_path!(), &format!($($arg)*))
+    };
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

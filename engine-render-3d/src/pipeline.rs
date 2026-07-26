@@ -875,7 +875,10 @@ mod tests {
         let handle = scene.add_root_node(Node3D::with_mesh(Handle::<Mesh3D>::new(0, 0)));
         if let Some(node) = scene.node_mut(handle) {
             // Place AABB in front of camera (camera at z=5 looking at origin)
-            node.set_aabb(AABB::new(Vec3::new(-1.0, -1.0, 9.0), Vec3::new(1.0, 1.0, 11.0)));
+            node.set_aabb(AABB::new(
+                Vec3::new(-1.0, -1.0, 9.0),
+                Vec3::new(1.0, 1.0, 11.0),
+            ));
         }
 
         let mut camera = Camera3D::perspective(45.0, 1.0, 0.1, 100.0);
@@ -898,7 +901,10 @@ mod tests {
         let mut scene = Scene3D::new();
         let handle = scene.add_root_node(Node3D::with_mesh(Handle::<Mesh3D>::new(3, 0)));
         if let Some(node) = scene.node_mut(handle) {
-            node.set_aabb(AABB::new(Vec3::new(-1.0, -1.0, -1.0), Vec3::new(1.0, 1.0, 1.0)));
+            node.set_aabb(AABB::new(
+                Vec3::new(-1.0, -1.0, -1.0),
+                Vec3::new(1.0, 1.0, 1.0),
+            ));
         }
 
         let frustum = Frustum::from_view_projection(Mat4::IDENTITY);
@@ -929,7 +935,10 @@ mod tests {
         let h3 = scene.add_root_node(Node3D::with_mesh(Handle::<Mesh3D>::new(2, 0)));
         for h in [h1, h2, h3] {
             if let Some(node) = scene.node_mut(h) {
-                node.set_aabb(AABB::new(Vec3::new(-1.0, -1.0, -1.0), Vec3::new(1.0, 1.0, 1.0)));
+                node.set_aabb(AABB::new(
+                    Vec3::new(-1.0, -1.0, -1.0),
+                    Vec3::new(1.0, 1.0, 1.0),
+                ));
             }
         }
 

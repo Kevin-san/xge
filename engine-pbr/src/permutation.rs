@@ -147,7 +147,8 @@ impl ShaderPermutationKey {
 
     /// Check if this permutation uses IBL
     pub fn uses_ibl(&self) -> bool {
-        self.ibl_enabled || PbrMaterialFlags::from_bits(self.flags).contains(PbrMaterialFlags::USE_IBL)
+        self.ibl_enabled
+            || PbrMaterialFlags::from_bits(self.flags).contains(PbrMaterialFlags::USE_IBL)
     }
 
     /// Check if this permutation uses shadows
@@ -233,7 +234,11 @@ pub struct CachedShader {
 
 impl CachedShader {
     /// Create a new cached shader entry
-    pub fn new(key: ShaderPermutationKey, vertex: impl Into<String>, fragment: impl Into<String>) -> Self {
+    pub fn new(
+        key: ShaderPermutationKey,
+        vertex: impl Into<String>,
+        fragment: impl Into<String>,
+    ) -> Self {
         let vertex = vertex.into();
         let fragment = fragment.into();
         let source_hash = Self::compute_hash(&vertex, &fragment);
@@ -723,7 +728,8 @@ mod tests {
         cache.insert(CachedShader::new(key, "v", "f"));
 
         assert!(cache.contains(&key));
-        assert!(!cache.contains(&ShaderPermutationKey::new().with_flags(PbrMaterialFlags::HAS_NORMAL_MAP)));
+        assert!(!cache
+            .contains(&ShaderPermutationKey::new().with_flags(PbrMaterialFlags::HAS_NORMAL_MAP)));
     }
 
     #[test]
@@ -833,9 +839,21 @@ mod tests {
 
     #[test]
     fn test_permutation_key_describe_all_tonemaps() {
-        assert!(ShaderPermutationKey::new().with_tonemap(0).describe().contains("TonemapNone"));
-        assert!(ShaderPermutationKey::new().with_tonemap(1).describe().contains("TonemapACES"));
-        assert!(ShaderPermutationKey::new().with_tonemap(2).describe().contains("TonemapReinhard"));
-        assert!(ShaderPermutationKey::new().with_tonemap(3).describe().contains("TonemapFilmic"));
+        assert!(ShaderPermutationKey::new()
+            .with_tonemap(0)
+            .describe()
+            .contains("TonemapNone"));
+        assert!(ShaderPermutationKey::new()
+            .with_tonemap(1)
+            .describe()
+            .contains("TonemapACES"));
+        assert!(ShaderPermutationKey::new()
+            .with_tonemap(2)
+            .describe()
+            .contains("TonemapReinhard"));
+        assert!(ShaderPermutationKey::new()
+            .with_tonemap(3)
+            .describe()
+            .contains("TonemapFilmic"));
     }
 }

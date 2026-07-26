@@ -96,3 +96,67 @@ impl Module for AppModule {
         self.app.shutdown();
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct TestApp {
+        setup_called: bool,
+        update_called: bool,
+        render_called: bool,
+        shutdown_called: bool,
+    }
+
+    impl TestApp {
+        fn new() -> Self {
+            Self {
+                setup_called: false,
+                update_called: false,
+                render_called: false,
+                shutdown_called: false,
+            }
+        }
+    }
+
+    impl App for TestApp {
+        fn setup(&mut self) {
+            self.setup_called = true;
+        }
+        fn update(&mut self, _dt: f64) {
+            self.update_called = true;
+        }
+        fn render(&mut self) {
+            self.render_called = true;
+        }
+        fn shutdown(&mut self) {
+            self.shutdown_called = true;
+        }
+    }
+
+    #[test]
+    fn test_app_builder_new() {
+        let builder = AppBuilder::new();
+        assert_eq!(builder.config.window_title, "Game Engine");
+    }
+
+    #[test]
+    fn test_app_builder_with_config() {
+        let config = EngineConfig {
+            window_title: "Test App".to_string(),
+            window_width: 800,
+            window_height: 600,
+            target_fps: 30,
+            log_level: "debug".to_string(),
+        };
+        let builder = AppBuilder::new().with_config(config.clone());
+        assert_eq!(builder.config.window_title, "Test App");
+        assert_eq!(builder.config.window_width, 800);
+    }
+
+    #[test]
+    fn test_app_builder_default() {
+        let builder = AppBuilder::default();
+        assert_eq!(builder.config.window_title, "Game Engine");
+    }
+}

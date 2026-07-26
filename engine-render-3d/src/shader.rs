@@ -82,7 +82,10 @@ impl UniformType {
     /// Returns the byte size of a single element of this uniform type.
     pub fn byte_size(&self) -> usize {
         match self {
-            UniformType::Float | UniformType::Int | UniformType::Bool | UniformType::Sampler2D
+            UniformType::Float
+            | UniformType::Int
+            | UniformType::Bool
+            | UniformType::Sampler2D
             | UniformType::SamplerCube => 4,
             UniformType::Vec2 => 8,
             UniformType::Vec3 => 12,
@@ -616,8 +619,8 @@ mod tests {
 
     #[test]
     fn test_uniform_info_with_array_size() {
-        let info = UniformInfo::new("u_bones".to_string(), UniformType::Mat4, 7)
-            .with_array_size(32);
+        let info =
+            UniformInfo::new("u_bones".to_string(), UniformType::Mat4, 7).with_array_size(32);
         assert_eq!(info.array_size, 32);
         assert_eq!(info.byte_size, 64);
     }
@@ -640,11 +643,7 @@ mod tests {
 
     #[test]
     fn test_vertex_attribute_new() {
-        let attr = VertexAttribute::new(
-            "a_position".to_string(),
-            0,
-            VertexAttributeFormat::Vec3,
-        );
+        let attr = VertexAttribute::new("a_position".to_string(), 0, VertexAttributeFormat::Vec3);
         assert_eq!(attr.name, "a_position");
         assert_eq!(attr.location, 0);
         assert_eq!(attr.format, VertexAttributeFormat::Vec3);
@@ -705,17 +704,20 @@ mod tests {
 
     #[test]
     fn test_shader_module_compile_empty_wgsl_fails() {
-        let mut module = ShaderModule::new(
-            ShaderStage::Vertex,
-            ShaderSource::Wgsl(String::new()),
-        );
-        assert!(matches!(module.compile().unwrap_err(), ShaderError::InvalidSource));
+        let mut module = ShaderModule::new(ShaderStage::Vertex, ShaderSource::Wgsl(String::new()));
+        assert!(matches!(
+            module.compile().unwrap_err(),
+            ShaderError::InvalidSource
+        ));
     }
 
     #[test]
     fn test_shader_module_compile_empty_spirv_fails() {
         let mut module = ShaderModule::new(ShaderStage::Vertex, ShaderSource::SpirV(Vec::new()));
-        assert!(matches!(module.compile().unwrap_err(), ShaderError::InvalidSource));
+        assert!(matches!(
+            module.compile().unwrap_err(),
+            ShaderError::InvalidSource
+        ));
     }
 
     #[test]
@@ -725,7 +727,11 @@ mod tests {
             ShaderSource::Glsl("#version 450".to_string()),
         );
         module.add_uniform(UniformInfo::new("u_mvp".to_string(), UniformType::Mat4, 0));
-        module.add_uniform(UniformInfo::new("u_color".to_string(), UniformType::Vec4, 1));
+        module.add_uniform(UniformInfo::new(
+            "u_color".to_string(),
+            UniformType::Vec4,
+            1,
+        ));
 
         assert_eq!(module.uniforms().len(), 2);
         let found = module.find_uniform("u_mvp").expect("uniform should exist");
@@ -810,7 +816,11 @@ mod tests {
             ShaderStage::Fragment,
             ShaderSource::Glsl("#version 450\nvoid main(){}".to_string()),
         );
-        m.add_uniform(UniformInfo::new("u_color".to_string(), UniformType::Vec4, 1));
+        m.add_uniform(UniformInfo::new(
+            "u_color".to_string(),
+            UniformType::Vec4,
+            1,
+        ));
         m.compile().unwrap();
         m
     }
@@ -889,7 +899,11 @@ mod tests {
     fn test_shader_program_dedup_uniforms() {
         let mut vertex = make_compiled_vertex();
         // Add a uniform that also exists in the fragment shader.
-        vertex.add_uniform(UniformInfo::new("u_color".to_string(), UniformType::Vec4, 1));
+        vertex.add_uniform(UniformInfo::new(
+            "u_color".to_string(),
+            UniformType::Vec4,
+            1,
+        ));
         let mut program = ShaderProgram::new();
         program.attach_vertex(vertex);
         program.attach_fragment(make_compiled_fragment());
@@ -989,9 +1003,13 @@ mod tests {
         match binder.get_value(4) {
             Some(UniformValue::Mat4(v)) => {
                 // Identity matrix flattened column-major.
-                assert_eq!(*v, [
-                    1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0,
-                ]);
+                assert_eq!(
+                    *v,
+                    [
+                        1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0,
+                        1.0,
+                    ]
+                );
             }
             other => panic!("expected Mat4, got {:?}", other),
         }
@@ -1043,7 +1061,10 @@ mod tests {
     fn test_uniform_value_equality() {
         assert_eq!(UniformValue::Float(1.0), UniformValue::Float(1.0));
         assert_ne!(UniformValue::Float(1.0), UniformValue::Float(2.0));
-        assert_eq!(UniformValue::Vec3([1.0, 2.0, 3.0]), UniformValue::Vec3([1.0, 2.0, 3.0]));
+        assert_eq!(
+            UniformValue::Vec3([1.0, 2.0, 3.0]),
+            UniformValue::Vec3([1.0, 2.0, 3.0])
+        );
         assert_eq!(UniformValue::Int(5), UniformValue::Int(5));
         assert_eq!(UniformValue::Bool(true), UniformValue::Bool(true));
     }

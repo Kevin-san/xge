@@ -213,4 +213,46 @@ mod tests {
         schedule.run_stage(UPDATE);
         assert_eq!(counter.load(Ordering::SeqCst), 0);
     }
+
+    #[test]
+    fn test_add_custom_stage() {
+        let mut schedule = Schedule::new();
+        schedule.add_stage("Physics");
+        assert_eq!(schedule.stage_count(), 5);
+    }
+
+    #[test]
+    fn test_stage_names_includes_defaults() {
+        let schedule = Schedule::new();
+        let names = schedule.stage_names();
+        assert!(names.contains(&STARTUP.to_string()));
+        assert!(names.contains(&UPDATE.to_string()));
+        assert!(names.contains(&RENDER.to_string()));
+        assert!(names.contains(&SHUTDOWN.to_string()));
+    }
+
+    #[test]
+    fn test_system_count() {
+        let mut schedule = Schedule::new();
+        let counter = Arc::new(AtomicUsize::new(0));
+        let c = counter.clone();
+        schedule.add_system_to_stage(UPDATE, move || {
+            c.fetch_add(1, Ordering::SeqCst);
+        });
+        assert_eq!(schedule.system_count(UPDATE), 1);
+        assert_eq!(schedule.system_count(STARTUP), 0);
+    }
+
+    #[test]
+    fn test_set_run_criteria_noop() {
+        let mut schedule = Schedule::new();
+        // Should not panic
+        schedule.set_run_criteria(|| true);
+    }
+
+    #[test]
+    fn test_default_schedule() {
+        let schedule = Schedule::default();
+        assert_eq!(schedule.stage_count(), 4);
+    }
 }
