@@ -1,0 +1,6 @@
+[advisories]
+[licenses]
+allow = ["MIT", "Apache-2.0"]
+[sources]
+allow-registry = ["https://crates.io"]
+[bans]

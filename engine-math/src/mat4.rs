@@ -174,7 +174,6 @@ impl Mat4 {
     #[inline]
     pub fn inverse(&self) -> Option<Self> {
         let m = &self.cols;
-        // Column-major: m[col][row]
         let a00 = m[0][0]; let a01 = m[0][1]; let a02 = m[0][2]; let a03 = m[0][3];
         let a10 = m[1][0]; let a11 = m[1][1]; let a12 = m[1][2]; let a13 = m[1][3];
         let a20 = m[2][0]; let a21 = m[2][1]; let a22 = m[2][2]; let a23 = m[2][3];
@@ -227,6 +226,72 @@ impl Mat4 {
                 ],
             ],
         })
+    }
+
+    /// 无零检查的矩阵求逆，用于已知矩阵可逆的热路径。
+    ///
+    /// # 安全性
+    /// 调用方需保证矩阵可逆，否则结果含 NaN/Inf。
+    #[inline]
+    pub fn inverse_unchecked(&self) -> Self {
+        let m = &self.cols;
+        let a00 = m[0][0]; let a01 = m[0][1]; let a02 = m[0][2]; let a03 = m[0][3];
+        let a10 = m[1][0]; let a11 = m[1][1]; let a12 = m[1][2]; let a13 = m[1][3];
+        let a20 = m[2][0]; let a21 = m[2][1]; let a22 = m[2][2]; let a23 = m[2][3];
+        let a30 = m[3][0]; let a31 = m[3][1]; let a32 = m[3][2]; let a33 = m[3][3];
+
+        let b00 = a00 * a11 - a01 * a10;
+        let b01 = a00 * a12 - a02 * a10;
+        let b02 = a00 * a13 - a03 * a10;
+        let b03 = a01 * a12 - a02 * a11;
+        let b04 = a01 * a13 - a03 * a11;
+        let b05 = a02 * a13 - a03 * a12;
+        let b06 = a20 * a31 - a21 * a30;
+        let b07 = a20 * a32 - a22 * a30;
+        let b08 = a20 * a33 - a23 * a30;
+        let b09 = a21 * a32 - a22 * a31;
+        let b10 = a21 * a33 - a23 * a31;
+        let b11 = a22 * a33 - a23 * a32;
+
+        let det = b00 * b11 - b01 * b10 + b02 * b09 + b03 * b08 - b04 * b07 + b05 * b06;
+        let inv_det = 1.0 / det;
+
+        Self {
+            cols: [
+                [
+                    (a11 * b11 - a12 * b10 + a13 * b09) * inv_det,
+                    (a02 * b10 - a01 * b11 - a03 * b09) * inv_det,
+                    (a31 * b05 - a32 * b04 + a33 * b03) * inv_det,
+                    (a22 * b04 - a21 * b05 - a23 * b03) * inv_det,
+                ],
+                [
+                    (a12 * b08 - a10 * b11 - a13 * b07) * inv_det,
+                    (a00 * b11 - a02 * b08 + a03 * b07) * inv_det,
+                    (a32 * b02 - a30 * b05 - a33 * b01) * inv_det,
+                    (a20 * b05 - a22 * b02 + a23 * b01) * inv_det,
+                ],
+                [
+                    (a10 * b10 - a11 * b08 + a13 * b06) * inv_det,
+                    (a01 * b08 - a00 * b10 - a03 * b06) * inv_det,
+                    (a30 * b04 - a31 * b02 + a33 * b00) * inv_det,
+                    (a21 * b02 - a20 * b04 - a23 * b00) * inv_det,
+                ],
+                [
+                    (a11 * b07 - a10 * b09 - a12 * b06) * inv_det,
+                    (a00 * b09 - a01 * b07 + a02 * b06) * inv_det,
+                    (a31 * b01 - a30 * b03 - a32 * b00) * inv_det,
+                    (a20 * b03 - a21 * b01 + a22 * b00) * inv_det,
+                ],
+            ],
+        }
+    }
+
+    /// 同时求逆并转置，常用于法线矩阵（`(M⁻¹)ᵀ`）计算。
+    /// 返回 `None` 当矩阵奇异。
+    #[inline]
+    pub fn inverse_transpose(&self) -> Option<Self> {
+        let inv = self.inverse()?;
+        Some(inv.transpose())
     }
 
     #[inline]
@@ -628,5 +693,49 @@ mod tests {
         assert!((target_view.x).abs() < 0.001, "target_view.x should be ~0, got {}", target_view.x);
         assert!((target_view.y).abs() < 0.001, "target_view.y should be ~0, got {}", target_view.y);
         assert!((target_view.z + 5.0).abs() < 0.001, "target_view.z should be ~-5, got {}", target_view.z);
+    }
+
+    #[test]
+    fn test_inverse_unchecked_roundtrip() {
+        let m = Mat4::from_translation(Vec3::new(3.0, 7.0, -2.0))
+            * Mat4::from_rotation_y(0.3)
+            * Mat4::from_scale(Vec3::new(1.5, 2.5, 3.5));
+        let inv = m.inverse_unchecked();
+        let result = m * inv;
+        assert_approx_mat4_identity(result, 1e-5);
+    }
+
+    #[test]
+    fn test_inverse_transpose_roundtrip() {
+        let m = Mat4::from_rotation_x(0.7);
+        let inv_t = m.inverse_transpose().unwrap();
+        // inv_t = (m^-1)^T. So inv_t^T * m = I
+        let inv = inv_t.transpose();
+        let result = inv * m;
+        assert_approx_mat4_identity(result, 1e-5);
+    }
+
+    #[test]
+    fn test_inverse_transpose_singular_returns_none() {
+        let singular = Mat4::from_scale(Vec3::new(0.0, 1.0, 1.0));
+        assert!(singular.inverse_transpose().is_none());
+    }
+
+    #[test]
+    fn test_inverse_rotation_scale_roundtrip() {
+        let m = Mat4::from_rotation_z(0.5) * Mat4::from_scale(Vec3::new(2.0, 3.0, 4.0));
+        let inv = m.inverse().unwrap();
+        let result = m * inv;
+        assert_approx_mat4_identity(result, 1e-5);
+    }
+
+    #[test]
+    fn test_inverse_perspective_lookat_combined() {
+        let view = Mat4::look_at_rh(Vec3::new(0.0, 1.0, 3.0), Vec3::new(0.0, 0.0, 0.0), Vec3::Y);
+        let proj = Mat4::perspective_rh(std::f32::consts::FRAC_PI_4, 16.0 / 9.0, 0.1, 100.0);
+        let vp = proj * view;
+        let inv_vp = vp.inverse().unwrap();
+        let roundtrip = vp * inv_vp;
+        assert_approx_mat4_identity(roundtrip, 1e-4);
     }
 }

@@ -1,5 +1,5 @@
 use core::fmt;
-use core::ops::Mul;
+use core::ops::{Add, Mul};
 
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
 pub struct Quat {
@@ -16,6 +16,23 @@ impl Quat {
         z: 0.0,
         w: 1.0,
     };
+
+    pub const ZERO: Self = Self {
+        x: 0.0,
+        y: 0.0,
+        z: 0.0,
+        w: 0.0,
+    };
+
+    #[inline]
+    pub fn conjugate(self) -> Self {
+        Self {
+            x: -self.x,
+            y: -self.y,
+            z: -self.z,
+            w: self.w,
+        }
+    }
 
     #[inline]
     pub fn from_rotation_x(angle: f32) -> Self {
@@ -198,6 +215,77 @@ impl Quat {
         };
         (axis, angle)
     }
+
+    #[inline]
+    pub fn squad(q0: Self, q1: Self, q2: Self, t: f32) -> Self {
+        let s1 = q0.slerp(q1, t);
+        let s2 = q1.slerp(q2, t);
+        s1.slerp(s2, t)
+    }
+
+    #[inline]
+    pub fn log(self) -> Self {
+        let w = self.w.clamp(-1.0, 1.0);
+        let half_angle = w.acos();
+        let sin_half = (1.0 - w * w).sqrt();
+
+        let v = if sin_half > 1e-10 {
+            Vec3::new(self.x, self.y, self.z) / sin_half * half_angle
+        } else if half_angle < 1e-10 {
+            Vec3::new(self.x, self.y, self.z)
+        } else {
+            Vec3::ZERO
+        };
+
+        Self {
+            x: v.x,
+            y: v.y,
+            z: v.z,
+            w: 0.0,
+        }
+    }
+
+    #[inline]
+    pub fn exp(self) -> Self {
+        let v = Vec3::new(self.x, self.y, self.z);
+        let len = v.length();
+
+        if len < 1e-10 {
+            let len_sq = len * len;
+            Self {
+                x: self.x * (1.0 - len_sq / 6.0),
+                y: self.y * (1.0 - len_sq / 6.0),
+                z: self.z * (1.0 - len_sq / 6.0),
+                w: 1.0 - len_sq * 0.5,
+            }
+        } else {
+            let s = len.sin();
+            let c = len.cos();
+            let v = v / len * s;
+            Self {
+                x: v.x,
+                y: v.y,
+                z: v.z,
+                w: c,
+            }
+        }
+    }
+
+    #[inline]
+    pub fn swing_twist_decompose(self, twist_axis: Vec3) -> (Quat, Quat) {
+        let axis_unit = twist_axis.normalize();
+        let v = Vec3::new(self.x, self.y, self.z);
+        let axis_component = axis_unit * v.dot(axis_unit);
+        let twist = Quat {
+            x: axis_component.x,
+            y: axis_component.y,
+            z: axis_component.z,
+            w: self.w,
+        }
+        .normalize();
+        let swing = self * twist.inverse();
+        (swing, twist)
+    }
 }
 
 impl Mul for Quat {
@@ -219,6 +307,19 @@ impl Mul<Vec3> for Quat {
         let uv = qv.cross(v);
         let uuv = qv.cross(uv);
         uv * (2.0 * self.w) + uuv * 2.0 + v
+    }
+}
+
+impl Add for Quat {
+    type Output = Self;
+    #[inline]
+    fn add(self, other: Self) -> Self {
+        Self {
+            x: self.x + other.x,
+            y: self.y + other.y,
+            z: self.z + other.z,
+            w: self.w + other.w,
+        }
     }
 }
 
@@ -503,5 +604,83 @@ mod tests {
         let q2 = q * q; // Should be 180 degree rotation around Y
         let v = q2 * Vec3::X;
         assert!((v.x + 1.0).abs() < 0.001, "double rotation should give -X, got {:?}", v);
+    }
+
+    #[test]
+    fn test_squad_identity() {
+        let result = Quat::squad(Quat::IDENTITY, Quat::IDENTITY, Quat::IDENTITY, 0.5);
+        assert!((result.x - Quat::IDENTITY.x).abs() < 1e-6);
+        assert!((result.y - Quat::IDENTITY.y).abs() < 1e-6);
+        assert!((result.z - Quat::IDENTITY.z).abs() < 1e-6);
+        assert!((result.w - Quat::IDENTITY.w).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_squad_at_extremes() {
+        let q0 = Quat::from_axis_angle(Vec3::X, 0.3);
+        let q1 = Quat::from_axis_angle(Vec3::Y, 1.2);
+        let q2 = Quat::from_axis_angle(Vec3::Z, 2.0);
+
+        let r0 = Quat::squad(q0, q1, q2, 0.0);
+        assert!((r0.x - q0.x).abs() < 1e-5);
+        assert!((r0.y - q0.y).abs() < 1e-5);
+        assert!((r0.z - q0.z).abs() < 1e-5);
+        assert!((r0.w - q0.w).abs() < 1e-5);
+
+        let r2 = Quat::squad(q0, q1, q2, 1.0);
+        assert!((r2.x - q2.x).abs() < 1e-5);
+        assert!((r2.y - q2.y).abs() < 1e-5);
+        assert!((r2.z - q2.z).abs() < 1e-5);
+        assert!((r2.w - q2.w).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_log_exp_roundtrip() {
+        let test_angles = [0.01, 0.1, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0];
+        for &angle in &test_angles {
+            let q = Quat::from_axis_angle(Vec3::new(1.0, 2.0, 3.0).normalize(), angle);
+            let l = q.log();
+            let e = l.exp();
+            assert!(
+                (e.x - q.x).abs() < 1e-4,
+                "log/exp roundtrip failed for angle={}: x: {} vs {}",
+                angle, e.x, q.x
+            );
+            assert!((e.y - q.y).abs() < 1e-4);
+            assert!((e.z - q.z).abs() < 1e-4);
+            assert!((e.w - q.w).abs() < 1e-4);
+        }
+    }
+
+    #[test]
+    fn test_swing_twist_decompose() {
+        let q = Quat::from_axis_angle(Vec3::Y, std::f32::consts::FRAC_PI_3);
+        let (swing, twist) = q.swing_twist_decompose(Vec3::Y);
+
+        let combined = swing * twist;
+        assert!((combined.x - q.x).abs() < 1e-5);
+        assert!((combined.y - q.y).abs() < 1e-5);
+        assert!((combined.z - q.z).abs() < 1e-5);
+        assert!((combined.w - q.w).abs() < 1e-5);
+
+        let twist_vec = Vec3::new(twist.x, twist.y, twist.z);
+        let twist_dir = twist_vec.normalize();
+        assert!(
+            (twist_dir.y - 1.0).abs() < 1e-5 || (twist_dir.y + 1.0).abs() < 1e-5,
+            "twist should be about Y axis"
+        );
+    }
+
+    #[test]
+    fn test_swing_twist_identity() {
+        let (swing, twist) = Quat::IDENTITY.swing_twist_decompose(Vec3::Y);
+        assert!((swing.x - Quat::IDENTITY.x).abs() < 1e-6);
+        assert!((swing.y - Quat::IDENTITY.y).abs() < 1e-6);
+        assert!((swing.z - Quat::IDENTITY.z).abs() < 1e-6);
+        assert!((swing.w - Quat::IDENTITY.w).abs() < 1e-6);
+        assert!((twist.x - Quat::IDENTITY.x).abs() < 1e-6);
+        assert!((twist.y - Quat::IDENTITY.y).abs() < 1e-6);
+        assert!((twist.z - Quat::IDENTITY.z).abs() < 1e-6);
+        assert!((twist.w - Quat::IDENTITY.w).abs() < 1e-6);
     }
 }
