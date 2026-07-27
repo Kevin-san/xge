@@ -1056,8 +1056,8 @@ impl ParticleModule for CollisionModule {
                         ];
                         let (normal, _) = axes
                             .iter()
-                            .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
-                            .unwrap();
+                            .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
+                            .unwrap_or(&(Vec3::X, f32::MAX));
                         let sign = if rel_pos.dot(*normal) > 0.0 {
                             1.0
                         } else {
@@ -2951,5 +2951,35 @@ mod tests {
             let v = rng.range(0.0, 1.0);
             assert!((0.0..=1.0).contains(&v));
         }
+    }
+
+    #[test]
+    fn test_collision_module_handles_extreme_values() {
+        let module = CollisionModule::new(alloc::vec![ParticleCollider::Box(
+            Vec3::ZERO,
+            Vec3::new(1.0, 1.0, 1.0),
+        )]);
+        let mut particle = Particle {
+            position: Vec3::new(0.5, 0.5, 0.5),
+            velocity: Vec3::new(100.0, 100.0, 100.0),
+            ..Default::default()
+        };
+        let mut ctx = ModuleContext::new(0.0, 0.0, Vec3::ZERO);
+        module.apply(&mut particle, 0.0, &mut ctx);
+    }
+
+    #[test]
+    fn test_collision_module_no_panic_with_nan_velocity() {
+        let module = CollisionModule::new(alloc::vec![ParticleCollider::Box(
+            Vec3::ZERO,
+            Vec3::new(1.0, 1.0, 1.0),
+        )]);
+        let mut particle = Particle {
+            position: Vec3::new(0.5, 0.5, 0.5),
+            velocity: Vec3::new(f32::NAN, f32::NAN, f32::NAN),
+            ..Default::default()
+        };
+        let mut ctx = ModuleContext::new(0.0, 0.0, Vec3::ZERO);
+        module.apply(&mut particle, 0.0, &mut ctx);
     }
 }

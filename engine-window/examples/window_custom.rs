@@ -25,13 +25,8 @@ fn main() {
 
     event_loop
         .run(move |event, elwt| {
-            if let Event::WindowEvent { event, .. } = &event {
-                match event {
-                    WindowEvent::CloseRequested => {
-                        elwt.exit();
-                    }
-                    _ => {}
-                }
+            if let Event::WindowEvent { event: WindowEvent::CloseRequested, .. } = &event {
+                elwt.exit();
             }
         })
         .expect("Event loop error");

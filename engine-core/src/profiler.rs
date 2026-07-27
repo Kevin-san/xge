@@ -76,7 +76,7 @@ impl Profiler {
             .iter()
             .map(|(name, data)| (name.clone(), data.total_ns, data.call_count))
             .collect();
-        result.sort_by(|a, b| b.1.cmp(&a.1));
+        result.sort_by_key(|r| std::cmp::Reverse(r.1));
         result
     }
 }

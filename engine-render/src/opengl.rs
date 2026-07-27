@@ -728,8 +728,7 @@ impl Renderer for GlRenderer {
                 self.gl.disable(glow::SCISSOR_TEST);
             }
             self.scissor_test = false;
-        } else {
-            let rect = *self.scissor_stack.last().unwrap();
+        } else if let Some(rect) = self.scissor_stack.last() {
             unsafe {
                 self.gl.scissor(
                     rect.x as i32,

@@ -52,7 +52,7 @@ impl<T> SparseSet<T> {
             let removed = self.dense.remove(dense_index);
 
             // 更新所有受影响的后续索引
-            for (_, index) in self.indices.iter_mut() {
+            for index in self.indices.values_mut() {
                 if *index > dense_index {
                     *index -= 1;
                 }

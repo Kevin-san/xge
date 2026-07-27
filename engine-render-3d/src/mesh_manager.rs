@@ -247,15 +247,11 @@ impl HotReloadTracker {
     /// return false. Changed paths are recorded until [`clear_changed`] is called.
     pub fn check_changed(&mut self, path: &str, current_hash: u64) -> bool {
         match self.file_hashes.get(path) {
-            Some(&stored) => {
-                if stored != current_hash {
-                    self.changed_paths.push(path.to_string());
-                    true
-                } else {
-                    false
-                }
+            Some(&stored) if stored != current_hash => {
+                self.changed_paths.push(path.to_string());
+                true
             }
-            None => false,
+            _ => false,
         }
     }
 

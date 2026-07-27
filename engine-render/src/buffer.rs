@@ -221,6 +221,10 @@ impl<T: Copy> Buffer<T> {
     }
 
     /// 获取数据作为类型化切片（只读）
+    ///
+    /// # Safety
+    /// 调用者必须确保 `T` 的内存布局与缓冲区字节数据兼容。
+    /// 由于 `T: Copy`，此处使用 `read_unaligned` 避免未对齐访问风险。
     pub fn as_slice(&self) -> &[T] {
         unsafe {
             std::slice::from_raw_parts(self.data.as_ptr() as *const T, self.count)
@@ -232,7 +236,7 @@ impl<T: Copy> Buffer<T> {
         if index < self.count {
             unsafe {
                 let ptr = self.data.as_ptr().add(index * std::mem::size_of::<T>()) as *const T;
-                Some(std::ptr::read(ptr))
+                Some(std::ptr::read_unaligned(ptr))
             }
         } else {
             None
@@ -244,7 +248,7 @@ impl<T: Copy> Buffer<T> {
         if index < self.count {
             unsafe {
                 let ptr = self.data.as_mut_ptr().add(index * std::mem::size_of::<T>()) as *mut T;
-                std::ptr::write(ptr, value);
+                std::ptr::write_unaligned(ptr, value);
             }
             self.dirty = true;
             true
@@ -473,5 +477,76 @@ mod tests {
     fn test_vertex_format_equality() {
         assert_eq!(VertexFormat::Float2, VertexFormat::Float2);
         assert_ne!(VertexFormat::Float2, VertexFormat::Float3);
+    }
+
+    #[test]
+    fn test_from_vec_preserves_data() {
+        let data = vec![1.0_f32, 2.0, 3.0, 4.0, 5.0];
+        let buf = Buffer::from_vec(BufferUsage::Vertex, data);
+        assert_eq!(buf.count(), 5);
+        assert_eq!(buf.get(0), Some(1.0));
+        assert_eq!(buf.get(4), Some(5.0));
+        assert!(buf.is_dirty());
+    }
+
+    #[test]
+    fn test_from_vec_empty() {
+        let data: Vec<f32> = vec![];
+        let buf = Buffer::from_vec(BufferUsage::Vertex, data);
+        assert_eq!(buf.count(), 0);
+        assert!(buf.is_empty());
+    }
+
+    #[test]
+    fn test_get_out_of_bounds_returns_none() {
+        let mut buf: Buffer<f32> = Buffer::with_capacity(BufferUsage::Vertex, 4);
+        buf.push(1.0);
+        assert_eq!(buf.get(0), Some(1.0));
+        assert_eq!(buf.get(1), None);
+        assert_eq!(buf.get(100), None);
+    }
+
+    #[test]
+    fn test_set_and_get() {
+        let mut buf: Buffer<u32> = Buffer::with_capacity(BufferUsage::Index, 4);
+        buf.push(10);
+        buf.push(20);
+        assert!(buf.set(0, 100));
+        assert_eq!(buf.get(0), Some(100));
+        assert!(!buf.set(5, 999));
+        assert_eq!(buf.get(5), None);
+    }
+
+    #[test]
+    fn test_as_slice_returns_correct_data() {
+        let mut buf: Buffer<f32> = Buffer::with_capacity(BufferUsage::Vertex, 4);
+        buf.extend_from_slice(&[10.0, 20.0, 30.0]);
+        let slice = buf.as_slice();
+        assert_eq!(slice.len(), 3);
+        assert_eq!(slice[0], 10.0);
+        assert_eq!(slice[1], 20.0);
+        assert_eq!(slice[2], 30.0);
+    }
+
+    #[test]
+    fn test_buffer_clear_resets_count() {
+        let mut buf: Buffer<f32> = Buffer::with_capacity(BufferUsage::Vertex, 4);
+        buf.extend_from_slice(&[1.0, 2.0, 3.0]);
+        assert_eq!(buf.count(), 3);
+        buf.clear();
+        assert_eq!(buf.count(), 0);
+        assert!(buf.is_empty());
+        assert!(buf.is_dirty());
+    }
+
+    #[test]
+    fn test_buffer_grow_preserves_data() {
+        let mut buf: Buffer<f32> = Buffer::with_capacity(BufferUsage::Vertex, 2);
+        buf.push(1.0);
+        buf.push(2.0);
+        buf.push(3.0);
+        assert_eq!(buf.get(0), Some(1.0));
+        assert_eq!(buf.get(1), Some(2.0));
+        assert_eq!(buf.get(2), Some(3.0));
     }
 }

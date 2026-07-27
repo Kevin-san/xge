@@ -315,7 +315,7 @@ impl TextureAtlasBuilder {
     fn add_to_skyline(&self, skyline: &mut Vec<(u32, u32, u32)>, x: u32, y: u32, w: u32, _h: u32) {
         // This is a simplified skyline implementation
         skyline.push((x, y, w));
-        skyline.sort_by(|a, b| a.0.cmp(&b.0));
+        skyline.sort_by_key(|a| a.0);
     }
 
     /// Guillotine 打包算法

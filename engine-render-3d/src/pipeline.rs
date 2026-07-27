@@ -188,7 +188,7 @@ impl RenderQueue {
     /// Sort by material_index for batching
     pub fn sort_by_material(&mut self) {
         self.draw_calls
-            .sort_by(|a, b| a.material_index.cmp(&b.material_index));
+            .sort_by_key(|a| a.material_index);
         self.sorted = true;
     }
 
