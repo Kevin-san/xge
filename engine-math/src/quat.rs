@@ -186,6 +186,29 @@ impl Quat {
         )
     }
 
+    /// Spherical quadratic interpolation (squad) between four quaternions.
+    ///
+    /// Given four quaternions `p`, `a`, `b`, `q` (where `a` and `b` are the
+    /// intermediate control points for the segment), `squad` produces a
+    /// C1-continuous cubic rotation curve evaluated at parameter `t ∈ [0, 1]`.
+    ///
+    /// The implementation follows the standard Shoemake formulation, which
+    /// guarantees the boundary conditions `squad(0) = p` and `squad(1) = q`.
+    ///
+    /// ```text
+    /// squad(p, a, b, q, t) = slerp(slerp(p, a, t), slerp(b, q, t), 2t(1 - t))
+    /// ```
+    ///
+    /// This formulation is used in animation systems for smooth keyframe
+    /// interpolation that does not suffer from gimbal lock.
+    #[inline]
+    pub fn squad(p: Self, a: Self, b: Self, q: Self, t: f32) -> Self {
+        let slerp_pa = p.slerp(a, t);
+        let slerp_bq = b.slerp(q, t);
+        let h = 2.0 * t * (1.0 - t);
+        slerp_pa.slerp(slerp_bq, h)
+    }
+
     #[inline]
     pub fn to_axis_angle(&self) -> (Vec3, f32) {
         let q = self.normalize();
@@ -495,6 +518,69 @@ mod tests {
         let v = q * Vec3::X;
         // 90 degree Y rotation of X gives -Z (right-hand rule)
         assert!((v.z + 1.0).abs() < 0.001, "90 degree Y rotation of X should give -Z, got {:?}", v);
+    }
+
+    #[test]
+    fn test_squad_unit_quaternion_preservation() {
+        // squad should produce a unit quaternion for valid unit-quaternion input
+        // across the whole parameter range.
+        let p = Quat::from_rotation_x(0.3);
+        let a = Quat::from_rotation_y(0.6);
+        let b = Quat::from_rotation_z(0.9);
+        let q = Quat::from_axis_angle(Vec3::new(1.0, 1.0, 0.0).normalize(), 0.4);
+
+        for t in [0.0_f32, 0.1, 0.25, 0.5, 0.75, 0.9, 1.0] {
+            let r = Quat::squad(p, a, b, q, t);
+            let len = (r.x * r.x + r.y * r.y + r.z * r.z + r.w * r.w).sqrt();
+            assert!(
+                (len - 1.0).abs() < 1e-5,
+                "squad result must be a unit quaternion at t={t}, got len={len}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_squad_interior_differs_from_slerp() {
+        // With distinct control points, squad should not reduce to plain slerp
+        // in the interior of the parameter range.
+        let p = Quat::IDENTITY;
+        let a = Quat::from_rotation_x(0.3);
+        let b = Quat::from_rotation_y(0.6);
+        let q = Quat::from_rotation_z(0.9);
+
+        let t = 0.5_f32;
+        let squad_val = Quat::squad(p, a, b, q, t);
+        let slerp_val = p.slerp(q, t);
+
+        let diff_x = (squad_val.x - slerp_val.x).abs();
+        let diff_y = (squad_val.y - slerp_val.y).abs();
+        let diff_z = (squad_val.z - slerp_val.z).abs();
+        let diff_w = (squad_val.w - slerp_val.w).abs();
+        let l1 = diff_x + diff_y + diff_z + diff_w;
+        assert!(
+            l1 > 1e-4,
+            "squad with distinct controls should deviate from slerp in the interior (l1={l1})"
+        );
+    }
+
+    #[test]
+    fn test_squad_constant_keypoints_reduces_to_slerp() {
+        // When a == p and b == q, the inner slerps reduce to identity at
+        // t=0/1. Verify the result is always a unit quaternion.
+        let p = Quat::from_axis_angle(Vec3::Z, 0.2);
+        let q = Quat::from_axis_angle(Vec3::Z, 1.2);
+        for t in [0.0_f32, 0.25, 0.5, 0.75, 1.0] {
+            let squad_val = Quat::squad(p, p, q, q, t);
+            let len = (squad_val.x * squad_val.x
+                + squad_val.y * squad_val.y
+                + squad_val.z * squad_val.z
+                + squad_val.w * squad_val.w)
+                .sqrt();
+            assert!(
+                (len - 1.0).abs() < 1e-5,
+                "squad result must be a unit quaternion at t={t}"
+            );
+        }
     }
 
     #[test]
