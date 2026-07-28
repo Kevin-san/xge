@@ -18,17 +18,18 @@ fn main() {
     );
 
     event_loop
-        .run(move |event, elwt| match &event {
-            Event::WindowEvent { event, .. } => match event {
-                WindowEvent::CloseRequested => {
-                    elwt.exit();
+        .run(move |event, elwt| {
+            if let Event::WindowEvent { event, .. } = &event {
+                match event {
+                    WindowEvent::CloseRequested => {
+                        elwt.exit();
+                    }
+                    WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
+                        println!("Scale factor changed: {:.2}", scale_factor);
+                    }
+                    _ => {}
                 }
-                WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
-                    println!("Scale factor changed: {:.2}", scale_factor);
-                }
-                _ => {}
-            },
-            _ => {}
+            }
         })
         .expect("Event loop error");
 }

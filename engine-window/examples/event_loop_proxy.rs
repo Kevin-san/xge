@@ -34,13 +34,13 @@ fn main() {
     event_loop
         .run(move |event, elwt| {
             match &event {
-                Event::WindowEvent { event, .. } => match event {
-                    WindowEvent::CloseRequested => {
-                        running.store(false, Ordering::SeqCst);
-                        elwt.exit();
-                    }
-                    _ => {}
-                },
+                Event::WindowEvent {
+                    event: WindowEvent::CloseRequested,
+                    ..
+                } => {
+                    running.store(false, Ordering::SeqCst);
+                    elwt.exit();
+                }
                 Event::UserEvent(()) => {
                     println!("Event loop received wake-up from proxy!");
                 }
