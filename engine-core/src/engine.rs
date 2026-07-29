@@ -1,7 +1,7 @@
 use crate::module::ModuleRegistry;
 use crate::time::Time;
 use engine_window::{
-    CursorGrabMode, CursorIcon, Event, EventLoopProxy, Fullscreen, InputModule, PhysicalPosition,
+    CursorGrabMode, CursorIcon, EventLoopProxy, Fullscreen, InputModule, PhysicalPosition,
     PhysicalSize, Window, WindowExt, WindowMode, WindowState,
 };
 use std::sync::{Arc, Mutex};
@@ -141,15 +141,15 @@ impl Engine {
 
     // ===== 窗口状态（自动事件监听）=====
 
-    /// 处理来自事件循环的窗口事件并更新内部状态
+    /// 处理窗口事件并更新内部状态
     ///
     /// 该方法自动更新窗口焦点、可见性、尺寸等状态，无需上层代码手动维护。
     ///
     /// # 参数
-    /// - `event`: 来自事件循环的通用事件（引擎级，已屏蔽 winit 底层类型）
-    pub fn process_window_event(&self, event: &Event<()>) {
+    /// - `window_event`: 来自事件循环的窗口事件
+    pub fn process_window_event(&self, window_event: &engine_window::WindowEvent) {
         if let Some(ws) = &self.window_state {
-            ws.process_event(event);
+            ws.process_window_event(window_event);
         }
     }
 
@@ -249,11 +249,12 @@ impl Engine {
                 }
                 WindowMode::Fullscreen => {
                     if let Some(monitor) = window.current_monitor() {
-                        window.set_fullscreen(Some(Fullscreen::Exclusive(
-                            monitor.video_modes().next().unwrap_or_else(|| {
-                                panic!("No video mode available")
-                            })
-                        )));
+                        if let Some(video_mode) = monitor.video_modes().next() {
+                            window.set_fullscreen(Some(Fullscreen::Exclusive(video_mode)));
+                        } else {
+                            eprintln!("Warning: No video mode available, falling back to borderless fullscreen");
+                            window.set_fullscreen(Some(Fullscreen::Borderless(Some(monitor))));
+                        }
                     }
                 }
                 WindowMode::Borderless => {
@@ -418,11 +419,8 @@ mod tests {
     fn test_process_window_event_no_panic() {
         let mut engine = Engine::default();
         engine.set_window_state(WindowState::new());
-        // 构造一个空的 Event 来测试
-        let event = Event::WindowEvent {
-            window_id: unsafe { std::mem::zeroed() },
-            event: engine_window::WindowEvent::Focused(true),
-        };
+        // 使用 WindowEvent 直接构造，避免 unsafe std::mem::zeroed
+        let event = engine_window::WindowEvent::Focused(true);
         engine.process_window_event(&event);
         // 应仍处于默认状态（Focused(true) 事件不改变已为 true 的焦点状态）
         assert!(engine.is_focused());

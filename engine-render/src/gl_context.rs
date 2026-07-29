@@ -47,7 +47,7 @@ impl RenderContext {
                 }
                 #[cfg(not(any(target_os = "windows", target_os = "linux", target_os = "macos")))]
                 {
-                    panic!("Unsupported platform for OpenGL")
+                    std::ptr::null()
                 }
             })
         };
