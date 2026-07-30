@@ -380,7 +380,10 @@ mod tests {
     #[test]
     fn test_bundle_spawn_batch_iter() {
         let mut world = World::new();
-        let bundles = (0..5).map(|i| Position { x: i as f32, y: i as f32 });
+        let bundles = (0..5).map(|i| Position {
+            x: i as f32,
+            y: i as f32,
+        });
         world.spawn_batch(bundles);
         assert_eq!(world.entity_count(), 5);
     }

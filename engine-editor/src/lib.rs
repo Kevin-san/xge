@@ -1686,7 +1686,10 @@ mod tests {
     #[test]
     fn test_editor_settings_auto_save_interval() {
         let mut settings = EditorSettings::new();
-        assert_eq!(settings.auto_save_interval().as_secs(), DEFAULT_AUTO_SAVE_INTERVAL_SECS);
+        assert_eq!(
+            settings.auto_save_interval().as_secs(),
+            DEFAULT_AUTO_SAVE_INTERVAL_SECS
+        );
         settings.set_auto_save_interval(Duration::from_secs(60));
         assert_eq!(settings.auto_save_interval().as_secs(), 60);
     }
@@ -1997,7 +2000,8 @@ mod tests {
 
     #[test]
     fn test_rename_node_action_name_ref() {
-        let action = RenameNodeAction::new(NodeHandle::null(), "old".to_string(), "new".to_string());
+        let action =
+            RenameNodeAction::new(NodeHandle::null(), "old".to_string(), "new".to_string());
         assert_eq!(action.old_name, "old");
         assert_eq!(action.new_name, "new");
     }
@@ -2174,7 +2178,10 @@ mod tests {
         let mut panel = AssetPanel::new();
         assert!(panel.selected_path().is_none());
         panel.set_selected_path(Some(PathBuf::from("assets/texture.png")));
-        assert_eq!(panel.selected_path(), Some(&PathBuf::from("assets/texture.png")));
+        assert_eq!(
+            panel.selected_path(),
+            Some(&PathBuf::from("assets/texture.png"))
+        );
         panel.set_selected_path(None);
         assert!(panel.selected_path().is_none());
     }

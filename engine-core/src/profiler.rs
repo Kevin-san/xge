@@ -23,10 +23,14 @@ pub struct ScopeGuard<'a> {
 impl Drop for ScopeGuard<'_> {
     fn drop(&mut self) {
         let elapsed = self.start.elapsed().as_nanos() as u64;
-        let data = self.profiler.scopes.entry(self.name.clone()).or_insert(ScopeData {
-            total_ns: 0,
-            call_count: 0,
-        });
+        let data = self
+            .profiler
+            .scopes
+            .entry(self.name.clone())
+            .or_insert(ScopeData {
+                total_ns: 0,
+                call_count: 0,
+            });
         data.total_ns += elapsed;
         data.call_count += 1;
     }

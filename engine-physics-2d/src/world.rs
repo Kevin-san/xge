@@ -335,14 +335,7 @@ impl PhysicsWorld2D {
         // 根据形状类型进行碰撞检测
         match (collider_a.shape(), collider_b.shape()) {
             (ColliderShape::Circle { radius: r1 }, ColliderShape::Circle { radius: r2 }) => {
-                self.circle_circle_collision(
-                    index_a,
-                    index_b,
-                    world_pos_a,
-                    world_pos_b,
-                    *r1,
-                    *r2,
-                )
+                self.circle_circle_collision(index_a, index_b, world_pos_a, world_pos_b, *r1, *r2)
             }
             (
                 ColliderShape::Circle { radius },
@@ -505,10 +498,11 @@ impl PhysicsWorld2D {
             let contact_point_world = if is_rotated {
                 let cos = box_rotation.cos();
                 let sin = box_rotation.sin();
-                box_pos + Vec2::new(
-                    closest_point.x * cos - closest_point.y * sin,
-                    closest_point.x * sin + closest_point.y * cos,
-                )
+                box_pos
+                    + Vec2::new(
+                        closest_point.x * cos - closest_point.y * sin,
+                        closest_point.x * sin + closest_point.y * cos,
+                    )
             } else {
                 box_pos + closest_point
             };
@@ -587,8 +581,12 @@ impl PhysicsWorld2D {
         let collider_a = collider_a.unwrap();
         let collider_b = collider_b.unwrap();
 
-        let aabb_a = collider_a.shape().compute_aabb(body_a.position(), body_a.rotation());
-        let aabb_b = collider_b.shape().compute_aabb(body_b.position(), body_b.rotation());
+        let aabb_a = collider_a
+            .shape()
+            .compute_aabb(body_a.position(), body_a.rotation());
+        let aabb_b = collider_b
+            .shape()
+            .compute_aabb(body_b.position(), body_b.rotation());
 
         aabb_a.intersects(&aabb_b)
     }

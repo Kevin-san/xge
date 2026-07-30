@@ -65,7 +65,9 @@ impl Engine {
 
     /// 请求引擎在当前帧结束后退出（设置内部 quit_flag）
     pub fn request_quit(&self) {
-        let flag = self.quit_flag.get_or_init(|| Arc::new(std::sync::atomic::AtomicBool::new(false)));
+        let flag = self
+            .quit_flag
+            .get_or_init(|| Arc::new(std::sync::atomic::AtomicBool::new(false)));
         flag.store(true, std::sync::atomic::Ordering::SeqCst);
     }
 
@@ -160,17 +162,23 @@ impl Engine {
 
     /// 窗口是否被最小化
     pub fn is_minimized(&self) -> bool {
-        self.window_state.as_ref().is_some_and(|ws| ws.is_minimized())
+        self.window_state
+            .as_ref()
+            .is_some_and(|ws| ws.is_minimized())
     }
 
     /// 窗口是否被最大化
     pub fn is_maximized(&self) -> bool {
-        self.window_state.as_ref().is_some_and(|ws| ws.is_maximized())
+        self.window_state
+            .as_ref()
+            .is_some_and(|ws| ws.is_maximized())
     }
 
     /// 窗口是否可见
     pub fn is_visible(&self) -> bool {
-        self.window_state.as_ref().map_or(true, |ws| ws.is_visible())
+        self.window_state
+            .as_ref()
+            .map_or(true, |ws| ws.is_visible())
     }
 
     // ===== 光标控制（屏蔽 winit 依赖）=====
@@ -250,16 +258,15 @@ impl Engine {
                 WindowMode::Fullscreen => {
                     if let Some(monitor) = window.current_monitor() {
                         window.set_fullscreen(Some(Fullscreen::Exclusive(
-                            monitor.video_modes().next().unwrap_or_else(|| {
-                                panic!("No video mode available")
-                            })
+                            monitor
+                                .video_modes()
+                                .next()
+                                .unwrap_or_else(|| panic!("No video mode available")),
                         )));
                     }
                 }
                 WindowMode::Borderless => {
-                    window.set_fullscreen(Some(Fullscreen::Borderless(
-                        window.current_monitor()
-                    )));
+                    window.set_fullscreen(Some(Fullscreen::Borderless(window.current_monitor())));
                 }
             }
         }

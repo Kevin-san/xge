@@ -1,7 +1,5 @@
 //! 事件循环代理示例 — 跨线程发送事件
-use engine_window::{
-    Event, EventLoop, WindowBuilder, WindowEvent,
-};
+use engine_window::{Event, EventLoop, WindowBuilder, WindowEvent};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread;

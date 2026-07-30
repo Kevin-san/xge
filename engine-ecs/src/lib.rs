@@ -17,7 +17,7 @@ pub mod system;
 pub mod system_param;
 pub mod world;
 
-pub use archetype::{ArchetypeStorage, Archetype};
+pub use archetype::{Archetype, ArchetypeStorage};
 pub use bundle::{Bundle, BundleError};
 pub use change_tracker::{ChangeTrackers, Ref, Tick};
 pub use component::Component;

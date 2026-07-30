@@ -326,10 +326,7 @@ mod tests {
 
     #[test]
     fn test_component_set_basic() {
-        let set = ComponentSet::new(vec![
-            TypeId::of::<Position>(),
-            TypeId::of::<Velocity>(),
-        ]);
+        let set = ComponentSet::new(vec![TypeId::of::<Position>(), TypeId::of::<Velocity>()]);
         assert_eq!(set.len(), 2);
         assert!(set.contains(TypeId::of::<Position>()));
         assert!(set.contains(TypeId::of::<Velocity>()));

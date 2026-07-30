@@ -273,11 +273,7 @@ mod tests {
     #[test]
     fn test_tonemapper_all_positive_inputs() {
         let color = Vec3::new(0.1, 0.2, 0.3);
-        let modes = [
-            Tonemapper::Aces,
-            Tonemapper::Reinhard,
-            Tonemapper::Filmic,
-        ];
+        let modes = [Tonemapper::Aces, Tonemapper::Reinhard, Tonemapper::Filmic];
         for m in modes.iter() {
             let result = m.apply(color);
             // All tonemap operators should preserve non-negative results

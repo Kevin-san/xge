@@ -756,9 +756,7 @@ mod tests {
 
     #[test]
     fn test_rigid_body_apply_torque() {
-        let mut body = RigidBody2DBuilder::dynamic()
-            .with_mass(1.0)
-            .build();
+        let mut body = RigidBody2DBuilder::dynamic().with_mass(1.0).build();
         body.apply_torque(5.0);
         body.update_velocity(1.0);
         // 由于有扭矩影响角速度

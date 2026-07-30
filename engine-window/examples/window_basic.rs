@@ -1,7 +1,5 @@
 //! 基础窗口示例 — 创建窗口并在 3 秒后自动退出
-use engine_window::{
-    Event, EventLoop, WindowBuilder, WindowEvent,
-};
+use engine_window::{Event, EventLoop, WindowBuilder, WindowEvent};
 use std::time::{Duration, Instant};
 
 fn main() {

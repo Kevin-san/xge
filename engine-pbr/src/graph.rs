@@ -470,7 +470,9 @@ impl ShaderGraph {
                 let ty_str = self.type_to_glsl(*ty);
                 format!("{} {};", ty_str, name)
             }
-            NodeKind::ConstantFloat(v) => format!("float n{} = {};", node.id.0, Self::fmt_float(*v)),
+            NodeKind::ConstantFloat(v) => {
+                format!("float n{} = {};", node.id.0, Self::fmt_float(*v))
+            }
             NodeKind::ConstantVec2(v) => {
                 format!(
                     "vec2 n{} = vec2({}, {});",
@@ -509,7 +511,9 @@ impl ShaderGraph {
             NodeKind::Max => format!("n{} = max(a{}, b{});", node.id.0, node.id.0, node.id.0),
             NodeKind::Dot => format!("n{} = dot(a{}, b{});", node.id.0, node.id.0, node.id.0),
             NodeKind::Cross => format!("n{} = cross(a{}, b{});", node.id.0, node.id.0, node.id.0),
-            NodeKind::Distance => format!("n{} = distance(a{}, b{});", node.id.0, node.id.0, node.id.0),
+            NodeKind::Distance => {
+                format!("n{} = distance(a{}, b{});", node.id.0, node.id.0, node.id.0)
+            }
             // Unary operations
             NodeKind::Negate => format!("n{} = -v{};", node.id.0, node.id.0),
             NodeKind::Abs => format!("n{} = abs(v{});", node.id.0, node.id.0),
@@ -529,14 +533,23 @@ impl ShaderGraph {
             NodeKind::Swizzle { pattern } => {
                 format!("n{} = v{}.{};", node.id.0, node.id.0, pattern)
             }
-            NodeKind::Mix => format!("n{} = mix(a{}, b{}, t{});", node.id.0, node.id.0, node.id.0, node.id.0),
+            NodeKind::Mix => format!(
+                "n{} = mix(a{}, b{}, t{});",
+                node.id.0, node.id.0, node.id.0, node.id.0
+            ),
             NodeKind::ToSrgb => format!("n{} = pow(v{}, vec3(1.0/2.2));", node.id.0, node.id.0),
             NodeKind::ToLinear => format!("n{} = pow(v{}, vec3(2.2));", node.id.0, node.id.0),
-            NodeKind::Gamma => format!("n{} = pow(v{}, vec3(g{}));", node.id.0, node.id.0, node.id.0),
+            NodeKind::Gamma => format!(
+                "n{} = pow(v{}, vec3(g{}));",
+                node.id.0, node.id.0, node.id.0
+            ),
             // UV operations
             NodeKind::Tiling => format!("n{} = uv{} * t{};", node.id.0, node.id.0, node.id.0),
             NodeKind::Offset => format!("n{} = uv{} + o{};", node.id.0, node.id.0, node.id.0),
-            NodeKind::Rotate => format!("n{} = rotateUV(uv{}, a{});", node.id.0, node.id.0, node.id.0),
+            NodeKind::Rotate => format!(
+                "n{} = rotateUV(uv{}, a{});",
+                node.id.0, node.id.0, node.id.0
+            ),
             NodeKind::Pan => format!("n{} = uv{} + time * s{};", node.id.0, node.id.0, node.id.0),
             // Time nodes
             NodeKind::Time => "float time = time_uniform;".to_string(),
@@ -544,8 +557,10 @@ impl ShaderGraph {
             NodeKind::CosTime => "float cos_time = cos(time_uniform);".to_string(),
             // Normal map
             NodeKind::NormalMap { strength } => {
-                format!("vec3 n{} = normalize(texture(normalMap, uv{}).xyz * 2.0 - 1.0 * {});",
-                    node.id.0, node.id.0, strength)
+                format!(
+                    "vec3 n{} = normalize(texture(normalMap, uv{}).xyz * 2.0 - 1.0 * {});",
+                    node.id.0, node.id.0, strength
+                )
             }
             // PBR Master
             NodeKind::PbrMaster => "// PBR Master node - outputs to fragment shader".to_string(),
@@ -566,11 +581,17 @@ impl ShaderGraph {
                 format!("vec4 n{} = texture({}, uv{});", node.id.0, name, node.id.0)
             }
             // Control flow
-            NodeKind::If => format!("n{} = (c{}) ? a{} : b{};", node.id.0, node.id.0, node.id.0, node.id.0),
+            NodeKind::If => format!(
+                "n{} = (c{}) ? a{} : b{};",
+                node.id.0, node.id.0, node.id.0, node.id.0
+            ),
             NodeKind::Switch { cases } => {
                 let mut s = format!("switch(v{}) {{\n", node.id.0);
                 for i in 0..*cases {
-                    s.push_str(&format!("  case {}: r{} = v{}_{};\n", i, node.id.0, node.id.0, i));
+                    s.push_str(&format!(
+                        "  case {}: r{} = v{}_{};\n",
+                        i, node.id.0, node.id.0, i
+                    ));
                 }
                 s.push_str("}\n");
                 s.push_str(&format!("n{} = r{};", node.id.0, node.id.0));
@@ -614,7 +635,12 @@ impl ShaderGraph {
     /// Format a float for GLSL output, ensuring it always has a decimal point
     fn fmt_float(v: f32) -> String {
         let s = format!("{}", v);
-        if s.contains('.') || s.contains("e") || s.contains("E") || s.contains("inf") || s.contains("NaN") {
+        if s.contains('.')
+            || s.contains("e")
+            || s.contains("E")
+            || s.contains("inf")
+            || s.contains("NaN")
+        {
             s
         } else {
             format!("{}.0", s)

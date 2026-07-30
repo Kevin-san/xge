@@ -471,8 +471,8 @@ impl FontParser {
         // 检查魔法数字
         let sfnt_version = u32::from_be_bytes([data[0], data[1], data[2], data[3]]);
         let is_ttf = sfnt_version == 0x00010000 || sfnt_version == u32::from_be_bytes(*b"true");
-        let is_otf =
-            sfnt_version == u32::from_be_bytes(*b"OTTO") || sfnt_version == u32::from_be_bytes(*b"ttcf");
+        let is_otf = sfnt_version == u32::from_be_bytes(*b"OTTO")
+            || sfnt_version == u32::from_be_bytes(*b"ttcf");
         if !is_ttf && !is_otf {
             return Err(FontLoadError::InvalidMagic);
         }
@@ -486,7 +486,12 @@ impl FontParser {
             if offset + 16 > data.len() {
                 return Err(FontLoadError::TooShort);
             }
-            let tag = [data[offset], data[offset + 1], data[offset + 2], data[offset + 3]];
+            let tag = [
+                data[offset],
+                data[offset + 1],
+                data[offset + 2],
+                data[offset + 3],
+            ];
             let toffset = u32::from_be_bytes([
                 data[offset + 8],
                 data[offset + 9],
@@ -541,8 +546,7 @@ impl FontParser {
     }
 
     fn parse_head(tables: &[TableRecord], data: &[u8]) -> Result<FontHeader, FontLoadError> {
-        let rec = Self::find_table(tables, b"head")
-            .ok_or(FontLoadError::MissingTable("head"))?;
+        let rec = Self::find_table(tables, b"head").ok_or(FontLoadError::MissingTable("head"))?;
         let t = Self::table_slice(data, rec);
         if t.len() < 54 {
             return Err(FontLoadError::TableParseFailed("head"));
@@ -563,12 +567,8 @@ impl FontParser {
         })
     }
 
-    fn parse_hhea(
-        tables: &[TableRecord],
-        data: &[u8],
-    ) -> Result<HorizontalHeader, FontLoadError> {
-        let rec = Self::find_table(tables, b"hhea")
-            .ok_or(FontLoadError::MissingTable("hhea"))?;
+    fn parse_hhea(tables: &[TableRecord], data: &[u8]) -> Result<HorizontalHeader, FontLoadError> {
+        let rec = Self::find_table(tables, b"hhea").ok_or(FontLoadError::MissingTable("hhea"))?;
         let t = Self::table_slice(data, rec);
         if t.len() < 36 {
             return Err(FontLoadError::TableParseFailed("hhea"));
@@ -645,8 +645,7 @@ impl FontParser {
         tables: &[TableRecord],
         data: &[u8],
     ) -> Result<HashMap<char, u32>, FontLoadError> {
-        let rec = Self::find_table(tables, b"cmap")
-            .ok_or(FontLoadError::MissingTable("cmap"))?;
+        let rec = Self::find_table(tables, b"cmap").ok_or(FontLoadError::MissingTable("cmap"))?;
         let t = Self::table_slice(data, rec);
         if t.len() < 4 {
             return Err(FontLoadError::TableParseFailed("cmap"));
@@ -761,11 +760,13 @@ impl FontParser {
                     ((c as i32 + id_delta) & 0xFFFF) as u32
                 } else {
                     // id_range_offset 是相对 id_range_offsets_off + i*2 的偏移
-                    let glyph_index_off = range_off + id_range_offset + (c - start_code) as usize * 2;
+                    let glyph_index_off =
+                        range_off + id_range_offset + (c - start_code) as usize * 2;
                     if glyph_index_off + 2 > sub.len() {
                         continue;
                     }
-                    let g = u16::from_be_bytes([sub[glyph_index_off], sub[glyph_index_off + 1]]) as i32;
+                    let g =
+                        u16::from_be_bytes([sub[glyph_index_off], sub[glyph_index_off + 1]]) as i32;
                     if g == 0 {
                         0
                     } else {
@@ -811,9 +812,12 @@ impl FontParser {
             if off + 12 > sub.len() {
                 break;
             }
-            let start_char = u32::from_be_bytes([sub[off], sub[off + 1], sub[off + 2], sub[off + 3]]);
-            let start_gid = u32::from_be_bytes([sub[off + 4], sub[off + 5], sub[off + 6], sub[off + 7]]);
-            let end_char = u32::from_be_bytes([sub[off + 8], sub[off + 9], sub[off + 10], sub[off + 11]]);
+            let start_char =
+                u32::from_be_bytes([sub[off], sub[off + 1], sub[off + 2], sub[off + 3]]);
+            let start_gid =
+                u32::from_be_bytes([sub[off + 4], sub[off + 5], sub[off + 6], sub[off + 7]]);
+            let end_char =
+                u32::from_be_bytes([sub[off + 8], sub[off + 9], sub[off + 10], sub[off + 11]]);
             for c in start_char..=end_char {
                 let gid = start_gid + (c - start_char);
                 if let Some(ch) = char::from_u32(c) {
@@ -828,8 +832,7 @@ impl FontParser {
         data: &[u8],
         hhea: &HorizontalHeader,
     ) -> Result<Vec<(u16, i16)>, FontLoadError> {
-        let rec = Self::find_table(tables, b"hmtx")
-            .ok_or(FontLoadError::MissingTable("hmtx"))?;
+        let rec = Self::find_table(tables, b"hmtx").ok_or(FontLoadError::MissingTable("hmtx"))?;
         let t = Self::table_slice(data, rec);
         let num_metrics = hhea.number_of_h_metrics as usize;
         let mut metrics = Vec::with_capacity(num_metrics);
@@ -1045,11 +1048,7 @@ pub struct TextLayoutEngine;
 
 impl TextLayoutEngine {
     /// 执行文本布局
-    pub fn layout(
-        font: &ParsedFont,
-        text: &str,
-        options: &TextLayoutOptions,
-    ) -> Vec<TextLine> {
+    pub fn layout(font: &ParsedFont, text: &str, options: &TextLayoutOptions) -> Vec<TextLine> {
         let metrics = font.metrics_at_size(options.font_size);
         let line_height = metrics.line_height() * options.line_height_scale;
 
@@ -1064,7 +1063,8 @@ impl TextLayoutEngine {
                 let wrapped = Self::wrap_line(font, raw_line, max_w, options);
                 for (j, wrapped_text) in wrapped.into_iter().enumerate() {
                     let width = font.measure_text_width(&wrapped_text, options.font_size)
-                        + options.letter_spacing * wrapped_text.chars().count().saturating_sub(1) as f32;
+                        + options.letter_spacing
+                            * wrapped_text.chars().count().saturating_sub(1) as f32;
                     lines.push(TextLine {
                         text: wrapped_text,
                         y: y + j as f32 * line_height,
@@ -1384,11 +1384,23 @@ mod tests {
 
     #[test]
     fn test_text_layout_align_offset() {
-        assert_eq!(TextLayoutEngine::align_offset(50.0, 100.0, TextAlign::Left), 0.0);
-        assert_eq!(TextLayoutEngine::align_offset(50.0, 100.0, TextAlign::Center), 25.0);
-        assert_eq!(TextLayoutEngine::align_offset(50.0, 100.0, TextAlign::Right), 50.0);
+        assert_eq!(
+            TextLayoutEngine::align_offset(50.0, 100.0, TextAlign::Left),
+            0.0
+        );
+        assert_eq!(
+            TextLayoutEngine::align_offset(50.0, 100.0, TextAlign::Center),
+            25.0
+        );
+        assert_eq!(
+            TextLayoutEngine::align_offset(50.0, 100.0, TextAlign::Right),
+            50.0
+        );
         // 宽度超过 max_width 时不应返回负值
-        assert_eq!(TextLayoutEngine::align_offset(150.0, 100.0, TextAlign::Right), 0.0);
+        assert_eq!(
+            TextLayoutEngine::align_offset(150.0, 100.0, TextAlign::Right),
+            0.0
+        );
     }
 
     #[test]

@@ -221,7 +221,7 @@ fn mat_to_quat(mat: Mat4) -> Quat {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use engine_math::{Vec3, Mat4};
+    use engine_math::{Mat4, Vec3};
 
     #[test]
     fn test_transform_identity() {

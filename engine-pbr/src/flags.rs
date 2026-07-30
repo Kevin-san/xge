@@ -191,7 +191,9 @@ mod tests {
 
     #[test]
     fn test_flags_bitor_chaining() {
-        let flags = PbrMaterialFlags::HAS_ALBEDO_MAP | PbrMaterialFlags::HAS_NORMAL_MAP | PbrMaterialFlags::HAS_AO_MAP;
+        let flags = PbrMaterialFlags::HAS_ALBEDO_MAP
+            | PbrMaterialFlags::HAS_NORMAL_MAP
+            | PbrMaterialFlags::HAS_AO_MAP;
         assert!(flags.contains(PbrMaterialFlags::HAS_ALBEDO_MAP));
         assert!(flags.contains(PbrMaterialFlags::HAS_NORMAL_MAP));
         assert!(flags.contains(PbrMaterialFlags::HAS_AO_MAP));
@@ -217,7 +219,9 @@ mod tests {
 
     #[test]
     fn test_flags_remove_multiple() {
-        let mut flags = PbrMaterialFlags::HAS_ALBEDO_MAP | PbrMaterialFlags::HAS_NORMAL_MAP | PbrMaterialFlags::USE_IBL;
+        let mut flags = PbrMaterialFlags::HAS_ALBEDO_MAP
+            | PbrMaterialFlags::HAS_NORMAL_MAP
+            | PbrMaterialFlags::USE_IBL;
         flags.remove(PbrMaterialFlags::HAS_ALBEDO_MAP);
         assert!(!flags.contains(PbrMaterialFlags::HAS_ALBEDO_MAP));
         assert!(flags.contains(PbrMaterialFlags::HAS_NORMAL_MAP));

@@ -175,10 +175,22 @@ impl Mat4 {
     pub fn inverse(&self) -> Option<Self> {
         let m = &self.cols;
         // Column-major: m[col][row]
-        let a00 = m[0][0]; let a01 = m[0][1]; let a02 = m[0][2]; let a03 = m[0][3];
-        let a10 = m[1][0]; let a11 = m[1][1]; let a12 = m[1][2]; let a13 = m[1][3];
-        let a20 = m[2][0]; let a21 = m[2][1]; let a22 = m[2][2]; let a23 = m[2][3];
-        let a30 = m[3][0]; let a31 = m[3][1]; let a32 = m[3][2]; let a33 = m[3][3];
+        let a00 = m[0][0];
+        let a01 = m[0][1];
+        let a02 = m[0][2];
+        let a03 = m[0][3];
+        let a10 = m[1][0];
+        let a11 = m[1][1];
+        let a12 = m[1][2];
+        let a13 = m[1][3];
+        let a20 = m[2][0];
+        let a21 = m[2][1];
+        let a22 = m[2][2];
+        let a23 = m[2][3];
+        let a30 = m[3][0];
+        let a31 = m[3][1];
+        let a32 = m[3][2];
+        let a33 = m[3][3];
 
         let b00 = a00 * a11 - a01 * a10;
         let b01 = a00 * a12 - a02 * a10;
@@ -261,7 +273,14 @@ impl Mat4 {
     }
 
     #[inline]
-    pub fn orthographic_rh(left: f32, right: f32, bottom: f32, top: f32, near: f32, far: f32) -> Self {
+    pub fn orthographic_rh(
+        left: f32,
+        right: f32,
+        bottom: f32,
+        top: f32,
+        near: f32,
+        far: f32,
+    ) -> Self {
         let x = 2.0 / (right - left);
         let y = 2.0 / (top - bottom);
         let z = -2.0 / (far - near);
@@ -499,7 +518,10 @@ mod tests {
                 assert!(
                     (m.cols[i][j] - expected).abs() < tolerance,
                     "col {} row {}: expected {}, got {}",
-                    i, j, expected, m.cols[i][j]
+                    i,
+                    j,
+                    expected,
+                    m.cols[i][j]
                 );
             }
         }
@@ -607,14 +629,22 @@ mod tests {
         let near_point = proj.mul_vec4(Vec4::new(0.0, 0.0, -0.1, 1.0));
         // Perspective divide
         let ndc_z = near_point.z / near_point.w;
-        assert!((ndc_z + 1.0).abs() < 0.01, "Near plane should map to NDC z=-1, got {}", ndc_z);
+        assert!(
+            (ndc_z + 1.0).abs() < 0.01,
+            "Near plane should map to NDC z=-1, got {}",
+            ndc_z
+        );
     }
 
     #[test]
     fn test_orthographic_near_plane() {
         let ortho = Mat4::orthographic_rh(-1.0, 1.0, -1.0, 1.0, 0.1, 100.0);
         let near_point = ortho.mul_vec4(Vec4::new(0.0, 0.0, -0.1, 1.0));
-        assert!((near_point.z + 1.0).abs() < 0.01, "Near plane should map to z=-1, got {}", near_point.z);
+        assert!(
+            (near_point.z + 1.0).abs() < 0.01,
+            "Near plane should map to z=-1, got {}",
+            near_point.z
+        );
     }
 
     #[test]
@@ -625,8 +655,96 @@ mod tests {
         let view = Mat4::look_at_rh(eye, target, up);
         // Transform target (origin) through view matrix - should get (0,0,-5) in view space
         let target_view = view.mul_vec4(Vec4::new(0.0, 0.0, 0.0, 1.0));
-        assert!((target_view.x).abs() < 0.001, "target_view.x should be ~0, got {}", target_view.x);
-        assert!((target_view.y).abs() < 0.001, "target_view.y should be ~0, got {}", target_view.y);
-        assert!((target_view.z + 5.0).abs() < 0.001, "target_view.z should be ~-5, got {}", target_view.z);
+        assert!(
+            (target_view.x).abs() < 0.001,
+            "target_view.x should be ~0, got {}",
+            target_view.x
+        );
+        assert!(
+            (target_view.y).abs() < 0.001,
+            "target_view.y should be ~0, got {}",
+            target_view.y
+        );
+        assert!(
+            (target_view.z + 5.0).abs() < 0.001,
+            "target_view.z should be ~-5, got {}",
+            target_view.z
+        );
+    }
+
+    #[test]
+    fn test_inverse_combined_trs_roundtrip() {
+        let t = Mat4::from_translation(Vec3::new(3.0, -5.0, 7.0));
+        let r = Mat4::from_rotation_y(0.3) * Mat4::from_rotation_x(0.5);
+        let s = Mat4::from_scale(Vec3::new(2.0, 0.5, 3.0));
+        let combined = t * r * s;
+        let inv = combined.inverse().unwrap();
+        let result = combined * inv;
+        assert_approx_mat4_identity(result, 1e-5);
+    }
+
+    #[test]
+    fn test_inverse_rotation_z_roundtrip() {
+        let m = Mat4::from_rotation_z(0.7);
+        let inv = m.inverse().unwrap();
+        let result = m * inv;
+        assert_approx_mat4_identity(result, 1e-6);
+    }
+
+    #[test]
+    fn test_inverse_rotation_x_roundtrip() {
+        let m = Mat4::from_rotation_x(1.2);
+        let inv = m.inverse().unwrap();
+        let result = m * inv;
+        assert_approx_mat4_identity(result, 1e-6);
+    }
+
+    #[test]
+    fn test_inverse_perspective_roundtrip() {
+        let proj = Mat4::perspective_rh(std::f32::consts::FRAC_PI_4, 16.0 / 9.0, 0.1, 1000.0);
+        let inv = proj.inverse().unwrap();
+        let result = proj * inv;
+        assert_approx_mat4_identity(result, 1e-4);
+    }
+
+    #[test]
+    fn test_inverse_look_at_roundtrip() {
+        let view = Mat4::look_at_rh(
+            Vec3::new(10.0, 5.0, 20.0),
+            Vec3::new(0.0, 0.0, 0.0),
+            Vec3::Y,
+        );
+        let inv = view.inverse().unwrap();
+        let result = view * inv;
+        assert_approx_mat4_identity(result, 1e-5);
+    }
+
+    #[test]
+    fn test_inverse_view_projection_roundtrip() {
+        let view = Mat4::look_at_rh(Vec3::new(0.0, 0.0, 5.0), Vec3::ZERO, Vec3::Y);
+        let proj = Mat4::perspective_rh(45.0_f32.to_radians(), 1.0, 0.1, 100.0);
+        let vp = proj * view;
+        let inv = vp.inverse().unwrap();
+        let result = vp * inv;
+        assert_approx_mat4_identity(result, 1e-4);
+    }
+
+    #[test]
+    fn test_inverse_determinant_zero_returns_none() {
+        let zero = Mat4::ZERO;
+        assert!(zero.inverse().is_none());
+    }
+
+    #[test]
+    fn test_inverse_diagonal_scale_inverse() {
+        let s = Mat4::from_scale(Vec3::new(4.0, 5.0, 6.0));
+        let inv = s.inverse().unwrap();
+        // The inverse of a diagonal scale matrix should have 1/s on diagonal
+        let v = Vec4::new(4.0, 5.0, 6.0, 1.0);
+        let result = inv.mul_vec4(v);
+        assert!((result.x - 1.0).abs() < 1e-5);
+        assert!((result.y - 1.0).abs() < 1e-5);
+        assert!((result.z - 1.0).abs() < 1e-5);
+        assert!((result.w - 1.0).abs() < 1e-5);
     }
 }

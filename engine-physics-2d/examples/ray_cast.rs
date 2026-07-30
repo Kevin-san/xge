@@ -3,9 +3,7 @@
 //! 本示例演示如何在物理世界中使用射线投射（RayCast）进行空间查询。
 
 use engine_math::Vec2;
-use engine_physics_2d::{
-    Collider2DBuilder, PhysicsWorld2D, RayCast2D, RigidBody2DBuilder,
-};
+use engine_physics_2d::{Collider2DBuilder, PhysicsWorld2D, RayCast2D, RigidBody2DBuilder};
 
 fn main() {
     println!("=== Ray Cast Demo ===");
@@ -63,8 +61,10 @@ fn main() {
     );
     println!("   Ray: origin=(-8, 3), direction=(1, 0), max_dist=20");
     println!("   Expected hits: ground, wall (behind), circle");
-    println!("   Origin: ({}, {}), direction: ({}, {})",
-        ray1.origin.x, ray1.origin.y, ray1.direction.x, ray1.direction.y);
+    println!(
+        "   Origin: ({}, {}), direction: ({}, {})",
+        ray1.origin.x, ray1.origin.y, ray1.direction.x, ray1.direction.y
+    );
 
     // 简化实现：由于 ray_intersects_shape 是 pub(crate)，我们演示 API 用法
     println!("   (Note: Full ray cast requires internal collision query)");
@@ -75,7 +75,11 @@ fn main() {
     let ray2 = RayCast2D::new(Vec2::new(0.0, 8.0), Vec2::new(0.0, -1.0), 15.0);
     println!("   Ray: origin=(0, 8), direction=(0, -1), max_dist=15");
     println!("   Expected hits: ground at y=0");
-    println!("   Endpoint: ({:.2}, {:.2})", ray2.endpoint().x, ray2.endpoint().y);
+    println!(
+        "   Endpoint: ({:.2}, {:.2})",
+        ray2.endpoint().x,
+        ray2.endpoint().y
+    );
     println!();
 
     // 测试 3：对角线射线
@@ -83,7 +87,11 @@ fn main() {
     let ray3 = RayCast2D::new(Vec2::new(-5.0, 8.0), Vec2::new(1.0, -1.0).normalize(), 20.0);
     println!("   Ray: origin=(-5, 8), direction=(0.707, -0.707), max_dist=20");
     println!("   Expected hits: ground");
-    println!("   Endpoint: ({:.2}, {:.2})", ray3.endpoint().x, ray3.endpoint().y);
+    println!(
+        "   Endpoint: ({:.2}, {:.2})",
+        ray3.endpoint().x,
+        ray3.endpoint().y
+    );
     println!();
 
     // 测试 4：圆形障碍物射线检测

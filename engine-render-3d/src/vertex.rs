@@ -179,15 +179,13 @@ mod tests {
 
     #[test]
     fn test_vertex_ext_with_tangent() {
-        let v = VertexExt::new(Vec3::ONE, Vec3::Y, Vec2::ONE)
-            .with_tangent(Vec3::X);
+        let v = VertexExt::new(Vec3::ONE, Vec3::Y, Vec2::ONE).with_tangent(Vec3::X);
         assert_eq!(v.tangent, Vec3::X);
     }
 
     #[test]
     fn test_vertex_ext_with_color() {
-        let v = VertexExt::new(Vec3::ONE, Vec3::Y, Vec2::ONE)
-            .with_color([1.0, 0.5, 0.2, 1.0]);
+        let v = VertexExt::new(Vec3::ONE, Vec3::Y, Vec2::ONE).with_color([1.0, 0.5, 0.2, 1.0]);
         assert_eq!(v.color, [1.0, 0.5, 0.2, 1.0]);
     }
 
