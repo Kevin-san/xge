@@ -42,6 +42,32 @@ impl WindowState {
         }
     }
 
+    /// 处理单个 WindowEvent（不包含 WindowId），用于内部处理和测试
+    pub fn process_window_event(&self, window_event: &winit::event::WindowEvent) {
+        match window_event {
+            winit::event::WindowEvent::Focused(focused) => {
+                self.focused.store(*focused, Ordering::SeqCst);
+            }
+            winit::event::WindowEvent::Resized(physical_size) => {
+                self.size
+                    .0
+                    .store(physical_size.width, Ordering::SeqCst);
+                self.size
+                    .1
+                    .store(physical_size.height, Ordering::SeqCst);
+            }
+            winit::event::WindowEvent::Occluded(occluded) => {
+                // 窗口被遮挡时视为不可见
+                self.visible.store(!occluded, Ordering::SeqCst);
+            }
+            winit::event::WindowEvent::CloseRequested => {
+                // 关闭请求时标记为不可见
+                self.visible.store(false, Ordering::SeqCst);
+            }
+            _ => {}
+        }
+    }
+
     /// 从原始 winit 事件更新窗口状态
     pub fn process_event(&self, event: &winit::event::Event<()>) {
         if let winit::event::Event::WindowEvent {
@@ -49,28 +75,7 @@ impl WindowState {
             ..
         } = event
         {
-            match window_event {
-                winit::event::WindowEvent::Focused(focused) => {
-                    self.focused.store(*focused, Ordering::SeqCst);
-                }
-                winit::event::WindowEvent::Resized(physical_size) => {
-                    self.size
-                        .0
-                        .store(physical_size.width, Ordering::SeqCst);
-                    self.size
-                        .1
-                        .store(physical_size.height, Ordering::SeqCst);
-                }
-                winit::event::WindowEvent::Occluded(occluded) => {
-                    // 窗口被遮挡时视为不可见
-                    self.visible.store(!occluded, Ordering::SeqCst);
-                }
-                winit::event::WindowEvent::CloseRequested => {
-                    // 关闭请求时标记为不可见
-                    self.visible.store(false, Ordering::SeqCst);
-                }
-                _ => {}
-            }
+            self.process_window_event(window_event);
         }
     }
 
@@ -132,7 +137,7 @@ impl Default for WindowState {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use winit::event::{Event, WindowEvent};
+    use winit::event::WindowEvent;
 
     #[test]
     fn test_initial_state() {
@@ -147,18 +152,10 @@ mod tests {
     fn test_focused_event() {
         let state = WindowState::new();
 
-        let event = Event::WindowEvent {
-            window_id: unsafe { std::mem::zeroed() },
-            event: WindowEvent::Focused(false),
-        };
-        state.process_event(&event);
+        state.process_window_event(&WindowEvent::Focused(false));
         assert!(!state.is_focused());
 
-        let event = Event::WindowEvent {
-            window_id: unsafe { std::mem::zeroed() },
-            event: WindowEvent::Focused(true),
-        };
-        state.process_event(&event);
+        state.process_window_event(&WindowEvent::Focused(true));
         assert!(state.is_focused());
     }
 
@@ -180,18 +177,10 @@ mod tests {
     fn test_occluded_event() {
         let state = WindowState::new();
 
-        let event = Event::WindowEvent {
-            window_id: unsafe { std::mem::zeroed() },
-            event: WindowEvent::Occluded(true),
-        };
-        state.process_event(&event);
+        state.process_window_event(&WindowEvent::Occluded(true));
         assert!(!state.is_visible());
 
-        let event = Event::WindowEvent {
-            window_id: unsafe { std::mem::zeroed() },
-            event: WindowEvent::Occluded(false),
-        };
-        state.process_event(&event);
+        state.process_window_event(&WindowEvent::Occluded(false));
         assert!(state.is_visible());
     }
 
@@ -199,14 +188,10 @@ mod tests {
     fn test_resized_event() {
         let state = WindowState::new();
 
-        let event = Event::WindowEvent {
-            window_id: unsafe { std::mem::zeroed() },
-            event: WindowEvent::Resized(winit::dpi::PhysicalSize {
-                width: 1920,
-                height: 1080,
-            }),
-        };
-        state.process_event(&event);
+        state.process_window_event(&WindowEvent::Resized(winit::dpi::PhysicalSize {
+            width: 1920,
+            height: 1080,
+        }));
         let size = state.size();
         assert_eq!(size.width, 1920);
         assert_eq!(size.height, 1080);
@@ -216,11 +201,7 @@ mod tests {
     fn test_close_requested_event() {
         let state = WindowState::new();
 
-        let event = Event::WindowEvent {
-            window_id: unsafe { std::mem::zeroed() },
-            event: WindowEvent::CloseRequested,
-        };
-        state.process_event(&event);
+        state.process_window_event(&WindowEvent::CloseRequested);
         assert!(!state.is_visible());
     }
 

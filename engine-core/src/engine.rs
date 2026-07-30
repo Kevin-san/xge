@@ -141,6 +141,13 @@ impl Engine {
 
     // ===== 窗口状态（自动事件监听）=====
 
+    /// 处理单个窗口事件变体（不包含 WindowId），用于内部处理和测试
+    pub fn process_window_event_kind(&self, window_event: &engine_window::WindowEvent) {
+        if let Some(ws) = &self.window_state {
+            ws.process_window_event(window_event);
+        }
+    }
+
     /// 处理来自事件循环的窗口事件并更新内部状态
     ///
     /// 该方法自动更新窗口焦点、可见性、尺寸等状态，无需上层代码手动维护。
@@ -418,12 +425,8 @@ mod tests {
     fn test_process_window_event_no_panic() {
         let mut engine = Engine::default();
         engine.set_window_state(WindowState::new());
-        // 构造一个空的 Event 来测试
-        let event = Event::WindowEvent {
-            window_id: unsafe { std::mem::zeroed() },
-            event: engine_window::WindowEvent::Focused(true),
-        };
-        engine.process_window_event(&event);
+        // 直接使用 WindowEvent，不构造包含 WindowId 的 Event（避免 unsafe）
+        engine.process_window_event_kind(&engine_window::WindowEvent::Focused(true));
         // 应仍处于默认状态（Focused(true) 事件不改变已为 true 的焦点状态）
         assert!(engine.is_focused());
         assert!(!engine.is_minimized());
