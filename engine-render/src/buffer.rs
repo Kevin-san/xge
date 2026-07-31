@@ -1,6 +1,6 @@
 //! Buffer 模块 - 通用 GPU 缓冲区抽象
 //!
-//! 提供 `Buffer<T>`、`VertexBuffer`、`IndexBuffer` 等后端无关的缓冲区类型。
+//! 提供 `Buffer\<T\>`、`VertexBuffer`、`IndexBuffer` 等后端无关的缓冲区类型。
 //! 这些类型不依赖具体的图形后端，仅在 CPU 端维护缓冲区数据与元信息。
 //! 实际与 GPU 的绑定由 `Renderer` trait 的实现（如 OpenGL / wgpu）完成。
 
@@ -80,7 +80,7 @@ impl<T: Copy> Buffer<T> {
         buf
     }
 
-    /// 从 Vec<T> 构造缓冲区（零额外拷贝）
+    /// 从 Vec\<T\> 构造缓冲区（零额外拷贝）
     pub fn from_vec(usage: BufferUsage, vec: Vec<T>) -> Self {
         let count = vec.len();
         let capacity = vec.capacity();
@@ -222,9 +222,7 @@ impl<T: Copy> Buffer<T> {
 
     /// 获取数据作为类型化切片（只读）
     pub fn as_slice(&self) -> &[T] {
-        unsafe {
-            std::slice::from_raw_parts(self.data.as_ptr() as *const T, self.count)
-        }
+        unsafe { std::slice::from_raw_parts(self.data.as_ptr() as *const T, self.count) }
     }
 
     /// 随机访问（安全）
@@ -257,7 +255,8 @@ impl<T: Copy> Buffer<T> {
     fn grow(&mut self, additional: usize) {
         let new_cap = (self.capacity + additional).max(16).next_power_of_two();
         self.capacity = new_cap;
-        self.data.reserve(new_cap * std::mem::size_of::<T>() - self.data.len());
+        self.data
+            .reserve(new_cap * std::mem::size_of::<T>() - self.data.len());
     }
 }
 

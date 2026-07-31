@@ -320,8 +320,7 @@ pub enum ConeEmitMode {
 }
 
 /// 发射形状
-#[derive(Clone, Debug)]
-#[derive(Default)]
+#[derive(Clone, Debug, Default)]
 pub enum EmitShape {
     /// 点发射
     #[default]
@@ -339,7 +338,6 @@ pub enum EmitShape {
     /// 边缘发射 (start, end)
     Edge(Vec3, Vec3),
 }
-
 
 /// 简单随机数生成器trait
 pub trait Rng {
@@ -560,8 +558,7 @@ impl Default for EmissionMode {
 // ============================================================================
 
 /// 粒子渲染模式
-#[derive(Clone, Debug, PartialEq)]
-#[derive(Default)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub enum ParticleRenderMode {
     /// Sprite Billboard（始终面向相机）
     #[default]
@@ -576,10 +573,8 @@ pub enum ParticleRenderMode {
     VerticalBillboard,
 }
 
-
 /// 粒子材质混合模式
-#[derive(Clone, Debug, PartialEq)]
-#[derive(Default)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub enum ParticleBlendMode {
     Opaque,
     Masked,
@@ -587,7 +582,6 @@ pub enum ParticleBlendMode {
     Translucent,
     Additive,
 }
-
 
 // ============================================================================
 // 模块系统
@@ -1141,25 +1135,21 @@ impl ParticleModule for KillModule {
 // ============================================================================
 
 /// 模拟空间
-#[derive(Clone, Debug, PartialEq)]
-#[derive(Default)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub enum SimulationSpace {
     Local,
     #[default]
     World,
 }
 
-
 /// 缩放模式
-#[derive(Clone, Debug, PartialEq)]
-#[derive(Default)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub enum ScalingMode {
     Hierarchy,
     #[default]
     Local,
     ShapeOnly,
 }
-
 
 /// 发射器句柄
 pub type EmitterHandle = u32;
@@ -2140,8 +2130,7 @@ impl IPostProcessPass for SSRPass {
 }
 
 /// 色调映射模式
-#[derive(Clone, Debug, PartialEq)]
-#[derive(Default)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub enum ToneMappingMode {
     Linear,
     Reinhard,
@@ -2151,7 +2140,6 @@ pub enum ToneMappingMode {
     Neutral,
     Filmic,
 }
-
 
 /// 色调映射Pass
 #[derive(Clone, Debug)]
@@ -2477,8 +2465,7 @@ impl IPostProcessPass for FXAAPass {
 }
 
 /// 调试视图模式
-#[derive(Clone, Debug, PartialEq)]
-#[derive(Default)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub enum DebugViewMode {
     #[default]
     None,
@@ -2489,7 +2476,6 @@ pub enum DebugViewMode {
     BloomOnly,
     ColorGradingOnly,
 }
-
 
 /// 调试视图Pass
 #[derive(Clone, Debug)]

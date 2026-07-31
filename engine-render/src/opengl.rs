@@ -29,7 +29,9 @@ impl std::fmt::Display for ShaderError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ShaderError::VertexCompile(msg) => write!(f, "Vertex shader compile error: {}", msg),
-            ShaderError::FragmentCompile(msg) => write!(f, "Fragment shader compile error: {}", msg),
+            ShaderError::FragmentCompile(msg) => {
+                write!(f, "Fragment shader compile error: {}", msg)
+            }
             ShaderError::ProgramLink(msg) => write!(f, "Program link error: {}", msg),
             ShaderError::ResourceCreation(msg) => write!(f, "Resource creation error: {}", msg),
         }
@@ -120,7 +122,7 @@ struct SpriteUniforms {
 
 impl GlRenderer {
     /// 创建 OpenGL 渲染器
-    /// 
+    ///
     /// # Panics
     /// 如果着色器编译失败则 panic，推荐使用 `try_new()` 替代
     pub fn new(gl: glow::Context, width: u32, height: u32) -> Self {
@@ -147,7 +149,7 @@ impl GlRenderer {
     }
 
     /// 尝试创建 OpenGL 渲染器（推荐使用）
-    /// 
+    ///
     /// 返回 `Result<GlRenderer, ShaderError>` 如果初始化成功，否则返回着色器编译/链接错误
     pub fn try_new(gl: glow::Context, width: u32, height: u32) -> Result<Self, ShaderError> {
         unsafe {
@@ -156,9 +158,11 @@ impl GlRenderer {
             let color_program = Self::create_color_program(&gl)?;
 
             // 创建缓冲区
-            let vertex_buffer = gl.create_buffer()
+            let vertex_buffer = gl
+                .create_buffer()
                 .map_err(|e| ShaderError::ResourceCreation(e.to_string()))?;
-            let index_buffer = gl.create_buffer()
+            let index_buffer = gl
+                .create_buffer()
                 .map_err(|e| ShaderError::ResourceCreation(e.to_string()))?;
 
             // 获取 uniform 位置
@@ -274,7 +278,8 @@ impl GlRenderer {
                 return Err(ShaderError::FragmentCompile(msg));
             }
 
-            let program = gl.create_program()
+            let program = gl
+                .create_program()
                 .map_err(|e| ShaderError::ResourceCreation(e.to_string()))?;
 
             gl.attach_shader(program, vertex_shader);
@@ -350,7 +355,8 @@ impl GlRenderer {
                 return Err(ShaderError::FragmentCompile(msg));
             }
 
-            let program = gl.create_program()
+            let program = gl
+                .create_program()
                 .map_err(|e| ShaderError::ResourceCreation(e.to_string()))?;
 
             gl.attach_shader(program, vertex_shader);

@@ -1,7 +1,5 @@
 //! DPI 缩放示例 — 打印 DPI 变化
-use engine_window::{
-    Event, EventLoop, WindowBuilder, WindowEvent,
-};
+use engine_window::{Event, EventLoop, WindowBuilder, WindowEvent};
 
 fn main() {
     let event_loop = EventLoop::new().expect("Failed to create event loop");
@@ -13,9 +11,7 @@ fn main() {
 
     println!("=== DPI Demo ===");
     println!("Current scale factor: {:.2}", window.scale_factor());
-    println!(
-        "Move window between monitors to see DPI changes. Close the window to exit."
-    );
+    println!("Move window between monitors to see DPI changes. Close the window to exit.");
 
     event_loop
         .run(move |event, elwt| {

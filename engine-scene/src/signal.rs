@@ -231,7 +231,8 @@ mod tests {
 
         let mut bus = SignalBus::new();
         let c = count.clone();
-        bus.get_or_create("my_signal").connect(Box::new(move |_| c.set(c.get() + 1)));
+        bus.get_or_create("my_signal")
+            .connect(Box::new(move |_| c.set(c.get() + 1)));
         bus.emit("my_signal", &[]);
         bus.emit("my_signal", &[]);
 

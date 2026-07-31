@@ -481,7 +481,8 @@ impl FlexLayoutEngine {
         }
 
         // 5. 计算主轴起点偏移（justify-content）
-        let used_main: f32 = final_main.iter().sum::<f32>() + margins_main.iter().sum::<f32>() + total_gap;
+        let used_main: f32 =
+            final_main.iter().sum::<f32>() + margins_main.iter().sum::<f32>() + total_gap;
         let free = (container_main - used_main).max(0.0);
         let (main_start_offset, between_gap) = match container.justify_content {
             JustifyContent::FlexStart => (0.0, container.gap),
@@ -517,11 +518,12 @@ impl FlexLayoutEngine {
             let cross_size = final_cross[i];
 
             // 主轴位置（考虑 margin）
-            let main_pos = cursor + if is_row {
-                item.margin.left
-            } else {
-                item.margin.top
-            };
+            let main_pos = cursor
+                + if is_row {
+                    item.margin.left
+                } else {
+                    item.margin.top
+                };
 
             // 交叉轴对齐
             let align = match item.align_self {
@@ -557,9 +559,19 @@ impl FlexLayoutEngine {
 
             // 转换回 x/y
             let (x, y, w, h) = if is_row {
-                (inner_x + main_pos, inner_y + cross_pos_with_margin, main_size, final_cross_size)
+                (
+                    inner_x + main_pos,
+                    inner_y + cross_pos_with_margin,
+                    main_size,
+                    final_cross_size,
+                )
             } else {
-                (inner_x + cross_pos_with_margin, inner_y + main_pos, final_cross_size, main_size)
+                (
+                    inner_x + cross_pos_with_margin,
+                    inner_y + main_pos,
+                    final_cross_size,
+                    main_size,
+                )
             };
 
             // 处理反向：在容器内翻转主轴位置
@@ -785,7 +797,12 @@ impl AnchorLayoutEngine {
             (x, y, size.x, size.y)
         } else {
             // 拉伸模式：由 min/max 决定
-            ((min_x).min(max_x), (min_y).min(max_y), (max_x - min_x).abs(), (max_y - min_y).abs())
+            (
+                (min_x).min(max_x),
+                (min_y).min(max_y),
+                (max_x - min_x).abs(),
+                (max_y - min_y).abs(),
+            )
         };
 
         Rect::new(x, y, w.max(0.0), h.max(0.0))
@@ -1194,8 +1211,16 @@ mod tests {
         let container_rect = Rect::new(0.0, 0.0, 800.0, 100.0);
         let container = FlexContainer::new().with_direction(FlexDirection::Row);
         let items = vec![
-            (FlexItem::new().with_main_size(Dimension::px(100.0)), 100.0, 50.0),
-            (FlexItem::new().with_main_size(Dimension::px(200.0)), 200.0, 50.0),
+            (
+                FlexItem::new().with_main_size(Dimension::px(100.0)),
+                100.0,
+                50.0,
+            ),
+            (
+                FlexItem::new().with_main_size(Dimension::px(200.0)),
+                200.0,
+                50.0,
+            ),
         ];
         let results = FlexLayoutEngine::layout(container_rect, &container, &items);
         assert_eq!(results.len(), 2);
@@ -1212,15 +1237,39 @@ mod tests {
         let container_rect = Rect::new(0.0, 0.0, 800.0, 100.0);
         let container = FlexContainer::new().with_direction(FlexDirection::Row);
         let items = vec![
-            (FlexItem::new().with_main_size(Dimension::px(100.0)), 100.0, 50.0),
-            (FlexItem::new().with_grow(1.0).with_main_size(Dimension::px(100.0)), 100.0, 50.0),
-            (FlexItem::new().with_grow(1.0).with_main_size(Dimension::px(100.0)), 100.0, 50.0),
+            (
+                FlexItem::new().with_main_size(Dimension::px(100.0)),
+                100.0,
+                50.0,
+            ),
+            (
+                FlexItem::new()
+                    .with_grow(1.0)
+                    .with_main_size(Dimension::px(100.0)),
+                100.0,
+                50.0,
+            ),
+            (
+                FlexItem::new()
+                    .with_grow(1.0)
+                    .with_main_size(Dimension::px(100.0)),
+                100.0,
+                50.0,
+            ),
         ];
         let results = FlexLayoutEngine::layout(container_rect, &container, &items);
         // 总固定 300，剩余 500，两个 grow=1 各分 250
         assert_eq!(results[0].rect.w, 100.0);
-        assert!((results[1].rect.w - 350.0).abs() < 0.1, "got {}", results[1].rect.w);
-        assert!((results[2].rect.w - 350.0).abs() < 0.1, "got {}", results[2].rect.w);
+        assert!(
+            (results[1].rect.w - 350.0).abs() < 0.1,
+            "got {}",
+            results[1].rect.w
+        );
+        assert!(
+            (results[2].rect.w - 350.0).abs() < 0.1,
+            "got {}",
+            results[2].rect.w
+        );
     }
 
     #[test]
@@ -1228,13 +1277,33 @@ mod tests {
         let container_rect = Rect::new(0.0, 0.0, 200.0, 100.0);
         let container = FlexContainer::new().with_direction(FlexDirection::Row);
         let items = vec![
-            (FlexItem::new().with_main_size(Dimension::px(150.0)).with_shrink(1.0), 150.0, 50.0),
-            (FlexItem::new().with_main_size(Dimension::px(150.0)).with_shrink(1.0), 150.0, 50.0),
+            (
+                FlexItem::new()
+                    .with_main_size(Dimension::px(150.0))
+                    .with_shrink(1.0),
+                150.0,
+                50.0,
+            ),
+            (
+                FlexItem::new()
+                    .with_main_size(Dimension::px(150.0))
+                    .with_shrink(1.0),
+                150.0,
+                50.0,
+            ),
         ];
         let results = FlexLayoutEngine::layout(container_rect, &container, &items);
         // 总需求 300，容器 200，缺 100，各 shrink 50
-        assert!((results[0].rect.w - 100.0).abs() < 0.1, "got {}", results[0].rect.w);
-        assert!((results[1].rect.w - 100.0).abs() < 0.1, "got {}", results[1].rect.w);
+        assert!(
+            (results[0].rect.w - 100.0).abs() < 0.1,
+            "got {}",
+            results[0].rect.w
+        );
+        assert!(
+            (results[1].rect.w - 100.0).abs() < 0.1,
+            "got {}",
+            results[1].rect.w
+        );
     }
 
     #[test]
@@ -1244,13 +1313,29 @@ mod tests {
             .with_direction(FlexDirection::Row)
             .with_justify(JustifyContent::Center);
         let items = vec![
-            (FlexItem::new().with_main_size(Dimension::px(100.0)), 100.0, 50.0),
-            (FlexItem::new().with_main_size(Dimension::px(100.0)), 100.0, 50.0),
+            (
+                FlexItem::new().with_main_size(Dimension::px(100.0)),
+                100.0,
+                50.0,
+            ),
+            (
+                FlexItem::new().with_main_size(Dimension::px(100.0)),
+                100.0,
+                50.0,
+            ),
         ];
         let results = FlexLayoutEngine::layout(container_rect, &container, &items);
         // 总用 200，剩余 600，居中起点 300
-        assert!((results[0].rect.x - 300.0).abs() < 0.1, "got {}", results[0].rect.x);
-        assert!((results[1].rect.x - 400.0).abs() < 0.1, "got {}", results[1].rect.x);
+        assert!(
+            (results[0].rect.x - 300.0).abs() < 0.1,
+            "got {}",
+            results[0].rect.x
+        );
+        assert!(
+            (results[1].rect.x - 400.0).abs() < 0.1,
+            "got {}",
+            results[1].rect.x
+        );
     }
 
     #[test]
@@ -1260,15 +1345,35 @@ mod tests {
             .with_direction(FlexDirection::Row)
             .with_justify(JustifyContent::SpaceBetween);
         let items = vec![
-            (FlexItem::new().with_main_size(Dimension::px(100.0)), 100.0, 50.0),
-            (FlexItem::new().with_main_size(Dimension::px(100.0)), 100.0, 50.0),
-            (FlexItem::new().with_main_size(Dimension::px(100.0)), 100.0, 50.0),
+            (
+                FlexItem::new().with_main_size(Dimension::px(100.0)),
+                100.0,
+                50.0,
+            ),
+            (
+                FlexItem::new().with_main_size(Dimension::px(100.0)),
+                100.0,
+                50.0,
+            ),
+            (
+                FlexItem::new().with_main_size(Dimension::px(100.0)),
+                100.0,
+                50.0,
+            ),
         ];
         let results = FlexLayoutEngine::layout(container_rect, &container, &items);
         // 总用 300，剩余 500，2 个间隙各 250
         assert!((results[0].rect.x - 0.0).abs() < 0.1);
-        assert!((results[1].rect.x - 350.0).abs() < 0.1, "got {}", results[1].rect.x);
-        assert!((results[2].rect.x - 700.0).abs() < 0.1, "got {}", results[2].rect.x);
+        assert!(
+            (results[1].rect.x - 350.0).abs() < 0.1,
+            "got {}",
+            results[1].rect.x
+        );
+        assert!(
+            (results[2].rect.x - 700.0).abs() < 0.1,
+            "got {}",
+            results[2].rect.x
+        );
     }
 
     #[test]
@@ -1276,8 +1381,16 @@ mod tests {
         let container_rect = Rect::new(0.0, 0.0, 100.0, 800.0);
         let container = FlexContainer::new().with_direction(FlexDirection::Column);
         let items = vec![
-            (FlexItem::new().with_main_size(Dimension::px(100.0)), 100.0, 50.0),
-            (FlexItem::new().with_main_size(Dimension::px(200.0)), 200.0, 50.0),
+            (
+                FlexItem::new().with_main_size(Dimension::px(100.0)),
+                100.0,
+                50.0,
+            ),
+            (
+                FlexItem::new().with_main_size(Dimension::px(200.0)),
+                200.0,
+                50.0,
+            ),
         ];
         let results = FlexLayoutEngine::layout(container_rect, &container, &items);
         assert_eq!(results[0].rect.y, 0.0);
@@ -1291,13 +1404,29 @@ mod tests {
         let container_rect = Rect::new(0.0, 0.0, 800.0, 100.0);
         let container = FlexContainer::new().with_direction(FlexDirection::RowReverse);
         let items = vec![
-            (FlexItem::new().with_main_size(Dimension::px(100.0)), 100.0, 50.0),
-            (FlexItem::new().with_main_size(Dimension::px(100.0)), 100.0, 50.0),
+            (
+                FlexItem::new().with_main_size(Dimension::px(100.0)),
+                100.0,
+                50.0,
+            ),
+            (
+                FlexItem::new().with_main_size(Dimension::px(100.0)),
+                100.0,
+                50.0,
+            ),
         ];
         let results = FlexLayoutEngine::layout(container_rect, &container, &items);
         // 反向：第一个子项应在最右侧
-        assert!((results[0].rect.x - 700.0).abs() < 0.1, "got {}", results[0].rect.x);
-        assert!((results[1].rect.x - 600.0).abs() < 0.1, "got {}", results[1].rect.x);
+        assert!(
+            (results[0].rect.x - 700.0).abs() < 0.1,
+            "got {}",
+            results[0].rect.x
+        );
+        assert!(
+            (results[1].rect.x - 600.0).abs() < 0.1,
+            "got {}",
+            results[1].rect.x
+        );
     }
 
     #[test]
@@ -1306,12 +1435,20 @@ mod tests {
         let container = FlexContainer::new()
             .with_direction(FlexDirection::Row)
             .with_align_items(AlignItems::Center);
-        let items = vec![
-            (FlexItem::new().with_main_size(Dimension::px(100.0)).with_cross_size(Dimension::px(20.0)), 100.0, 20.0),
-        ];
+        let items = vec![(
+            FlexItem::new()
+                .with_main_size(Dimension::px(100.0))
+                .with_cross_size(Dimension::px(20.0)),
+            100.0,
+            20.0,
+        )];
         let results = FlexLayoutEngine::layout(container_rect, &container, &items);
         // 容器高 100，子项高 20，居中 y=40
-        assert!((results[0].rect.y - 40.0).abs() < 0.1, "got {}", results[0].rect.y);
+        assert!(
+            (results[0].rect.y - 40.0).abs() < 0.1,
+            "got {}",
+            results[0].rect.y
+        );
         assert_eq!(results[0].rect.h, 20.0);
     }
 
@@ -1321,12 +1458,20 @@ mod tests {
         let container = FlexContainer::new()
             .with_direction(FlexDirection::Row)
             .with_align_items(AlignItems::Stretch);
-        let items = vec![
-            (FlexItem::new().with_main_size(Dimension::px(100.0)).with_cross_size(Dimension::Auto), 100.0, 20.0),
-        ];
+        let items = vec![(
+            FlexItem::new()
+                .with_main_size(Dimension::px(100.0))
+                .with_cross_size(Dimension::Auto),
+            100.0,
+            20.0,
+        )];
         let results = FlexLayoutEngine::layout(container_rect, &container, &items);
         // 拉伸：子项高应等于容器高
-        assert!((results[0].rect.h - 100.0).abs() < 0.1, "got {}", results[0].rect.h);
+        assert!(
+            (results[0].rect.h - 100.0).abs() < 0.1,
+            "got {}",
+            results[0].rect.h
+        );
     }
 
     #[test]
@@ -1336,14 +1481,34 @@ mod tests {
             .with_direction(FlexDirection::Row)
             .with_gap(10.0);
         let items = vec![
-            (FlexItem::new().with_main_size(Dimension::px(100.0)), 100.0, 50.0),
-            (FlexItem::new().with_main_size(Dimension::px(100.0)), 100.0, 50.0),
-            (FlexItem::new().with_main_size(Dimension::px(100.0)), 100.0, 50.0),
+            (
+                FlexItem::new().with_main_size(Dimension::px(100.0)),
+                100.0,
+                50.0,
+            ),
+            (
+                FlexItem::new().with_main_size(Dimension::px(100.0)),
+                100.0,
+                50.0,
+            ),
+            (
+                FlexItem::new().with_main_size(Dimension::px(100.0)),
+                100.0,
+                50.0,
+            ),
         ];
         let results = FlexLayoutEngine::layout(container_rect, &container, &items);
         assert_eq!(results[0].rect.x, 0.0);
-        assert!((results[1].rect.x - 110.0).abs() < 0.1, "got {}", results[1].rect.x);
-        assert!((results[2].rect.x - 220.0).abs() < 0.1, "got {}", results[2].rect.x);
+        assert!(
+            (results[1].rect.x - 110.0).abs() < 0.1,
+            "got {}",
+            results[1].rect.x
+        );
+        assert!(
+            (results[2].rect.x - 220.0).abs() < 0.1,
+            "got {}",
+            results[2].rect.x
+        );
     }
 
     #[test]
@@ -1352,9 +1517,11 @@ mod tests {
         let container = FlexContainer::new()
             .with_direction(FlexDirection::Row)
             .with_padding(Padding::uniform(20.0));
-        let items = vec![
-            (FlexItem::new().with_main_size(Dimension::px(100.0)), 100.0, 50.0),
-        ];
+        let items = vec![(
+            FlexItem::new().with_main_size(Dimension::px(100.0)),
+            100.0,
+            50.0,
+        )];
         let results = FlexLayoutEngine::layout(container_rect, &container, &items);
         // 内边距 20，子项起点 x=20, y=20
         assert_eq!(results[0].rect.x, 20.0);
@@ -1373,13 +1540,21 @@ mod tests {
                 100.0,
                 50.0,
             ),
-            (FlexItem::new().with_main_size(Dimension::px(100.0)), 100.0, 50.0),
+            (
+                FlexItem::new().with_main_size(Dimension::px(100.0)),
+                100.0,
+                50.0,
+            ),
         ];
         let results = FlexLayoutEngine::layout(container_rect, &container, &items);
         // 第一个子项有左 margin 10，所以 x=10
         assert_eq!(results[0].rect.x, 10.0);
         // 第二个子项应在第一个之后 + margin right 10
-        assert!((results[1].rect.x - 120.0).abs() < 0.1, "got {}", results[1].rect.x);
+        assert!(
+            (results[1].rect.x - 120.0).abs() < 0.1,
+            "got {}",
+            results[1].rect.x
+        );
     }
 
     // ===== Anchor 布局测试 =====

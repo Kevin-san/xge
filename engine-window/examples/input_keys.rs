@@ -1,7 +1,5 @@
 //! 键盘输入示例 — 实时打印按键事件
-use engine_window::{
-    Event, EventLoop, InputModule, KeyCode, WindowBuilder, WindowEvent,
-};
+use engine_window::{Event, EventLoop, InputModule, KeyCode, WindowBuilder, WindowEvent};
 
 fn main() {
     let event_loop = EventLoop::new().expect("Failed to create event loop");

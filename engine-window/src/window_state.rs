@@ -54,12 +54,8 @@ impl WindowState {
                     self.focused.store(*focused, Ordering::SeqCst);
                 }
                 winit::event::WindowEvent::Resized(physical_size) => {
-                    self.size
-                        .0
-                        .store(physical_size.width, Ordering::SeqCst);
-                    self.size
-                        .1
-                        .store(physical_size.height, Ordering::SeqCst);
+                    self.size.0.store(physical_size.width, Ordering::SeqCst);
+                    self.size.1.store(physical_size.height, Ordering::SeqCst);
                 }
                 winit::event::WindowEvent::Occluded(occluded) => {
                     // 窗口被遮挡时视为不可见

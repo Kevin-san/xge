@@ -494,7 +494,11 @@ mod tests {
         let q = Quat::from_axis_angle(Vec3::Y, std::f32::consts::FRAC_PI_2);
         let v = q * Vec3::X;
         // 90 degree Y rotation of X gives -Z (right-hand rule)
-        assert!((v.z + 1.0).abs() < 0.001, "90 degree Y rotation of X should give -Z, got {:?}", v);
+        assert!(
+            (v.z + 1.0).abs() < 0.001,
+            "90 degree Y rotation of X should give -Z, got {:?}",
+            v
+        );
     }
 
     #[test]
@@ -502,6 +506,10 @@ mod tests {
         let q = Quat::from_axis_angle(Vec3::Y, std::f32::consts::FRAC_PI_2);
         let q2 = q * q; // Should be 180 degree rotation around Y
         let v = q2 * Vec3::X;
-        assert!((v.x + 1.0).abs() < 0.001, "double rotation should give -X, got {:?}", v);
+        assert!(
+            (v.x + 1.0).abs() < 0.001,
+            "double rotation should give -X, got {:?}",
+            v
+        );
     }
 }

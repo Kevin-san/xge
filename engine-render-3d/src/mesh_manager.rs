@@ -244,7 +244,7 @@ impl HotReloadTracker {
     /// Check whether a file's hash differs from the stored value.
     ///
     /// Returns true if the file has changed (or records a change). Unknown paths
-    /// return false. Changed paths are recorded until [`clear_changed`] is called.
+    /// return false. Changed paths are recorded until [`Self::clear_changed`] is called.
     pub fn check_changed(&mut self, path: &str, current_hash: u64) -> bool {
         match self.file_hashes.get(path) {
             Some(&stored) => {
@@ -787,7 +787,11 @@ mod tests {
         let handle = reloader.load_mesh(Mesh3D::cube(1.0), "cube.mesh");
         // cube has 24 vertices
         assert_eq!(
-            reloader.manager_mut().get(handle.clone()).unwrap().vertex_count(),
+            reloader
+                .manager_mut()
+                .get(handle.clone())
+                .unwrap()
+                .vertex_count(),
             24
         );
         reloader.check_and_reload("cube.mesh", Mesh3D::sphere(1.0, 16, 8));

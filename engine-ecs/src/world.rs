@@ -66,10 +66,8 @@ impl World {
     pub fn spawn(&mut self) -> Entity {
         let entity = self.entities.allocate();
         let row = self.archetypes.finalize_push_entity(0, entity);
-        self.entities.set_location(
-            entity.id(),
-            EntityLocation { archetype: 0, row },
-        );
+        self.entities
+            .set_location(entity.id(), EntityLocation { archetype: 0, row });
         entity
     }
 
@@ -165,11 +163,9 @@ impl World {
 
         if has_c {
             // 原地替换
-            return self.archetypes.replace_component::<C>(
-                loc.archetype,
-                loc.row,
-                component,
-            );
+            return self
+                .archetypes
+                .replace_component::<C>(loc.archetype, loc.row, component);
         }
 
         // 构造新的组件集合
@@ -187,14 +183,12 @@ impl World {
         // 从旧 archetype 迁移（除 C 外，其实旧 archetype 并没有 C，所以这里是全部列）
         // move_all_columns_row 同时删除 src arch 的 row（包括所有列和 entities 列表）
         // 并返回被 swap 到 row 位置的 entity
-        let swapped = self.archetypes
-            .move_all_columns_row(loc.archetype, loc.row as usize, new_arch_id);
+        let swapped =
+            self.archetypes
+                .move_all_columns_row(loc.archetype, loc.row as usize, new_arch_id);
         // 插入 C 到新 archetype
-        self.archetypes.push_entity_with_component::<C>(
-            new_arch_id,
-            entity,
-            component,
-        );
+        self.archetypes
+            .push_entity_with_component::<C>(new_arch_id, entity, component);
         // 把 entity 加到新 archetype 的 entities vec
         let new_row = self.archetypes.finalize_push_entity(new_arch_id, entity);
 
@@ -213,7 +207,10 @@ impl World {
         // 更新当前 entity 的 location
         self.entities.set_location(
             entity.id(),
-            EntityLocation { archetype: new_arch_id, row: new_row },
+            EntityLocation {
+                archetype: new_arch_id,
+                row: new_row,
+            },
         );
 
         None
@@ -285,7 +282,10 @@ impl World {
         // 更新当前 entity 的 location
         self.entities.set_location(
             entity.id(),
-            EntityLocation { archetype: new_arch_id, row: new_row },
+            EntityLocation {
+                archetype: new_arch_id,
+                row: new_row,
+            },
         );
 
         // 对被移除的组件 value 调用 on_remove
@@ -299,7 +299,10 @@ impl World {
     /// 迭代遍历（单组件）。收集所有拥有 C 的 entity 并对其调用 f。
     pub fn for_each<C: Component, F: FnMut(Entity, &C)>(&self, mut f: F) {
         let required = ComponentSet::new(vec![TypeId::of::<C>()]);
-        for arch in self.archetypes.iter_matching(&required, &ComponentSet::empty()) {
+        for arch in self
+            .archetypes
+            .iter_matching(&required, &ComponentSet::empty())
+        {
             if let Some(slice) = self.archetypes.column_slice::<C>(arch.id) {
                 for (idx, comp) in slice.iter().enumerate() {
                     f(arch.entities[idx], comp);
@@ -332,7 +335,10 @@ impl World {
     pub fn query_collect<C: Component>(&self) -> Vec<(Entity, &C)> {
         let mut result = Vec::new();
         let required = ComponentSet::new(vec![TypeId::of::<C>()]);
-        for arch in self.archetypes.iter_matching(&required, &ComponentSet::empty()) {
+        for arch in self
+            .archetypes
+            .iter_matching(&required, &ComponentSet::empty())
+        {
             if let Some(slice) = self.archetypes.column_slice::<C>(arch.id) {
                 for (idx, comp) in slice.iter().enumerate() {
                     result.push((arch.entities[idx], comp));
@@ -424,7 +430,12 @@ mod tests {
     fn test_world_insert_and_get() {
         let mut world = World::new();
         let e = world.spawn();
-        world.insert(e, Position { x: std::f32::consts::PI });
+        world.insert(
+            e,
+            Position {
+                x: std::f32::consts::PI,
+            },
+        );
         let p = world.get_component::<Position>(e).unwrap();
         assert_eq!(p.x, std::f32::consts::PI);
     }
@@ -526,7 +537,12 @@ mod tests {
         // 模拟 set_parent(parent, Some(root))
         world.insert(parent, ParentComp(root));
         if world.get_component::<ChildrenComp>(root).is_none() {
-            world.insert(root, ChildrenComp { entities: Vec::new() });
+            world.insert(
+                root,
+                ChildrenComp {
+                    entities: Vec::new(),
+                },
+            );
         }
         if let Some(children) = world.get_component_mut::<ChildrenComp>(root) {
             children.entities.push(parent);
@@ -535,21 +551,34 @@ mod tests {
         // 模拟 set_parent(child, Some(parent))
         world.insert(child, ParentComp(parent));
         if world.get_component::<ChildrenComp>(parent).is_none() {
-            world.insert(parent, ChildrenComp { entities: Vec::new() });
+            world.insert(
+                parent,
+                ChildrenComp {
+                    entities: Vec::new(),
+                },
+            );
         }
         if let Some(children) = world.get_component_mut::<ChildrenComp>(parent) {
             children.entities.push(child);
         }
 
-        assert!(world.get_component::<ParentComp>(child).is_some(),
-            "child should have ParentComp");
+        assert!(
+            world.get_component::<ParentComp>(child).is_some(),
+            "child should have ParentComp"
+        );
         assert_eq!(world.get_component::<ParentComp>(child).unwrap().0, parent);
-        assert!(world.get_component::<ParentComp>(parent).is_some(),
-            "parent should have ParentComp");
-        assert!(world.get_component::<ChildrenComp>(root).is_some(),
-            "root should have ChildrenComp");
-        assert!(world.get_component::<ChildrenComp>(parent).is_some(),
-            "parent should have ChildrenComp");
+        assert!(
+            world.get_component::<ParentComp>(parent).is_some(),
+            "parent should have ParentComp"
+        );
+        assert!(
+            world.get_component::<ChildrenComp>(root).is_some(),
+            "root should have ChildrenComp"
+        );
+        assert!(
+            world.get_component::<ChildrenComp>(parent).is_some(),
+            "parent should have ChildrenComp"
+        );
 
         let ancestors: Vec<Entity> = {
             let mut result = Vec::new();
@@ -560,6 +589,11 @@ mod tests {
             }
             result
         };
-        assert_eq!(ancestors.len(), 2, "expected 2 ancestors, got {}", ancestors.len());
+        assert_eq!(
+            ancestors.len(),
+            2,
+            "expected 2 ancestors, got {}",
+            ancestors.len()
+        );
     }
 }

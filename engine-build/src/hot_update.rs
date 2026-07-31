@@ -277,33 +277,37 @@ impl HotUpdatePatch {
     /// Verify the patch signature against a public key.
     /// Returns Ok(()) if signature is valid, Err if missing or invalid.
     pub fn verify(&self, public_key: &VerifyingKey) -> BuildResult<()> {
-        let sig_str = self.signature.as_ref()
-            .ok_or_else(|| crate::BuildError::signature_error("Patch has no signature".to_string()))?;
+        let sig_str = self.signature.as_ref().ok_or_else(|| {
+            crate::BuildError::signature_error("Patch has no signature".to_string())
+        })?;
 
         let sig_bytes = base64_decode(sig_str)
             .map_err(|e| crate::BuildError::signature_error(format!("Invalid base64: {}", e)))?;
 
-        let sig = Signature::from_slice(&sig_bytes)
-            .map_err(|_| crate::BuildError::signature_error("Signature has wrong length".to_string()))?;
+        let sig = Signature::from_slice(&sig_bytes).map_err(|_| {
+            crate::BuildError::signature_error("Signature has wrong length".to_string())
+        })?;
 
         let payload = self.signing_payload()?;
-        public_key
-            .verify(&payload, &sig)
-            .map_err(|_| crate::BuildError::signature_error("Signature verification failed".to_string()))
+        public_key.verify(&payload, &sig).map_err(|_| {
+            crate::BuildError::signature_error("Signature verification failed".to_string())
+        })
     }
 
     /// Verify the patch signature, returning None if unsigned, Some(Ok) if valid, Some(Err) if invalid.
     pub fn verify_opt(&self, public_key: &VerifyingKey) -> Option<BuildResult<()>> {
         if let Some(sig_str) = &self.signature {
             let result = (|| {
-                let sig_bytes = base64_decode(sig_str)
-                    .map_err(|e| crate::BuildError::signature_error(format!("Invalid base64: {}", e)))?;
-                let sig = Signature::from_slice(&sig_bytes)
-                    .map_err(|_| crate::BuildError::signature_error("Signature has wrong length".to_string()))?;
+                let sig_bytes = base64_decode(sig_str).map_err(|e| {
+                    crate::BuildError::signature_error(format!("Invalid base64: {}", e))
+                })?;
+                let sig = Signature::from_slice(&sig_bytes).map_err(|_| {
+                    crate::BuildError::signature_error("Signature has wrong length".to_string())
+                })?;
                 let payload = self.signing_payload()?;
-                public_key
-                    .verify(&payload, &sig)
-                    .map_err(|_| crate::BuildError::signature_error("Signature verification failed".to_string()))
+                public_key.verify(&payload, &sig).map_err(|_| {
+                    crate::BuildError::signature_error("Signature verification failed".to_string())
+                })
             })();
             Some(result)
         } else {
@@ -713,11 +717,7 @@ mod tests {
     fn test_generate_signing_keypair_produces_mismatching_keys() {
         let (k1, v1) = generate_signing_keypair();
         let (_k2, v2) = generate_signing_keypair();
-        let mut p = HotUpdatePatch::new(
-            "1".to_string(),
-            create_test_manifest("1", vec![]),
-            vec![],
-        );
+        let mut p = HotUpdatePatch::new("1".to_string(), create_test_manifest("1", vec![]), vec![]);
         p.sign(&k1).unwrap();
         assert!(p.verify(&v1).is_ok());
         assert!(p.verify(&v2).is_err());
@@ -726,11 +726,7 @@ mod tests {
     #[test]
     fn test_hot_update_patch_is_signed_after_signing() {
         let (k, _v) = generate_signing_keypair();
-        let mut p = HotUpdatePatch::new(
-            "1".to_string(),
-            create_test_manifest("1", vec![]),
-            vec![],
-        );
+        let mut p = HotUpdatePatch::new("1".to_string(), create_test_manifest("1", vec![]), vec![]);
         assert!(!p.is_signed());
         p.sign(&k).unwrap();
         assert!(p.is_signed());

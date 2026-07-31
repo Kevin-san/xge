@@ -1,7 +1,5 @@
 //! 自定义窗口示例 — 使用 WindowConfig 创建 1280x720 窗口
-use engine_window::{
-    Event, EventLoop, WindowConfig, WindowEvent,
-};
+use engine_window::{Event, EventLoop, WindowConfig, WindowEvent};
 
 fn main() {
     let config = WindowConfig::from_title("Custom Window")

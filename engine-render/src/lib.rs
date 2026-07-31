@@ -8,38 +8,40 @@
 #![allow(clippy::needless_range_loop)]
 #![allow(clippy::collapsible_if)]
 //!
-//! # 核心模块
+//! # 核心公开类型
 //!
-//! - [`renderer`] - Renderer trait 与 RenderContext 全局渲染上下文
-//! - [`texture`] - Texture2D 纹理与 Sampler 采样器
-//! - [`image`] - Image CPU 端像素数据
-//! - [`sprite`] - Sprite 精灵结构
-//! - [`sprite_batch`] - SpriteBatch 高效批渲染
-//! - [`animated_sprite`] - AnimatedSprite 帧动画
-//! - [`texture_atlas`] - TextureAtlas 图集打包（Skyline/Guillotine）
-//! - [`camera`] - OrthographicCamera / Camera2D 正交相机
-//! - [`color`] - Color RGBA 颜色与 BlendMode 混合模式
-//! - [`draw_params`] - DrawParams 绘制参数
-//! - Shader / Pipeline / Buffer / BindGroup - 着色器抽象（内部实现）
-//! - DebugRenderer - 调试图形（内部实现）
-//! - [`RenderStats`] - 渲染统计（已公开）
+//! - Renderer / RenderContext - 渲染器抽象与全局上下文
+//! - Texture2D / Sampler - 纹理与采样器
+//! - Image - CPU 端像素数据
+//! - Sprite / AnimatedSprite - 精灵与帧动画
+//! - SpriteBatch / BatchRenderer - 批渲染
+//! - TextureAtlas / TextureAtlasBuilder - 图集打包
+//! - OrthographicCamera / Camera2D - 正交相机
+//! - Color / BlendMode - 颜色与混合模式
+//! - Pipeline / ShaderModule / Buffer - 渲染管线抽象
+//! - RenderStats - 渲染统计
 
 // Re-export commonly used types
 pub use animated_sprite::{AnimatedSprite, LoopMode};
-pub use buffer::{Buffer, IndexBuffer, IndexBuffer16, VertexBuffer, BufferMemoryHint, BufferUsage, VertexFormat};
+pub use buffer::{
+    Buffer, BufferMemoryHint, BufferUsage, IndexBuffer, IndexBuffer16, VertexBuffer, VertexFormat,
+};
 pub use camera::{Camera2D, OrthographicCamera, View, Viewport};
 pub use color::Color;
 pub use debug_renderer::DebugRenderer;
 pub use draw_params::{BlendMode, DrawParams};
 pub use image::Image;
-pub use pipeline::{BindGroup, BindGroupLayout, BlendOperation, ColorWriteMask, CompareFunction, DepthStencilState, Pipeline, PipelineDescriptor, PipelineType, PolygonMode, PrimitiveTopology, BlendFactor};
+pub use pipeline::{
+    BindGroup, BindGroupLayout, BlendFactor, BlendOperation, ColorWriteMask, CompareFunction,
+    DepthStencilState, Pipeline, PipelineDescriptor, PipelineType, PolygonMode, PrimitiveTopology,
+};
 pub use render_stats::RenderStats;
 pub use renderer::{RenderContext, Renderer};
-pub use shader::{ShaderModule, Mesh2D, Vertex2D, VertexLayout, VertexAttr, VertexAttrType};
+pub use shader::{Mesh2D, ShaderModule, Vertex2D, VertexAttr, VertexAttrType, VertexLayout};
 pub use sprite::Rect;
 pub use sprite::Sprite;
 pub use sprite_batch::{BatchRenderer, SpriteBatch};
-pub use texture::{FilterMode, Sampler, Texture2D, TextureHandle, TextureFormat, WrapMode};
+pub use texture::{FilterMode, Sampler, Texture2D, TextureFormat, TextureHandle, WrapMode};
 pub use texture_atlas::{PackAlgorithm, PackResult, TextureAtlas, TextureAtlasBuilder};
 pub use texture_manager::TextureManager;
 

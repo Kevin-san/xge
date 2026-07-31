@@ -1,7 +1,5 @@
 //! 鼠标输入示例 — 实时打印鼠标位置和按钮
-use engine_window::{
-    Event, EventLoop, InputModule, WindowBuilder, WindowEvent,
-};
+use engine_window::{Event, EventLoop, InputModule, WindowBuilder, WindowEvent};
 
 fn main() {
     let event_loop = EventLoop::new().expect("Failed to create event loop");

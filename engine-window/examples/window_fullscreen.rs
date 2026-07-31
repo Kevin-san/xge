@@ -2,8 +2,8 @@
 use engine_window::{
     Event, EventLoop, Fullscreen, InputModule, KeyCode, WindowBuilder, WindowEvent,
 };
-use std::rc::Rc;
 use std::cell::RefCell;
+use std::rc::Rc;
 
 fn main() {
     let event_loop = EventLoop::new().expect("Failed to create event loop");

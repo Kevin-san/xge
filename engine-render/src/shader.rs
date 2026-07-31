@@ -269,9 +269,18 @@ mod tests {
     #[test]
     fn test_mesh2d_new() {
         let vertices = vec![
-            Vertex2D { position: Vec2::new(0.0, 0.0), uv: Vec2::ZERO },
-            Vertex2D { position: Vec2::new(1.0, 0.0), uv: Vec2::new(1.0, 0.0) },
-            Vertex2D { position: Vec2::new(1.0, 1.0), uv: Vec2::ONE },
+            Vertex2D {
+                position: Vec2::new(0.0, 0.0),
+                uv: Vec2::ZERO,
+            },
+            Vertex2D {
+                position: Vec2::new(1.0, 0.0),
+                uv: Vec2::new(1.0, 0.0),
+            },
+            Vertex2D {
+                position: Vec2::new(1.0, 1.0),
+                uv: Vec2::ONE,
+            },
         ];
         let mesh = Mesh2D::new(vertices, vec![0, 1, 2]);
         assert_eq!(mesh.vertices().len(), 3);

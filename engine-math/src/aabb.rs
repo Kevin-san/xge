@@ -15,14 +15,20 @@ impl AABB {
 
     #[inline]
     pub const fn new(center: Vec3, half_extents: Vec3) -> Self {
-        Self { center, half_extents }
+        Self {
+            center,
+            half_extents,
+        }
     }
 
     #[inline]
     pub fn from_min_max(min: Vec3, max: Vec3) -> Self {
         let center = (min + max) * 0.5;
         let half_extents = (max - min) * 0.5;
-        Self { center, half_extents }
+        Self {
+            center,
+            half_extents,
+        }
     }
 
     #[inline]
@@ -38,9 +44,12 @@ impl AABB {
     pub fn contains(&self, point: Vec3) -> bool {
         let min = self.min();
         let max = self.max();
-        point.x >= min.x && point.x <= max.x
-            && point.y >= min.y && point.y <= max.y
-            && point.z >= min.z && point.z <= max.z
+        point.x >= min.x
+            && point.x <= max.x
+            && point.y >= min.y
+            && point.y <= max.y
+            && point.z >= min.z
+            && point.z <= max.z
     }
 
     pub fn intersects(&self, other: &Self) -> bool {
@@ -59,7 +68,11 @@ impl AABB {
 
 impl fmt::Display for AABB {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "AABB(center: {}, half_extents: {})", self.center, self.half_extents)
+        write!(
+            f,
+            "AABB(center: {}, half_extents: {})",
+            self.center, self.half_extents
+        )
     }
 }
 

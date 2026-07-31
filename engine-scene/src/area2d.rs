@@ -236,7 +236,10 @@ mod tests {
 
     #[test]
     fn test_area2d_with_shape_rectangle() {
-        let area = Area2D::with_shape(ColliderShape::Rectangle { width: 10.0, height: 10.0 });
+        let area = Area2D::with_shape(ColliderShape::Rectangle {
+            width: 10.0,
+            height: 10.0,
+        });
         assert!(area.is_sensor);
     }
 
@@ -325,7 +328,10 @@ mod tests {
 
     #[test]
     fn test_area2d_with_shape_sensor_flag() {
-        let area = Area2D::with_shape(ColliderShape::Rectangle { width: 10.0, height: 10.0 });
+        let area = Area2D::with_shape(ColliderShape::Rectangle {
+            width: 10.0,
+            height: 10.0,
+        });
         assert!(area.is_sensor);
     }
 }

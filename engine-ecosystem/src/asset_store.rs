@@ -429,7 +429,9 @@ impl RemoteAssetClient {
     pub fn ping(&self) -> anyhow::Result<()> {
         let client = ureq::Agent::new();
         let url = format!("{}/ping", self.base_url);
-        let mut req = client.get(&url).timeout(std::time::Duration::from_millis(self.timeout_ms));
+        let mut req = client
+            .get(&url)
+            .timeout(std::time::Duration::from_millis(self.timeout_ms));
         if let Some(ref key) = self.api_key {
             req = req.set("Authorization", &format!("Bearer {}", key));
         }
@@ -437,10 +439,7 @@ impl RemoteAssetClient {
         if response.status() < 400 {
             Ok(())
         } else {
-            Err(anyhow::anyhow!(
-                "Server returned {}",
-                response.status()
-            ))
+            Err(anyhow::anyhow!("Server returned {}", response.status()))
         }
     }
 
@@ -448,23 +447,25 @@ impl RemoteAssetClient {
     pub fn list_assets(&self) -> anyhow::Result<Vec<AssetSummary>> {
         let client = ureq::Agent::new();
         let url = format!("{}/api/v1/assets", self.base_url);
-        let mut req = client.get(&url).timeout(std::time::Duration::from_millis(self.timeout_ms));
+        let mut req = client
+            .get(&url)
+            .timeout(std::time::Duration::from_millis(self.timeout_ms));
         if let Some(ref key) = self.api_key {
             req = req.set("Authorization", &format!("Bearer {}", key));
         }
         let response = req.call()?;
         if response.status() >= 400 {
-            return Err(anyhow::anyhow!(
-                "Server returned {}",
-                response.status()
-            ));
+            return Err(anyhow::anyhow!("Server returned {}", response.status()));
         }
         let assets: Vec<AssetSummary> = response.into_json()?;
         Ok(assets)
     }
 
     /// 检查资源是否有更新
-    pub fn check_updates(&self, local_versions: &[(AssetId, AssetVersion)]) -> anyhow::Result<Vec<AssetId>> {
+    pub fn check_updates(
+        &self,
+        local_versions: &[(AssetId, AssetVersion)],
+    ) -> anyhow::Result<Vec<AssetId>> {
         let client = ureq::Agent::new();
         let url = format!("{}/api/v1/updates", self.base_url);
         let mut req = client
@@ -475,29 +476,29 @@ impl RemoteAssetClient {
         }
         let response = req.send_json(local_versions)?;
         if response.status() >= 400 {
-            return Err(anyhow::anyhow!(
-                "Server returned {}",
-                response.status()
-            ));
+            return Err(anyhow::anyhow!("Server returned {}", response.status()));
         }
         let updates: Vec<AssetId> = response.into_json()?;
         Ok(updates)
     }
 
     /// 下载资源到指定目录
-    pub fn download_asset(&self, asset_id: &AssetId, dest_dir: &std::path::Path) -> anyhow::Result<()> {
+    pub fn download_asset(
+        &self,
+        asset_id: &AssetId,
+        dest_dir: &std::path::Path,
+    ) -> anyhow::Result<()> {
         let client = ureq::Agent::new();
         let url = format!("{}/api/v1/assets/{}/download", self.base_url, asset_id);
-        let mut req = client.get(&url).timeout(std::time::Duration::from_millis(self.timeout_ms * 10)); // 下载超时更长
+        let mut req = client
+            .get(&url)
+            .timeout(std::time::Duration::from_millis(self.timeout_ms * 10)); // 下载超时更长
         if let Some(ref key) = self.api_key {
             req = req.set("Authorization", &format!("Bearer {}", key));
         }
         let response = req.call()?;
         if response.status() >= 400 {
-            return Err(anyhow::anyhow!(
-                "Download failed: {}",
-                response.status()
-            ));
+            return Err(anyhow::anyhow!("Download failed: {}", response.status()));
         }
 
         // 确保目标目录存在

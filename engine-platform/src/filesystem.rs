@@ -103,7 +103,9 @@ mod tests {
 
     #[test]
     fn test_create_dir_all_and_remove() {
-        let dir = std::env::temp_dir().join("engine_fs_test_mkdir").join("nested");
+        let dir = std::env::temp_dir()
+            .join("engine_fs_test_mkdir")
+            .join("nested");
         let fs = NativeFileSystem;
         fs.create_dir_all(&dir).unwrap();
         assert!(dir.exists());
