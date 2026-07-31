@@ -148,14 +148,14 @@ mod tests {
         let state = WindowState::new();
 
         let event = Event::WindowEvent {
-            window_id: unsafe { std::mem::zeroed() },
+            window_id: unsafe { winit::window::WindowId::dummy() },
             event: WindowEvent::Focused(false),
         };
         state.process_event(&event);
         assert!(!state.is_focused());
 
         let event = Event::WindowEvent {
-            window_id: unsafe { std::mem::zeroed() },
+            window_id: unsafe { winit::window::WindowId::dummy() },
             event: WindowEvent::Focused(true),
         };
         state.process_event(&event);
@@ -181,14 +181,14 @@ mod tests {
         let state = WindowState::new();
 
         let event = Event::WindowEvent {
-            window_id: unsafe { std::mem::zeroed() },
+            window_id: unsafe { winit::window::WindowId::dummy() },
             event: WindowEvent::Occluded(true),
         };
         state.process_event(&event);
         assert!(!state.is_visible());
 
         let event = Event::WindowEvent {
-            window_id: unsafe { std::mem::zeroed() },
+            window_id: unsafe { winit::window::WindowId::dummy() },
             event: WindowEvent::Occluded(false),
         };
         state.process_event(&event);
@@ -200,7 +200,7 @@ mod tests {
         let state = WindowState::new();
 
         let event = Event::WindowEvent {
-            window_id: unsafe { std::mem::zeroed() },
+            window_id: unsafe { winit::window::WindowId::dummy() },
             event: WindowEvent::Resized(winit::dpi::PhysicalSize {
                 width: 1920,
                 height: 1080,
@@ -217,7 +217,7 @@ mod tests {
         let state = WindowState::new();
 
         let event = Event::WindowEvent {
-            window_id: unsafe { std::mem::zeroed() },
+            window_id: unsafe { winit::window::WindowId::dummy() },
             event: WindowEvent::CloseRequested,
         };
         state.process_event(&event);

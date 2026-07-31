@@ -15,6 +15,7 @@ use std::collections::HashMap;
 // 窗口相关：保留 winit 原始类型以便底层访问
 pub use winit::dpi::{LogicalPosition, LogicalSize, PhysicalPosition, PhysicalSize, Position};
 pub use winit::event::{DeviceEvent, Event, WindowEvent};
+pub use winit::window::WindowId;
 pub use winit::event_loop::{ControlFlow, EventLoop, EventLoopBuilder, EventLoopProxy};
 pub use winit::monitor::{MonitorHandle, VideoMode};
 pub use winit::window::{Fullscreen, Icon, Window, WindowLevel};

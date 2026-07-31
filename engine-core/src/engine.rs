@@ -249,11 +249,12 @@ impl Engine {
                 }
                 WindowMode::Fullscreen => {
                     if let Some(monitor) = window.current_monitor() {
-                        window.set_fullscreen(Some(Fullscreen::Exclusive(
-                            monitor.video_modes().next().unwrap_or_else(|| {
-                                panic!("No video mode available")
-                            })
-                        )));
+                        if let Some(video_mode) = monitor.video_modes().next() {
+                            window.set_fullscreen(Some(Fullscreen::Exclusive(video_mode)));
+                        } else {
+                            eprintln!("Warning: No video mode available, falling back to borderless fullscreen");
+                            window.set_fullscreen(Some(Fullscreen::Borderless(Some(monitor))));
+                        }
                     }
                 }
                 WindowMode::Borderless => {
@@ -420,7 +421,7 @@ mod tests {
         engine.set_window_state(WindowState::new());
         // 构造一个空的 Event 来测试
         let event = Event::WindowEvent {
-            window_id: unsafe { std::mem::zeroed() },
+            window_id: unsafe { engine_window::WindowId::dummy() },
             event: engine_window::WindowEvent::Focused(true),
         };
         engine.process_window_event(&event);
